@@ -28,7 +28,7 @@ func _draw():
 
 	draw_rect(
 		Rect2(top_left, cell_size),
-		Color(1, 1, 1, 0.5),  # semi-transparent fill
+		Color(1, 1, 1, 0.5),
 		false,
-		2.0                    # border thickness
+		1.0
 	)

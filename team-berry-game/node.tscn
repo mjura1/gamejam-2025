@@ -391,3 +391,7 @@ script = ExtResource("1_sy5k4")
 
 [node name="Border" type="Node2D" parent="GridManager"]
 script = ExtResource("2_112p8")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(192, 108)
+zoom = Vector2(3, 3)
