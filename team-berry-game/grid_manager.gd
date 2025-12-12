@@ -1,4 +1,6 @@
-extends Node
+extends Node2D
+
+var grid_manager: Node = null
 
 # Size of one grid cell (match your TileMap)
 var cell_size: Vector2 = Vector2(32, 32)
