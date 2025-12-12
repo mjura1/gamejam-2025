@@ -1,0 +1,284 @@
+[gd_scene load_steps=4 format=3 uid="uid://coeek8wyo136c"]
+
+[ext_resource type="Script" uid="uid://b803q04yskrtm" path="res://addons/ai_architect/_ui/ai_dock.gd" id="1_31riv"]
+[ext_resource type="Script" uid="uid://b5y3ndehf8501" path="res://addons/ai_architect/_ui/kanban_column.gd" id="2_gktra"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_31riv"]
+font_size = 20
+
+[node name="AIDock" type="PanelContainer"]
+layout_direction = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_31riv")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 2
+
+[node name="TabContainer" type="TabContainer" parent="."]
+layout_mode = 2
+current_tab = 0
+
+[node name="Engineer" type="MarginContainer" parent="TabContainer"]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="MainLayout" type="VBoxContainer" parent="TabContainer/Engineer"]
+layout_mode = 2
+alignment = 1
+
+[node name="HeaderLabel" type="Label" parent="TabContainer/Engineer/MainLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "AI Architect Ready"
+label_settings = SubResource("LabelSettings_31riv")
+horizontal_alignment = 1
+
+[node name="SystemLabel" type="Label" parent="TabContainer/Engineer/MainLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⚙️ System / Architectural Rules"
+horizontal_alignment = 1
+
+[node name="SystemInput" type="TextEdit" parent="TabContainer/Engineer/MainLayout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 100)
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "⚙️ System / Architectural Rules"
+wrap_mode = 1
+draw_control_chars = true
+draw_tabs = true
+draw_spaces = true
+
+[node name="HSeparator" type="HSeparator" parent="TabContainer/Engineer/MainLayout"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Engineer/MainLayout"]
+layout_mode = 2
+alignment = 1
+
+[node name="ApiKeyInput" type="LineEdit" parent="TabContainer/Engineer/MainLayout/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = ""
+placeholder_text = "Paste your Gemini API Key here"
+alignment = 1
+secret = true
+
+[node name="SaveKeyBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "💾 Save"
+
+[node name="SelectModel" type="Label" parent="TabContainer/Engineer/MainLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Select Model"
+horizontal_alignment = 1
+
+[node name="LangSelector" type="OptionButton" parent="TabContainer/Engineer/MainLayout/SelectModel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 32.0
+offset_bottom = 20.0
+selected = 0
+item_count = 2
+popup/item_0/text = "العربية"
+popup/item_0/id = 0
+popup/item_1/text = "English"
+popup/item_1/id = 1
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="TabContainer/Engineer/MainLayout"]
+layout_mode = 2
+alignment = 1
+
+[node name="ModelSelector" type="OptionButton" parent="TabContainer/Engineer/MainLayout/HBoxContainer2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+size_flags_horizontal = 4
+selected = 0
+item_count = 1
+popup/item_0/text = "gemini-2.5-flash"
+popup/item_0/id = 0
+
+[node name="RefreshModelsBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+text = "🔄 Fetch Models"
+
+[node name="HSeparator2" type="HSeparator" parent="TabContainer/Engineer/MainLayout"]
+layout_mode = 2
+
+[node name="PromptInput" type="TextEdit" parent="TabContainer/Engineer/MainLayout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "AI Architect Ready"
+wrap_mode = 1
+draw_tabs = true
+draw_spaces = true
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="TabContainer/Engineer/MainLayout"]
+layout_mode = 2
+alignment = 1
+
+[node name="GenerateBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "إنشاء كود GDScript بناءً على وصفك."
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+text = "توليد كود"
+
+[node name="ReadScriptBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "قراءة محتوى السكربت المفتوح حالياً."
+text = "قراءة ملف"
+
+[node name="ApplyEditsBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "مراجعة وتطبيق التغييرات المقترحة."
+theme_override_colors/font_color = Color(0.8745098, 0.8745098, 0, 1)
+text = "تطبيق التعديلات"
+
+[node name="EnhanceEngBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "إعادة صياغة طلبك ليكون أوضح للذكاء."
+text = "✨ تحسين الطلب"
+
+[node name="FixErrorBtn" type="Button" parent="TabContainer/Engineer/MainLayout/HBoxContainer3"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 4
+tooltip_text = "الصق الخطأ هنا ليتم إصلاحه."
+theme_override_colors/font_color = Color(1, 0.36778843, 0.3002166, 1)
+text = "🚑 إصلاح خطأ"
+
+[node name="StatusLabel" type="Label" parent="TabContainer/Engineer/MainLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "النظام جاهز."
+horizontal_alignment = 1
+
+[node name="Planner" type="MarginContainer" parent="TabContainer"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+metadata/_tab_index = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Planner"]
+layout_mode = 2
+
+[node name="PlannerLabel" type="Label" parent="TabContainer/Planner/VBoxContainer"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_vertical = 0
+text = "Project Planner & Task Manager"
+horizontal_alignment = 1
+
+[node name="PlanInput" type="TextEdit" parent="TabContainer/Planner/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 200)
+layout_mode = 2
+placeholder_text = "اكتب فكرتك هنا"
+wrap_mode = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Planner/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="CreatePlanBtn" type="Button" parent="TabContainer/Planner/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+tooltip_text = "تحويل الفكرة إلى مهام تقنية."
+text = "إنشاء خطة"
+
+[node name="EnhancePlanBtn" type="Button" parent="TabContainer/Planner/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+tooltip_text = "إعادة صياغة طلبك ليكون أوضح للذكاء."
+text = "✨ تحسين الطلب"
+
+[node name="AddManualTaskBtn" type="Button" parent="TabContainer/Planner/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+tooltip_text = "إضافة النص أعلاه كمهمة جديدة."
+text = "+ إضافة يدوية"
+
+[node name="HSeparator" type="HSeparator" parent="TabContainer/Planner/VBoxContainer"]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="TabContainer/Planner/VBoxContainer"]
+custom_minimum_size = Vector2(150, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="KanbanBoard" type="HBoxContainer" parent="TabContainer/Planner/VBoxContainer/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Col_Todo" type="VBoxContainer" parent="TabContainer/Planner/VBoxContainer/ScrollContainer/KanbanBoard"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_gktra")
+
+[node name="To_Do" type="Label" parent="TabContainer/Planner/VBoxContainer/ScrollContainer/KanbanBoard/Col_Todo"]
+layout_mode = 2
+text = "To Do"
+horizontal_alignment = 1
+
+[node name="Col_Doing" type="VBoxContainer" parent="TabContainer/Planner/VBoxContainer/ScrollContainer/KanbanBoard"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_gktra")
+
+[node name="Doing" type="Label" parent="TabContainer/Planner/VBoxContainer/ScrollContainer/KanbanBoard/Col_Doing"]
+layout_mode = 2
+text = "Doing"
+horizontal_alignment = 1
+
+[node name="Col_Done" type="VBoxContainer" parent="TabContainer/Planner/VBoxContainer/ScrollContainer/KanbanBoard"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("2_gktra")
+
+[node name="Done" type="Label" parent="TabContainer/Planner/VBoxContainer/ScrollContainer/KanbanBoard/Col_Done"]
+layout_mode = 2
+text = "Done"
+horizontal_alignment = 1
+
+[node name="PlanStatus" type="Label" parent="TabContainer/Planner/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 1
+text = "لعرض الحالة"
+horizontal_alignment = 1

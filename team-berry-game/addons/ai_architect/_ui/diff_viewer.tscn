@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3 uid="uid://dv2spn7ppmhen"]
+
+[ext_resource type="Script" uid="uid://0sc4q547qu1m" path="res://addons/ai_architect/_ui/diff_viewer.gd" id="1_3ks41"]
+
+[node name="DiffViewer" type="Window"]
+oversampling_override = 1.0
+title = "Review Changes"
+initial_position = 2
+size = Vector2i(1000, 700)
+transient = true
+exclusive = true
+script = ExtResource("1_3ks41")
+
+[node name="Panel" type="Panel" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Old Code"
+horizontal_alignment = 1
+
+[node name="Label2" type="Label" parent="Panel/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "New Code"
+horizontal_alignment = 1
+
+[node name="Editors" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="OldEdit" type="CodeEdit" parent="Panel/VBoxContainer/Editors"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+editable = false
+
+[node name="NewEdit" type="CodeEdit" parent="Panel/VBoxContainer/Editors"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+editable = false
+delimiter_strings = Array[String](["\" \"", "' '"])
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="RejectBtn" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Cancel ❌"
+
+[node name="ApplyBtn" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Confirm & Apply ✅"
