@@ -6,12 +6,12 @@ var cell_size: Vector2 = Vector2.ZERO
 
 func _ready():
 	grid_manager = get_parent()
-	cell_size = grid_manager.cell_size
 
 func _process(delta):
 	if grid_manager == null:
 		return
-
+	
+	cell_size = grid_manager.cell_size
 	var mouse_world = get_global_mouse_position()
 	var grid = grid_manager.world_to_grid(mouse_world)
 

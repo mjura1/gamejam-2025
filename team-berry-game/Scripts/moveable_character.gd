@@ -1,4 +1,4 @@
-extends "res://base_character.gd"
+extends "res://Scripts/base_character.gd"
 
 var selected: bool = false
 

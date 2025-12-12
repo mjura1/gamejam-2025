@@ -1,17 +1,19 @@
-# In World.tscn script
 extends Node2D
 
 @onready var tile_selector = get_node("/root/Node/TileSelector")
 @onready var grid_manager = get_node("/root/Node/GridManager")
+
 var selected_character: Node = null
  
 func _unhandled_input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_pos = get_global_mouse_position()
 		var clicked_grid = grid_manager.world_to_grid(mouse_pos)
-
+		
+		tile_selector.select_tile(clicked_grid)
 		# Check if a character is selected
 		if selected_character:
+			print("selected character")
 			# Move the selected character
 			if not grid_manager.is_occupied(clicked_grid):
 				# Vacate old grid
@@ -24,9 +26,11 @@ func _unhandled_input(event):
 				# Deselect after moving
 				selected_character.selected = false
 				selected_character = null
+				
 		else:
 			# Check if a character exists at this tile
 			var occupant = grid_manager.occupied.get(clicked_grid, null)
+			print(occupant)
 			if occupant and occupant.has_method("selected"):
 				selected_character = occupant
 				occupant.selected = true
