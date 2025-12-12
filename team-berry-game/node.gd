@@ -2,10 +2,9 @@
 extends Node2D
 
 @onready var tile_selector = $TileSelector
-@export var grid_manager: Node  # assign in the Inspector or via code
-
+@onready var grid_manager = get_node("/root/World/GridManager")
 var selected_character: Node = null
-
+ 
 func _unhandled_input(event):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_pos = get_global_mouse_position()
