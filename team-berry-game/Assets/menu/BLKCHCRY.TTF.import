@@ -3,12 +3,12 @@
 importer="font_data_dynamic"
 type="FontFile"
 uid="uid://cuqwva5tcu38a"
-path="res://.godot/imported/BLKCHCRY.TTF-80276c42805ae7b437f293501719dfe2.fontdata"
+path="res://.godot/imported/BLKCHCRY.TTF-6f37cc6b2900809baa0ae24d98b9d83c.fontdata"
 
 [deps]
 
-source_file="res://menu/BLKCHCRY.TTF"
-dest_files=["res://.godot/imported/BLKCHCRY.TTF-80276c42805ae7b437f293501719dfe2.fontdata"]
+source_file="res://Assets/menu/BLKCHCRY.TTF"
+dest_files=["res://.godot/imported/BLKCHCRY.TTF-6f37cc6b2900809baa0ae24d98b9d83c.fontdata"]
 
 [params]
 
