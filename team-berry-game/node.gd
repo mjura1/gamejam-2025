@@ -1,8 +1,8 @@
 # In World.tscn script
 extends Node2D
 
-@onready var tile_selector = $TileSelector
-@onready var grid_manager = get_node("/root/World/GridManager")
+@onready var tile_selector = get_node("/root/Node/TileSelector")
+@onready var grid_manager = get_node("/root/Node/GridManager")
 var selected_character: Node = null
  
 func _unhandled_input(event):
