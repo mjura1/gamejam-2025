@@ -6,3 +6,5 @@
 
 [node name="GridManager" type="Node" parent="."]
 script = ExtResource("1_sy5k4")
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
