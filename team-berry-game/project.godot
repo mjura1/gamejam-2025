@@ -11,6 +11,10 @@ config_version=5
 [application]
 
 config/name="team-berry-game"
-run/main_scene="uid://xineak3b25qd"
+run/main_scene="uid://dubog4wrxompp"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
