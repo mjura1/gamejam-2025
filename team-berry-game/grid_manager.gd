@@ -1,7 +1,7 @@
 extends Node
 
 # Size of one grid cell (match your TileMap)
-var cell_size: Vector2 = Vector2(32, 32)
+var cell_size: Vector2 = Vector2(16, 16)
 
 # Stores objects by their grid location
 var occupied := {}  # Example: occupied[Vector2i(3,4)] = character reference
