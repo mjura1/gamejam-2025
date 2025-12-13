@@ -22,3 +22,6 @@ func occupy(grid_pos: Vector2i, obj):
 
 func vacate(grid_pos: Vector2i):
 	occupied.erase(grid_pos)
+
+func is_inside_boundary(grid_pos: Vector2i, used_rect: Rect2i):
+	return  grid_pos.x >= used_rect.position.x and grid_pos.x <= used_rect.size.x and grid_pos.y >= used_rect.position.y - 1 and grid_pos.y <= used_rect.size.y-1

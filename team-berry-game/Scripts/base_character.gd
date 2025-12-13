@@ -1,6 +1,9 @@
 extends Node2D
 
 var grid_pos: Vector2i
+
+@export var move_offsets: Array[Vector2i] = []
+
 @export var grid_manager: Node 
 
 func _ready():
@@ -10,8 +13,12 @@ func _ready():
 	grid_pos = grid_manager.world_to_grid(global_position)
 	grid_manager.occupy(grid_pos, self)
 
-func try_move(direction: Vector2i):
-	var target = grid_pos + direction
+func try_move(target: Vector2i):
+	var offset := target - grid_pos
+	if offset not in move_offsets:
+		print("Invalid move")
+		return
+	
 	if grid_manager.is_occupied(target):
 		print("Blocked!")
 		return

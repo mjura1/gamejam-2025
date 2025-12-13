@@ -1,7 +1,0 @@
-[gd_scene load_steps=3 format=3 uid="uid://xineak3b25qd"]
-
-[ext_resource type="PackedScene" uid="uid://bbanbdmqj5fw8" path="res://Scenes/base_character.tscn" id="1_nlvit"]
-[ext_resource type="Script" uid="uid://66k54yr7w8e5" path="res://Scripts/moveable_character.gd" id="2_4otaf"]
-
-[node name="MoveableCharacter" instance=ExtResource("1_nlvit")]
-script = ExtResource("2_4otaf")
