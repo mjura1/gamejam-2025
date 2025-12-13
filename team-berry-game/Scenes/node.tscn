@@ -5,10 +5,6 @@
 [ext_resource type="Script" uid="uid://c41oqie4etyl6" path="res://Scripts/TileMap/grid_manager.gd" id="3_vixca"]
 [ext_resource type="Script" uid="uid://b6kurpldjabth" path="res://Scripts/TileMap/border.gd" id="4_3fd10"]
 [ext_resource type="Script" uid="uid://cef3faytaep6h" path="res://Scripts/TileMap/tile_selector.gd" id="5_63ye5"]
-[ext_resource type="PackedScene" uid="uid://xineak3b25qd" path="res://Scenes/moveable_character.tscn" id="6_2itt3"]
-[ext_resource type="Script" uid="uid://c41oqie4etyl6" path="res://Scripts/grid_manager.gd" id="3_vixca"]
-[ext_resource type="Script" uid="uid://b6kurpldjabth" path="res://Scripts/border.gd" id="4_3fd10"]
-[ext_resource type="Script" uid="uid://cef3faytaep6h" path="res://Scripts/tile_selector.gd" id="5_63ye5"]
 [ext_resource type="PackedScene" uid="uid://ck1mgl8bf45p3" path="res://Scenes/bishop.tscn" id="6_2itt3"]
 [ext_resource type="PackedScene" uid="uid://dmr1bg7evbu54" path="res://Scenes/knight.tscn" id="7_vixca"]
 [ext_resource type="PackedScene" uid="uid://c81pvaf1rewmd" path="res://Scenes/rook.tscn" id="8_3fd10"]
@@ -422,3 +418,4 @@ scale = Vector2(0.1, 0.1)
 position = Vector2(127, 63)
 
 [node name="Pawn" parent="." instance=ExtResource("9_63ye5")]
+position = Vector2(16.999998, 9.999999)

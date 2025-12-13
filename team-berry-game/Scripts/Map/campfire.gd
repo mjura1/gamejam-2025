@@ -92,11 +92,11 @@ func update_rest_button_ui():
 
 	match current_rest_state:
 		RestMenuState.STATE_REST:
-			rest_and_back_button.text = "REST"
+			rest_and_back_button.text = "  REST  "
 			rest_and_back_button.disabled = false
 			
 		RestMenuState.STATE_RETURN:
-			rest_and_back_button.text = "BACK  " # BUG: popravi da se gumb premika narobe
+			rest_and_back_button.text = "  BACK  " # BUG: popravi da se gumb premika narobe
 			rest_and_back_button.disabled = false
 			
 	# === PRISILNA POSODOBITEV GUMBA ===
