@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=4 uid="uid://dubog4wrxompp"]
+[gd_scene load_steps=13 format=4 uid="uid://dubog4wrxompp"]
 
 [ext_resource type="Script" uid="uid://bt1rkh3qcjglr" path="res://Scripts/TileMap/map_behaviour.gd" id="1_qtqr5"]
 [ext_resource type="Texture2D" uid="uid://b6gxm0osxkxqh" path="res://Assets/Tilesets/Solaria Demo Tiles.png" id="2_2itt3"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://dmr1bg7evbu54" path="res://Scenes/knight.tscn" id="7_vixca"]
 [ext_resource type="PackedScene" uid="uid://c81pvaf1rewmd" path="res://Scenes/rook.tscn" id="8_3fd10"]
 [ext_resource type="PackedScene" uid="uid://xineak3b25qd" path="res://Scenes/pawn.tscn" id="9_63ye5"]
+[ext_resource type="Script" uid="uid://bo8wupstu0hfb" path="res://Scenes/move_highlighter.gd" id="10_6e2d7"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_112p8"]
 texture = ExtResource("2_2itt3")
@@ -419,3 +420,6 @@ position = Vector2(127, 63)
 
 [node name="Pawn" parent="." instance=ExtResource("9_63ye5")]
 position = Vector2(16.999998, 9.999999)
+
+[node name="MoveHighlighter" type="Node2D" parent="."]
+script = ExtResource("10_6e2d7")

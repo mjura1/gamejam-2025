@@ -1,4 +1,4 @@
-extends "res://Scripts/base_character.gd"
+extends BaseCharacter
 
 func _ready():
 	move_range = 8

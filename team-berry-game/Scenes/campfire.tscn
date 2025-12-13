@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3 uid="uid://c6n5dbc7fltxg"]
 
 [ext_resource type="Texture2D" uid="uid://cvpsmxouknw5q" path="res://Assets/Campfire/image.png" id="1_kfptp"]
-[ext_resource type="Script" path="res://Scripts/campfire.gd" id="1_qcxes"]
+[ext_resource type="Script" uid="uid://c78wuf2s7h847" path="res://Scripts/Map/campfire.gd" id="1_qcxes"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_qcxes"]
 texture = ExtResource("1_kfptp")

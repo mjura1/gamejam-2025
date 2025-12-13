@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://bbanbdmqj5fw8"]
 
-[ext_resource type="Script" uid="uid://1civrgg6q7yl" path="res://Scripts/base_character.gd" id="1_tm8wl"]
+[ext_resource type="Script" uid="uid://1civrgg6q7yl" path="res://Scripts/CharacterPieces/base_character.gd" id="1_tm8wl"]
 [ext_resource type="Texture2D" uid="uid://dbong8q0yleu1" path="res://Assets/Sprites/enemy_pawn.png" id="2_foqlb"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_ubrwk"]

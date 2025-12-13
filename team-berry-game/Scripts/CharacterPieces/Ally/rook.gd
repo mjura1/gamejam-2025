@@ -11,3 +11,4 @@ func get_move_directions() -> Array[Vector2i]:
 		Vector2i(0, 1),
 		Vector2i(0, -1),
 	]
+# calculate_valid_targets() se podeduje
