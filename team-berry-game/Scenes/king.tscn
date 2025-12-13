@@ -1,0 +1,12 @@
+[gd_scene load_steps=4 format=3 uid="uid://7j1a3ayq8ar6"]
+
+[ext_resource type="PackedScene" uid="uid://bbanbdmqj5fw8" path="res://Scenes/base_character.tscn" id="1_nlvit"]
+[ext_resource type="Script" uid="uid://syq6bv80c8i3" path="res://Scripts/king.gd" id="2_36v0m"]
+[ext_resource type="Texture2D" uid="uid://dnvnja0ychq8k" path="res://Assets/Sprites/friendly_pawn.png" id="3_culnp"]
+
+[node name="King" instance=ExtResource("1_nlvit")]
+script = ExtResource("2_36v0m")
+
+[node name="Sprite2D" parent="." index="0"]
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("3_culnp")
