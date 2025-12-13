@@ -14,7 +14,7 @@ const MAP_WIDTH: int = 7
 const MAX_PATHS: int = 6
 const START_FLOOR: int = 0
 
-# Vizualna postavitev
+# Vizualna postavitev, povecaj za vec nodes
 const X_DISTANCE: int = 150
 const Y_DISTANCE: int = 100
 const PLACEMENT_RANDOMNESS: float = 5.0
