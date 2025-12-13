@@ -1,0 +1,104 @@
+[gd_scene load_steps=8 format=3 uid="uid://bhhaeyg0emkri"]
+
+[ext_resource type="Texture2D" uid="uid://cvpsmxouknw5q" path="res://Assets/Campfire/image.png" id="1_kfptp"]
+[ext_resource type="Script" uid="uid://c78wuf2s7h847" path="res://Scripts/campfire.gd" id="1_qcxes"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_qcxes"]
+texture = ExtResource("1_kfptp")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kfptp"]
+content_margin_left = 16.0
+content_margin_right = 16.0
+bg_color = Color(0.40352374, 0.24540782, 0.13312465, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_a7vrp"]
+bg_color = Color(0.54901963, 0.34509805, 0.2, 0.39215687)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qcxes"]
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0.55082357, 0.34482267, 0.19923377, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qycku"]
+
+[node name="Campfire" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_qcxes")
+
+[node name="Backgroud" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_qcxes")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -132.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Ugrade" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxFlat_kfptp")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_a7vrp")
+theme_override_styles/hover = SubResource("StyleBoxFlat_qcxes")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_qycku")
+text = "UPGRADE
+"
+
+[node name="RestAndBack" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 67
+theme_override_styles/normal = SubResource("StyleBoxFlat_kfptp")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_a7vrp")
+theme_override_styles/hover = SubResource("StyleBoxFlat_qcxes")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_qycku")
+text = "REST"
+
+[node name="Party" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 50
+theme_override_styles/normal = SubResource("StyleBoxFlat_kfptp")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_a7vrp")
+theme_override_styles/hover = SubResource("StyleBoxFlat_qcxes")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_qycku")
+text = "PARTY
+"
+
+[connection signal="pressed" from="HBoxContainer/Ugrade" to="." method="_on_ugrade_pressed"]
+[connection signal="pressed" from="HBoxContainer/RestAndBack" to="." method="_on_rest_and_back_pressed"]
+[connection signal="pressed" from="HBoxContainer/Party" to="." method="_on_party_pressed"]

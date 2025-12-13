@@ -1,11 +1,11 @@
 [gd_scene load_steps=8 format=3 uid="uid://c3tc8wv28ls53"]
 
 [ext_resource type="Script" uid="uid://hofujk2syf2l" path="res://Scripts/main_menu.gd" id="1_c4rj4"]
-[ext_resource type="Texture2D" uid="uid://k0r6d0o8hm8p" path="res://Assets/menu/20251212_150626.jpg" id="2_ykiyx"]
+[ext_resource type="Texture2D" uid="uid://h8kmeb1incc6" path="res://Assets/menu/menubackground.jpg" id="2_1ehe0"]
 [ext_resource type="FontFile" uid="uid://cuqwva5tcu38a" path="res://Assets/menu/BLKCHCRY.TTF" id="3_wos0d"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7vrkn"]
-texture = ExtResource("2_ykiyx")
+texture = ExtResource("2_1ehe0")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rhts7"]
 bg_color = Color(1, 1, 1, 1)
