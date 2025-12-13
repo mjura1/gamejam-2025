@@ -18,7 +18,20 @@ func is_occupied(grid_pos: Vector2i) -> bool:
 	return occupied.has(grid_pos)
 
 func occupy(grid_pos: Vector2i, obj):
-	occupied[grid_pos] = obj
+	if is_occupied(grid_pos):
+		push_error("Trying to occupy already occupied tile " + str(grid_pos))
+	else:
+		occupied[grid_pos] = obj
 
 func vacate(grid_pos: Vector2i):
 	occupied.erase(grid_pos)
+
+func is_inside_boundary(grid_pos: Vector2i, used_rect: Rect2i) -> bool:
+	return (
+		grid_pos.x >= used_rect.position.x
+		and grid_pos.x < used_rect.position.x + used_rect.size.x
+		and grid_pos.y >= used_rect.position.y
+		and grid_pos.y < used_rect.position.y + used_rect.size.y
+	)
+func get_character_at(grid_pos: Vector2i) -> Node:
+	return occupied.get(grid_pos, null)
