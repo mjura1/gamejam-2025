@@ -49,18 +49,38 @@ func calculate_valid_targets() -> Array[Vector2i]:
 
 	return targets
 
-func try_move(target: Vector2i) -> bool:
-	# Uporabljamo novo ime funkcije
-	if target not in calculate_valid_targets():
-		return false
-	
-	# Input Controller mora preprečiti klic try_move, če je polje zasedeno (napad), 
-	# a to je varnostna kopija.
-	if grid_manager.is_occupied(target):
-		return false
-
+# Premesti figuro na novo lokacijo (ne preverja veljavnosti, to naredi Input Controller)
+func execute_move(target: Vector2i):
 	grid_manager.vacate(grid_pos)
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
 	global_position = grid_manager.grid_to_world(grid_pos)
+	
+	# Nastavite has_moved = true, če ste to dodali za logiko piona
+	# has_moved = true 
+
+func try_move(target: Vector2i) -> bool:
+	if target not in calculate_valid_targets():
+		return false
+	
+	if grid_manager.is_occupied(target):
+		return false
+
+	execute_move(target)
 	return true
+	
+# Odstranitev figure iz igre (umre)
+func die():
+	grid_manager.vacate(grid_pos) # Osvobodi polje
+	queue_free() # Uniči vozlišče
+	print("Figura je bila uničena in odstranjena.")
+
+# Logika zajetja tarče in premika napadalca na tarčino polje
+func capture(target: BaseCharacter):
+	print("Izvajam zajetje tarče...")
+	
+	# 1. Zajem/Smrt tarče (Sovražnikova figura je odstranjena)
+	target.die()
+	
+	# 2. Premik napadalca na tarčino zdaj prosto polje
+	execute_move(target.grid_pos)
