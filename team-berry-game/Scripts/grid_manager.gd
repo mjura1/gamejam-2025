@@ -18,7 +18,10 @@ func is_occupied(grid_pos: Vector2i) -> bool:
 	return occupied.has(grid_pos)
 
 func occupy(grid_pos: Vector2i, obj):
-	occupied[grid_pos] = obj
+	if is_occupied(grid_pos):
+		push_error("Trying to occupy already occupied tile " + str(grid_pos))
+	else:
+		occupied[grid_pos] = obj
 
 func vacate(grid_pos: Vector2i):
 	occupied.erase(grid_pos)

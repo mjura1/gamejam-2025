@@ -1,14 +1,13 @@
-extends "res://Scripts/base_character.gd"
+extends BaseCharacter
 
-func _ready():
-	move_offsets = [
-		Vector2i( 1,  2),
-		Vector2i( 2,  1),
-		Vector2i(-1,  2),
-		Vector2i(-2,  1),
-		Vector2i( 1, -2),
-		Vector2i( 2, -1),
-		Vector2i(-1, -2),
-		Vector2i(-2, -1),
-	]	
-	super._ready()
+func get_valid_moves() -> Array[Vector2i]:
+	return [
+		grid_pos + Vector2i(1, 2),
+		grid_pos + Vector2i(2, 1),
+		grid_pos + Vector2i(-1, 2),
+		grid_pos + Vector2i(-2, 1),
+		grid_pos + Vector2i(1, -2),
+		grid_pos + Vector2i(2, -1),
+		grid_pos + Vector2i(-1, -2),
+		grid_pos + Vector2i(-2, -1),
+	]

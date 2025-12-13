@@ -15,8 +15,6 @@ func _unhandled_input(event):
 
 	tile_selector.select_tile(clicked_grid)
 	
-	print(grid_manager.is_occupied(clicked_grid))
-	
 	var clicked_character = grid_manager.get_character_at(clicked_grid)
 
 	# CLICK ON CHARACTER

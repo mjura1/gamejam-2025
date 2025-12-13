@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=4 uid="uid://dubog4wrxompp"]
+[gd_scene load_steps=12 format=4 uid="uid://dubog4wrxompp"]
 
 [ext_resource type="Script" uid="uid://bt1rkh3qcjglr" path="res://Scripts/map_behaviour.gd" id="1_qtqr5"]
 [ext_resource type="Texture2D" uid="uid://b6gxm0osxkxqh" path="res://Assets/Tilesets/Solaria Demo Tiles.png" id="2_2itt3"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" uid="uid://cef3faytaep6h" path="res://Scripts/tile_selector.gd" id="5_63ye5"]
 [ext_resource type="PackedScene" uid="uid://ck1mgl8bf45p3" path="res://Scenes/bishop.tscn" id="6_2itt3"]
 [ext_resource type="PackedScene" uid="uid://dmr1bg7evbu54" path="res://Scenes/knight.tscn" id="7_vixca"]
+[ext_resource type="PackedScene" uid="uid://c81pvaf1rewmd" path="res://Scenes/rook.tscn" id="8_3fd10"]
+[ext_resource type="PackedScene" uid="uid://xineak3b25qd" path="res://Scenes/pawn.tscn" id="9_63ye5"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_112p8"]
 texture = ExtResource("2_2itt3")
@@ -405,13 +407,14 @@ zoom = Vector2(3, 3)
 script = ExtResource("5_63ye5")
 
 [node name="Bishop" parent="." instance=ExtResource("6_2itt3")]
-position = Vector2(86, 63)
+position = Vector2(129, 145)
 scale = Vector2(0.1, 0.1)
-selected = null
-move_offsets = null
 
 [node name="Knight" parent="." instance=ExtResource("7_vixca")]
-position = Vector2(162.99998, 88.99999)
+position = Vector2(313, 124)
 scale = Vector2(0.1, 0.1)
-selected = null
-move_offsets = null
+
+[node name="ROOOOOOOOK" parent="." instance=ExtResource("8_3fd10")]
+position = Vector2(127, 63)
+
+[node name="Pawn" parent="." instance=ExtResource("9_63ye5")]

@@ -1,11 +1,13 @@
-extends "res://Scripts/base_character.gd"
+extends BaseCharacter
 
 func _ready():
-	for x in range(1, 8):
-		if x == 0:
-			continue
-		move_offsets.append(Vector2i(x, x))
-		move_offsets.append(Vector2i(x, -x))
-		move_offsets.append(Vector2i(-x, x))
-		move_offsets.append(Vector2i(-x, -x))
+	move_range = 8
 	super._ready()
+
+func get_move_directions() -> Array[Vector2i]:
+	return [
+		Vector2i(1, 1),
+		Vector2i(1, -1),
+		Vector2i(-1, 1),
+		Vector2i(-1, -1),
+	]
