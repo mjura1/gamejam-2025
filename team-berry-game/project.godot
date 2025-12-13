@@ -15,6 +15,10 @@ run/main_scene="uid://dubog4wrxompp"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://Assets/icon.svg"
 
+[autoload]
+
+GF="*res://Scripts/Map/GameFlow.gd"
+
 [input]
 
 escape={

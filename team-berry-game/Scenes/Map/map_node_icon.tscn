@@ -1,13 +1,13 @@
 [gd_scene load_steps=2 format=3 uid="uid://8o36gyul3n5e"]
 
-[ext_resource type="Script" uid="uid://k8h4j06tsxis" path="res://Scenes/map_node_icon.gd" id="1_10tuo"]
+[ext_resource type="Script" uid="uid://k8h4j06tsxis" path="res://Scripts/Map/map_node_icon.gd" id="1_lcbf5"]
 
 [node name="MapNodeIcon" type="Button"]
 anchors_preset = -1
 anchor_right = 0.0069444445
 anchor_bottom = 0.012345679
 scale = Vector2(6.4800014, 6.4800014)
-script = ExtResource("1_10tuo")
+script = ExtResource("1_lcbf5")
 metadata/_edit_use_anchors_ = true
 
 [node name="IconDisplay" type="TextureRect" parent="."]

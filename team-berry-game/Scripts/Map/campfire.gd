@@ -82,7 +82,7 @@ func return_to_map_action():
 	# TODO: Tukaj vstavite kodo za preklop scene nazaj na Rogue-like mapo:
 	# get_tree().change_scene_to_file("res://scenes/roguelike_map.tscn") 
 	# Začasno samo izpustimo to sceno, če je bila naložena kot otrok
-	pass
+	GF.return_to_map()
 
 
 # Posodobitev besedila in stanja gumba REST/BACK
