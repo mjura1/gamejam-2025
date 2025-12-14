@@ -14,7 +14,7 @@
 [ext_resource type="PackedScene" uid="uid://gexf8t8dh7sm" path="res://Battle/battle_controller.tscn" id="12_nivui"]
 [ext_resource type="PackedScene" uid="uid://cbtijv3c7nihu" path="res://Scenes/Menu/PartyPanel.tscn" id="13_3qyq8"]
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_112p8"]
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3qyq8"]
 texture = ExtResource("2_2itt3")
 0:0/0 = 0
 1:0/0 = 0
@@ -386,7 +386,7 @@ texture = ExtResource("2_2itt3")
 12:14/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_e2u21"]
-sources/0 = SubResource("TileSetAtlasSource_112p8")
+sources/0 = SubResource("TileSetAtlasSource_3qyq8")
 
 [node name="Node" type="Node"]
 

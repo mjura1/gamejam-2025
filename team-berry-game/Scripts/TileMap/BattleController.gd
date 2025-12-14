@@ -1,3 +1,4 @@
+
 # res://Scripts/BattleController.gd
 extends Node
 
@@ -11,8 +12,7 @@ var current_state = TurnState.PLAYER_TURN
 
 # REFERENCE:
 @onready var player_manager = get_node("/root/PlayerManager")
-# ODKOMENTIRANO: Sedaj potrebujemo GridManager za AI logiko. Prepričajte se, da je pot pravilna!
-@onready var grid_manager = get_node("/root/Node/GridManager") 
+@onready var grid_manager = get_node("../GridManager")
 
 
 func _ready():

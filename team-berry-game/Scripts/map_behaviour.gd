@@ -1,8 +1,8 @@
 extends Node2D
 
-@onready var tile_selector = get_node("/root/Node/TileSelector")
-@onready var grid_manager = get_node("/root/Node/GridManager")
-@onready var tile_map = get_node("/root/Node/Map/TileMapLayer")
+@onready var tile_selector = get_node("../TileSelector")
+@onready var grid_manager = get_node("../GridManager")
+@onready var tile_map = get_node("../Map/TileMapLayer")
 
 var selected_character: Node = null 
 
