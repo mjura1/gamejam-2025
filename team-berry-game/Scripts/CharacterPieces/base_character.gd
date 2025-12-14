@@ -18,6 +18,10 @@ var grid_pos: Vector2i
 @export var is_enemy: bool = false 
 @export var character_scene_path: String = "" # POT DO SCENE (Npr.: "res://Scenes/Characters/Bishop.tscn")
 
+# ----------------- audio -----------------------
+@onready var move_sound = $MoveSound
+@onready var take_sound = $TakeSound
+
 # ----------------- INITIALIZACIJA (KLJUČNA ZA IZBIRO) -----------------
 
 func _ready():
@@ -74,6 +78,8 @@ func execute_move(target: Vector2i):
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
 	global_position = grid_manager.grid_to_world(grid_pos)
+	move_sound.play()
+	
 	
 func try_move(target: Vector2i) -> bool:
 	if target not in calculate_valid_targets():
@@ -120,6 +126,7 @@ func capture(target: BaseCharacter):
 	var target_pos = target.grid_pos 
 	
 	# 1. Zajem/Smrt tarče
+	take_sound.play()
 	target.die()
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje

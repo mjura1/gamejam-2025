@@ -19,6 +19,11 @@ config/icon="res://Assets/icon.svg"
 
 GF="*res://Scripts/Map/GameFlow.gd"
 PlayerManager="*res://Scripts/Player/PlayerManager.gd"
+UiAudio="*res://Scenes/ui_audio.tscn"
+
+[global_group]
+
+buttons=""
 
 [input]
 
