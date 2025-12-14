@@ -6,8 +6,8 @@ var food: int = 5
 var leather: int = 0
 
 # Party Management
-var active_party: Array[String] = ["pawn", "pawn", "pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
-var enemy_party: Array[String] = ["pawn", "pawn", "pawn"]
+var active_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
+var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
 
 var max_party_size = 32
 var snowCount = 0
@@ -19,6 +19,7 @@ func _ready():
 
 func add_to_active_party(character):
 	if active_party.size() < max_party_size:
+		print("char name ", character)
 		active_party.append(character)
 		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % active_party.size())
 
@@ -32,3 +33,6 @@ func register_dead_ally(character):
 			
 func add_to_enemy_party(character):
 	enemy_party.append(character)
+	
+func addSnow():
+	snowCount += 3

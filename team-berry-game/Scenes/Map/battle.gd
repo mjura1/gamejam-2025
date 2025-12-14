@@ -13,22 +13,22 @@ var to_spawn_ally
 
 # Friendly pieces dictionary
 const friendly_pieces := {
-	"pawn": "res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn",
-	"rook": "res://Scenes/CharacterPiecesNodes/Ally/rook.tscn",
-	"bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
-	"knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
-	"king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
-	"queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
+	"friendly_pawn": "res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn",
+	"friendly_rook": "res://Scenes/CharacterPiecesNodes/Ally/rook.tscn",
+	"friendly_bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
+	"friendly_knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
+	"friendly_king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
+	"friendly_queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
 }
 
 # Enemy pieces dictionary
 const enemy_pieces := {
-	"pawn": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn",
-	"rook": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn",
-	"bishop": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn",
-	"knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
-	"king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
-	"queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
+	"enemy_pawn": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn",
+	"enemy_rook": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn",
+	"enemy_bishop": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn",
+	"enemy_knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
+	"enemy_king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
+	"enemy_queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
 }
 	
 
