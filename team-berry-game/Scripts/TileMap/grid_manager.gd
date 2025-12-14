@@ -7,10 +7,9 @@ class_name GridManager
 # ===============================================
 
 # Pot do scene, ki predstavlja eno polje megle
-# Prilagodite pot, če je vaša scena shranjena drugje!
 const FOG_TILE_SCENE: PackedScene = preload("res://Battle/fog_tile_scene.tscn")
 
-# Slovar za shranjevanje vozlišč megle. Key: Vector2i, Value: FogTile node
+# Slovar za shranjevanje vozlišč megle.
 var fog_nodes: Dictionary = {}
 
 # REFERENCE:
@@ -20,18 +19,17 @@ var fog_nodes: Dictionary = {}
 var cell_size: Vector2 = Vector2(16, 16)
 
 # Stores objects by their grid location
-var occupied := {} # Primer: occupied[Vector2i(3,4)] = character reference
+var occupied := {} 
 
-# KRITIČNO: Deklaracija TileMap vozlišča za Godot 4. Uporabimo Node za lažje povezovanje.
+# KRITIČNO: Deklaracija TileMap vozlišča za Godot 4.
 @export var tile_map: Node = null
 
 # ----------------- INITIALIZATION -----------------
 
 func _ready():
-	# NOVO DEBUG SPOROČILO ZA PREVERJANJE STANJA REFERENCE
 	print("DEBUG: GridManager ready. TileMap referenca (v ready): " + str(is_instance_valid(tile_map)))
 	
-	# Opomba: Prepričajte se, da je tile_map nastavljen v Inšpektorju ali kodi pred tem klicem.
+	# register_all_characters_in_scene() se kliče v BattleControllerju ali spawn_character()
 
 func spawn_character(characterScene: String, pos: Vector2):
 	var ps: PackedScene = load(characterScene)
@@ -41,8 +39,8 @@ func spawn_character(characterScene: String, pos: Vector2):
 	get_parent().add_child(character)
 	character.add_to_group("characters")
 
-	# ✅ počakamo 1 frame, da je node RES v tree-ju
-	call_deferred("register_all_characters_in_scene")
+	# ✅ Registracija naj se zgodi takoj po dodajanju v tree
+	register_all_characters_in_scene()
 
 
 # FUNKCIJA ZA REGISTRACIJO FIGUR
@@ -58,25 +56,24 @@ func register_all_characters_in_scene():
 	var found_allies = 0
 	
 	for node in character_nodes:
-		print("Najdeno vozlišče v skupini 'characters': " + node.name)
-		
-		# Predpostavlja, da obstaja skripta BaseCharacter
+		# Pazi: BaseCharacter mora biti pravilno definiran kot razred v svoji skripti
 		if node is BaseCharacter:
 			var char = node as BaseCharacter
 			
-			# 1. Dodelimo referenco BaseCharacterju
+			# Prepreči ponovno registracijo
 			if char.grid_manager == self:
 				continue
 
-			# ✅ prva registracija
+			# 1. Dodelimo referenco BaseCharacterju
 			char.grid_manager = self
 			
-			# 2. KRITIČNO NOVO: Inicializacija mreže se ZDAJ zgodi v figuri
+			# 2. Inicializacija mreže
 			char.on_grid_manager_registered()
 			
 			# 3. Registracija v PlayerManager
 			if not char.is_enemy:
-				player_manager.add_to_active_party(char.strName) # assuming char.character_type is a string
+				# KRITIČEN POPRAVEK: V PlayerManager shranimo objekt figure (char), NE SAMO IME!
+				player_manager.add_to_active_party(char) 
 				found_allies += 1
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
@@ -109,17 +106,16 @@ func is_inside_boundary(grid_pos: Vector2i, used_rect: Rect2i) -> bool:
 		and grid_pos.y < used_rect.position.y + used_rect.size.y
 	)
 
-func get_character_at(grid_pos: Vector2i) -> Node:
+func get_character_at(grid_pos: Vector2i): 
 	return occupied.get(grid_pos, null)
 
-func get_all_characters() -> Array:
+func get_all_characters():
 	return occupied.values()
 
 # ===============================================
 # FOG OF WAR LOGIKA (NOVO)
 # ===============================================
 
-# Klicano s strani BattleControllerja, da na novo inicializira meglo
 func initialize_all_fog():
 	print("DEBUG FOG: Klic initialize_all_fog().")
 	
@@ -130,18 +126,22 @@ func initialize_all_fog():
 		
 	print("DEBUG FOG: tile_map je veljaven. Začenjam generiranje.")
 	
-	# Odstranimo vso staro meglo, če obstaja
 	clear_all_fog()
 	
-	# Predpostavljamo, da tile_map.get_used_rect() deluje
 	var used_rect = tile_map.get_used_rect()
-	var fog_layer_id = 0 # Ta ID ni več uporabljen v klicu get_cell_source_id
+	
+	# KRITIČEN POPRAVEK ZA MEGELO NA DNU
+	var max_y = used_rect.end.y # Predpostavimo, da je to 12 za 12x12 mrežo
+	var safe_y_start = max_y - 2 # Če je max_y=12, se izogibamo y=10 in y=11
 	
 	for x in range(used_rect.position.x, used_rect.end.x):
 		for y in range(used_rect.position.y, used_rect.end.y):
 			var tile_pos = Vector2i(x, y)
 			
-			# POPRAVLJENA VRSTICA 140: Odstranili smo fog_layer_id iz klica
+			# PRESKOČI: Ne postavljamo megle na spodnji dve vrstici
+			if y >= safe_y_start:
+				continue
+			
 			if tile_map.get_cell_source_id(tile_pos) != -1:
 				_spawn_fog_tile(tile_pos)
 	
@@ -150,7 +150,6 @@ func initialize_all_fog():
 
 # Odstrani vsa vozlišča megle
 func clear_all_fog():
-	# Uporabimo keys() za varno iteracijo, medtem ko brišemo elemente
 	for pos in fog_nodes.keys():
 		_remove_fog_tile(pos)
 	fog_nodes.clear()
@@ -165,8 +164,7 @@ func _spawn_fog_tile(grid_pos: Vector2i):
 	# Pozicioniranje
 	fog_node.position = grid_to_world(grid_pos)
 	
-	# POPRAVEK ZA NAPAKO "Parent node is busy": Uporaba call_deferred()
-	# To zagotavlja, da se vozlišče megle doda šele, ko starševsko vozlišče (Battle scena) konča s svojo inicializacijo.
+	# Uporaba call_deferred() za varno dodajanje vozlišč
 	get_parent().call_deferred("add_child", fog_node)
 	
 	fog_nodes[grid_pos] = fog_node
@@ -176,14 +174,13 @@ func _remove_fog_tile(grid_pos: Vector2i):
 	if fog_nodes.has(grid_pos):
 		var fog_node = fog_nodes.get(grid_pos)
 		if is_instance_valid(fog_node):
-			# Znebimo se vozlišča, da ga ne riše več
 			fog_node.queue_free()
 		fog_nodes.erase(grid_pos)
 		return true
 	return false
 
 # Klicano s strani BattleControllerja za razkrivanje območja
-func reveal_area(positions_to_reveal: Array[Vector2i]):
+func reveal_area(positions_to_reveal):
 	for pos in positions_to_reveal:
 		# Odstrani vozlišče megle, če obstaja
 		_remove_fog_tile(pos)

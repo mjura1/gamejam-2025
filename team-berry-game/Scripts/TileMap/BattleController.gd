@@ -6,8 +6,7 @@ class_name BattleController
 # ===============================================
 
 # POPRAVEK: Spremenjena pot za dostop do bratskega vozlišča GridManager
-# Predpostavka: BattleController in GridManager sta na isti ravni (npr. oba otroka vozlišča 'Battle')
-@onready var grid_manager: GridManager = get_node("../GridManager") 
+@onready var grid_manager: GridManager = get_node("../GridManager")
 @onready var player_manager = get_node("/root/PlayerManager")
 
 # ENUM za stanja bitke
@@ -27,7 +26,6 @@ var turn_count: int = 0
 
 func _ready():
 	# Inicializiramo logiko bitke, vključno z meglo
-	# ZAVAROVALO: Če referenca še vedno ne deluje, to prepreči crash
 	if is_instance_valid(grid_manager):
 		initialize_battle()
 	else:
@@ -35,13 +33,12 @@ func _ready():
 
 
 func initialize_battle():
-	# KRITIČNO: Klic funkcije za inicializacijo megle (Fog of War)
+	# 1. Pokrijemo celotno mapo z meglo
 	if is_instance_valid(grid_manager):
-		# 1. Pokrijemo celotno mapo z meglo
 		grid_manager.initialize_all_fog()
 		
-		# 2. Razkrijemo območje okoli začetnih figur
-		update_fog_after_turn_start()
+	# 2. KRITIČNO POPRAVLJENO: Klic za razkrivanje območja je ZDAJ v start_player_turn(), 
+	#    ko so figure zagotovo registrirane. (Odstranjen stari klic)
 
 	start_player_turn()
 
@@ -51,12 +48,13 @@ func start_player_turn():
 	turn_count += 1
 	current_state = BattleState.PLAYER_TURN
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
+	
+	# KRITIČNI POPRAVEK: Razkrijemo figure takoj, ko se poteza začne
+	# Klic se izvede šele, ko so figure registrirane v PlayerManagerju.
+	update_fog_after_turn_start()
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
-	
-	# Po koncu poteze igralca posodobimo meglo
-	update_fog_after_turn_start()
 	
 	# Preklopimo na naslednjo fazo (npr. nasprotnikovo potezo)
 	start_enemy_turn()
@@ -74,9 +72,6 @@ func start_enemy_turn():
 func end_enemy_turn():
 	print("<<< KONEC POTEZE SOVRAŽNIKA >>>")
 	
-	# Posodobimo meglo, preden se začne igralčeva poteza (če je prišlo do premikov)
-	update_fog_after_turn_start()
-	
 	start_player_turn()
 
 # ----------------- FOG OF WAR LOGIC -----------------
@@ -91,6 +86,7 @@ func update_fog_after_turn_start():
 	# 1. Zberemo pozicije vseh figur zaveznikov
 	for char in player_manager.active_party:
 		if is_instance_valid(char):
+			# Predpostavka: char.grid_pos je nastavljen v BaseCharacter.gd (ali ob registraciji)
 			var char_pos = char.grid_pos
 			
 			# 2. Izračunamo vsa polja, ki jih je treba razkriti (3x3 območje)

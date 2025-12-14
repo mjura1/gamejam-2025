@@ -3,11 +3,13 @@ extends Node
 @onready var grid_manager = $GridManager
 @onready var move_sound = $MoveSound
 @onready var take_sound = $TakeSound
-
+@onready var battle_controller = $BattleController # Dodana referenca za zagon bitke
 
 const obstacle = "res://Scenes/CharacterPiecesNodes/Neutral/House.tscn"
-var to_spawn_enemy: Array
-var to_spawn_ally: Array 
+
+# Enostavna deklaracija brez tipnih namigov, da se izognemo sintaktičnim napakam
+var to_spawn_enemy
+var to_spawn_ally 
 
 # Friendly pieces dictionary
 const friendly_pieces := {
@@ -27,56 +29,84 @@ const enemy_pieces := {
 	"knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
 	"king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
 	"queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
-	}
+}
 	
 
-
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	# edina koda ki ni vibe codana:
 	
-	PlayerManager.add_to_active_party("rook")
-	PlayerManager.add_to_active_party("pawn")
+	# Preverimo, ali obstaja PlayerManager in ga shranimo
+	var player_manager = get_node("/root/PlayerManager")
+	if not is_instance_valid(player_manager):
+		push_error("PlayerManager singleton ni naložen!")
+		return
 	
-	PlayerManager.add_to_enemy_party("rook")
-	PlayerManager.add_to_enemy_party("pawn")
+	# Logika za dodajanje figur ostane v _ready()
+	player_manager.add_to_active_party("rook")
+	player_manager.add_to_active_party("pawn")
 	
-	to_spawn_ally = PlayerManager.active_party.duplicate(true)
-	to_spawn_enemy = PlayerManager.enemy_party.duplicate(true)
+	player_manager.add_to_enemy_party("rook")
+	player_manager.add_to_enemy_party("pawn")
+	
+	to_spawn_ally = player_manager.active_party.duplicate(true)
+	to_spawn_enemy = player_manager.enemy_party.duplicate(true)
+	
+	var map_width = 12 
+	var map_height = 12 
+	
+	# ========================================================
+	# 1. Spawn ALLY pieces (na dnu: vrstici 10 in 11)
+	# ========================================================
+	
+	var ally_spawn_rows = [map_height - 1, map_height - 2] # 11 in 10
 	
 	while not to_spawn_ally.is_empty():
-		for i in range(0, 12):
-			if to_spawn_ally.is_empty():
-				break
-			var spawn = randi_range(0, 6)
-			if spawn == 0 or grid_manager.is_occupied(grid_manager.grid_to_world(Vector2i(i, 0))) or to_spawn_ally.is_empty():
-				continue
+		for x in range(0, map_width):
+			for y in ally_spawn_rows:
+				if to_spawn_ally.is_empty():
+					break
+					
+				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
+				if randf() < 0.1 or grid_manager.is_occupied(Vector2i(x, y)):
+					continue
+					
+				var piece_name = to_spawn_ally.pop_at(randi_range(0, to_spawn_ally.size() - 1))
+				grid_manager.spawn_character(friendly_pieces[piece_name], grid_manager.grid_to_world(Vector2(x, y)))
 				
-			var piece = to_spawn_ally.pop_at(randi_range(0, to_spawn_ally.size() - 1))
-			grid_manager.spawn_character(friendly_pieces[piece], grid_manager.grid_to_world(Vector2(i,0)))
-			
-	for i in range(0, 12):
-		for j in range(0, 11):
-			var spawn = randi_range(0, 10)
-			if spawn == 1:
-				var piece = randi_range(0, 5)
-				grid_manager.spawn_character(obstacle, grid_manager.grid_to_world(Vector2(i, j)))
+	# ========================================================
+	# 2. Spawn OBSTACLES (V sredini: vrstici 2-9)
+	# ========================================================
+	
+	for x in range(0, map_width):
+		for y in range(2, map_height - 2):
+			var spawn_chance = randi_range(0, 10)
+			if spawn_chance == 1 and not grid_manager.is_occupied(Vector2i(x, y)):
+				grid_manager.spawn_character(obstacle, grid_manager.grid_to_world(Vector2(x, y)))
+	
+	# ========================================================
+	# 3. Spawn ENEMY pieces (na vrhu: vrstici 0 in 1)
+	# ========================================================
+	
+	var enemy_spawn_rows = [0, 1]
 	
 	while not to_spawn_enemy.is_empty():	
-		for i in range(0, 12):
-			if to_spawn_enemy.is_empty():
-				break
-			var spawn = randi_range(0, 6)
-			if spawn == 0 or grid_manager.is_occupied(grid_manager.grid_to_world(Vector2i(i, 11))) or to_spawn_enemy.is_empty():
-				continue
+		for x in range(0, map_width):
+			for y in enemy_spawn_rows:
+				if to_spawn_enemy.is_empty():
+					break
 				
-			var piece = to_spawn_enemy.pop_at(randi_range(0, to_spawn_enemy.size() - 1))
-			grid_manager.spawn_character(enemy_pieces[piece], grid_manager.grid_to_world(Vector2(i,11)))
+				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
+				if randf() < 0.1 or grid_manager.is_occupied(Vector2i(x, y)):
+					continue
+					
+				var piece_name = to_spawn_enemy.pop_at(randi_range(0, to_spawn_enemy.size() - 1))
+				grid_manager.spawn_character(enemy_pieces[piece_name], grid_manager.grid_to_world(Vector2(x, y)))
 				
 	
-
+	# Zagon BattleControllerja, ki inicializira meglo in začne igro.
+	if is_instance_valid(battle_controller):
+		battle_controller.initialize_battle()
+	
 	
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	pass
