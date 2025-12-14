@@ -418,7 +418,7 @@ scale = Vector2(0.1, 0.1)
 position = Vector2(313, 124)
 scale = Vector2(0.1, 0.1)
 
-[node name="ROOOOOOOOK" parent="." instance=ExtResource("8_3fd10")]
+[node name="ROOOOOOOOK" parent="." groups=["characters"] instance=ExtResource("8_3fd10")]
 position = Vector2(127, 63)
 
 [node name="Pawn" parent="." instance=ExtResource("9_63ye5")]
