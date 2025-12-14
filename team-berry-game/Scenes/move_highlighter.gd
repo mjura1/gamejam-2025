@@ -8,6 +8,9 @@ var cell_size: Vector2 = Vector2.ZERO
 # Array veljavnih mrežnih pozicij (Vector2i), ki jih moramo narisati
 var valid_moves: Array[Vector2i] = []
 
+const MOVE_COLOR = Color(0.1, 0.9, 0.1, 0.6) # Svetla Zelena
+const CAPTURE_COLOR = Color(0.9, 0.1, 0.1, 0.6) # Svetla Rdeča
+
 func _ready():
 	# Preverite, ali je referenca pravilna, in pridobite velikost celice
 	if is_instance_valid(grid_manager):
@@ -33,11 +36,18 @@ func _draw():
 	for grid_pos in valid_moves:
 		var top_left = Vector2(grid_pos) * cell_size
 		
-		# Barva za premikanje (prazno polje)
-		var draw_color = Color(0, 0.8, 0.2, 0.3) 
+		# 1. Privzeta barva: Zelena (premik)
+		var draw_color = MOVE_COLOR
 		
-		# OPOZORILO: Zaenkrat ne preverjamo, ali gre za napad ali premik, 
-		# ker logika napada še ni popolnoma implementirana.
+		# 2. Preverjanje za ZAJETJE
+		var target_char = grid_manager.get_character_at(grid_pos)
+		
+		# Če je na polju figura:
+		if target_char:
+			# Vse figure v 'valid_moves', ki so zasedene, so zagotovo SOVRAŽNIKI, 
+			# ker je BaseCharacter.gd filtriral lastne figure.
+			draw_color = CAPTURE_COLOR # Rdeča
+		
 		# Risanje polnila (fill)
 		draw_rect(
 			Rect2(top_left, cell_size),
