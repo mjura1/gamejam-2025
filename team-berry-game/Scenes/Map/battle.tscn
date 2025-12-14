@@ -2056,6 +2056,9 @@ tile_set = SubResource("TileSet_aynew")
 [node name="GridManager" type="Node" parent="."]
 script = ExtResource("2_mabft")
 
+[node name="Broder" type="Node2D" parent="GridManager"]
+script = ExtResource("3_mptdr")
+
 [node name="BattleController" parent="." instance=ExtResource("1_2wj6q")]
 
 [node name="TileSelector" type="Node2D" parent="."]

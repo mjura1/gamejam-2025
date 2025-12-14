@@ -3,6 +3,11 @@ extends Node2D
 class_name BaseCharacter
 
 var grid_pos: Vector2i
+# Tracks if the piece has ever seen a player
+
+var has_spotted_player: bool = false
+var last_known_player_pos: Vector2i = Vector2i.ZERO
+
 
 # ----------------- REFERENCE -----------------
 # 1. Popravek: Odstranimo @onready za GridManagerja.
@@ -155,30 +160,40 @@ func capture(target: BaseCharacter):
 # ----------------- AI LOGIKA -----------------
 
 func calculate_best_move() -> Dictionary:
-	
 	var valid_targets = calculate_valid_targets()
-	var possible_moves: Array = [] 
-	
-	for pos in valid_targets:
-		var target_char = grid_manager.get_character_at(pos)
-		
-		# 1. Prioriteta: ZAJETJE nasprotnika
-		if target_char and target_char.is_enemy != is_enemy:
-			return {
-				"move_type": "CAPTURE",
-				"target_pos": pos
-			}
-			
-		# 2. Shranimo prazna polja za premik
-		elif not target_char:
-			possible_moves.append(pos)
-			
-	# 3. Naključni premik
-	if not possible_moves.is_empty():
-		var random_pos = possible_moves[randi() % possible_moves.size()]
-		return {
-			"move_type": "MOVE",
-			"target_pos": random_pos
-		}
-	
+	var closest_player: BaseCharacter = null
+	var min_distance = 999
+
+	# Look for player pieces in view range
+	for char in grid_manager.get_all_characters():
+		if char.is_enemy == is_enemy:
+			continue
+		var dist = grid_pos.distance_to(char.grid_pos)
+		if dist <= move_range and dist < min_distance:
+			min_distance = dist
+			closest_player = char
+
+	if closest_player:
+		# Player spotted → remember it
+		has_spotted_player = true
+		last_known_player_pos = closest_player.grid_pos
+	elif not has_spotted_player:
+		# Never spotted a player → do nothing
+		return {}
+
+	# Determine direction toward last known player
+	var target_vector = (last_known_player_pos - grid_pos).sign()
+	var max_partial_move = min(4, move_range) # Partial move distance
+
+	# Step toward last known position, furthest valid square first
+	for step in range(max_partial_move, 0, -1):
+		var target_pos = grid_pos + target_vector * step
+		if target_pos in valid_targets:
+			var target_char = grid_manager.get_character_at(target_pos)
+			if target_char and target_char.is_enemy != is_enemy:
+				return {"move_type": "CAPTURE", "target_pos": target_pos}
+			else:
+				return {"move_type": "MOVE", "target_pos": target_pos}
+
+	# Blocked → do nothing
 	return {}
