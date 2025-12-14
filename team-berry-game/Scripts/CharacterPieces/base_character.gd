@@ -237,11 +237,15 @@ func calculate_best_move() -> Dictionary:
 	for pos in valid_targets:
 		var target_char = grid_manager.get_character_at(pos)
 		# 1. Prioriteta: ZAJETJE nasprotnika
-		if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
+		if target_char and target_char.is_obstacle:
+			continue # skip any obstacle entirely
+
+		if target_char and target_char.is_enemy != is_enemy:
 			return {
 				"move_type": "CAPTURE",
 				"target_pos": pos
 			}
+
 
 	# ---------------------------------
 	# 6. NORMAL CHASE (TOWARD LAST SEEN)
