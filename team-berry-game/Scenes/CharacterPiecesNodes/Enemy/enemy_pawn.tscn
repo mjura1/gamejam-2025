@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3 uid="uid://dalblce5ylvgu"]
+
+[ext_resource type="PackedScene" uid="uid://bbanbdmqj5fw8" path="res://Scenes/CharacterPiecesNodes/base_character.tscn" id="1_1gt11"]
+[ext_resource type="Script" uid="uid://66k54yr7w8e5" path="res://Scripts/CharacterPieces/Ally/pawn.gd" id="2_c6s3h"]
+
+[node name="EnemyPawn" instance=ExtResource("1_1gt11")]
+scale = Vector2(0.1, 0.1)
+script = ExtResource("2_c6s3h")
+is_enemy = true
+
+[node name="Sprite2D" parent="." index="0"]
+scale = Vector2(0.6, 0.6)

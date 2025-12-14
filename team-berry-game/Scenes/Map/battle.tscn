@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=4 uid="uid://bj15yf4y43u2b"]
+[gd_scene load_steps=16 format=4 uid="uid://bj15yf4y43u2b"]
 
 [ext_resource type="PackedScene" uid="uid://gexf8t8dh7sm" path="res://Battle/battle_controller.tscn" id="1_2wj6q"]
 [ext_resource type="Script" uid="uid://hnkupuqu7n7e" path="res://Scripts/map_behaviour.gd" id="1_t1742"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://Scripts/TileMap/move_highlighter.gd" id="9_1ft3a"]
 [ext_resource type="PackedScene" uid="uid://c81pvaf1rewmd" path="res://Scenes/CharacterPiecesNodes/Ally/rook.tscn" id="9_ah5ul"]
 [ext_resource type="PackedScene" uid="uid://v5hjm232cawo" path="res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn" id="11_p6wcq"]
+[ext_resource type="PackedScene" uid="uid://r885p4bxr6mm" path="res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn" id="12_1b8mj"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_057aq"]
 texture = ExtResource("3_foqj0")
@@ -2079,3 +2080,6 @@ position = Vector2(153, 87)
 
 [node name="EnemyBishop2" parent="." groups=["characters"] instance=ExtResource("11_p6wcq")]
 position = Vector2(103, 101)
+
+[node name="EnemyKing" parent="." groups=["characters"] instance=ExtResource("12_1b8mj")]
+position = Vector2(101.99999, 51.999996)

@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3 uid="uid://bqfgngaehjlt5"]
+
+[ext_resource type="PackedScene" uid="uid://bbanbdmqj5fw8" path="res://Scenes/CharacterPiecesNodes/base_character.tscn" id="1_1gt11"]
+[ext_resource type="Script" uid="uid://b311bat2w8vrd" path="res://Scripts/CharacterPieces/Ally/queen.gd" id="2_dxluq"]
+[ext_resource type="Texture2D" uid="uid://dl0ridfdvxb5b" path="res://Assets/Sprites/enemy_queen.png" id="3_qsq3t"]
+
+[node name="EnemyBishop" instance=ExtResource("1_1gt11")]
+scale = Vector2(0.1, 0.1)
+script = ExtResource("2_dxluq")
+is_enemy = true
+
+[node name="Sprite2D" parent="." index="0"]
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("3_qsq3t")
