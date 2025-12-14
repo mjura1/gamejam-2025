@@ -4,49 +4,77 @@ extends Node
 # Inventar
 var food: int = 5
 var leather: int = 0
-# TODO: Dodajte še druge predmete (pelt/leather)
 
-# Party
-# Ta seznam hrani SCENE (datoteke .tscn) ali shranjene podatke za figure.
-# Za zdaj bomo hranili reference na pripeto skripto, ko bo figura v bitki.
-var active_party: Array = []
+# Party Management
+var active_party: Array = [] # Trenutno aktivne figure v boju (vozlišča BaseCharacter)
+var dead_party: Array = []   # Podatki o figurah, ki so padle (za Campfire/Revive)
+var character_roster: Array = [
+	# To je seznam VSEH figur, ki jih igralec poseduje in so na voljo.
+	# Uporablja se za inicializacijo bitke in za Campfire po oživitvi.
+	{"name": "Bishop", "revive_cost": 1, "scene_path": "res://Scenes/Characters/Bishop.tscn"},
+]
 var max_party_size: int = 4
-
-# Ta array bo vseboval vse figure, ki jih ima igralec, tudi tiste v campu.
-var all_player_pieces: Array = [] 
-
-# Funkcija za dodajanje figure v aktivno ekipo
-func add_to_active_party(character: Node):
-	if character.is_enemy == false and not active_party.has(character):
-		active_party.append(character)
-		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % active_party.size())
 
 func _ready():
 	print("PlayerManager naložen. Hrana: %d, Party size: %d" % [food, active_party.size()])
 
-# Funckija, ki jo kličemo, ko se začne bitka
-func setup_battle_party(active_characters_on_grid: Array):
-	# Ta funkcija se kliče iz GridManagerja, ko so figure ustvarjene
-	active_party = active_characters_on_grid
-	
-# Funckija za porabo hrane (za revive ali rest)
+# ----------------- INVENTORY -----------------
+
 func use_food(amount: int) -> bool:
 	if food >= amount:
 		food -= amount
-		print("Porabljena hrana. Ostalo: %d" % food)
 		return true
 	return false
-	
-# Funckija za dodajanje usnja/krzna
-func add_leather(amount: int):
-	leather += amount
-	print("Dodan leather. Skupaj: %d" % leather)
 
-# Funckija za oživitev figure (TODO: implementacija)
+# ----------------- PARTY MANAGEMENT (Aktivna ekipa) -----------------
+
+func add_to_active_party(character):
+	if active_party.size() < max_party_size:
+		active_party.append(character)
+		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % active_party.size())
+
+# ----------------- SMRT IN OŽIVITEV (Revive) -----------------
+
+# Registrira podatke o padli figuri (Klic iz BaseCharacter.die())
+func register_dead_character(character_name: String, revive_cost: int = 1, scene_path: String = ""):
+	var piece_data = {
+		"name": character_name,
+		"revive_cost": revive_cost,
+		"scene_path": scene_path
+	}
+	# Prepričamo se, da figura ni že na seznamu (za vsak slučaj)
+	var already_dead = false
+	for item in dead_party:
+		if item.name == character_name:
+			already_dead = true
+			break
+	
+	if not already_dead:
+		dead_party.append(piece_data)
+		print("!!! Padla figura registrirana: %s. Dead Party size: %d" % [character_name, dead_party.size()])
+
+# Funkcija, ki se kliče iz Campfire menija za oživitev
 func revive_character(character_data) -> bool:
-	# Kličemo, ko imamo revivanje v campu.
-	if use_food(1): # ali ustrezen strošek hrane 
-		# Koda za oživitev/dodajanje nazaj v all_player_pieces
-		print("Figura oživljena.")
-		return true
-	return false
+	var revive_cost: int = character_data.get("revive_cost", 1)
+	
+	if not use_food(revive_cost):
+		print("Oživitev %s neuspešna: Premalo hrane." % character_data.name)
+		return false
+	
+	# 1. Odstranimo podatke iz Dead Party
+	var index = dead_party.find(character_data)
+	if index != -1:
+		dead_party.remove_at(index)
+	
+	# 2. DODAMO PODATKE NAZAJ V ROSTER (pripravljen za naslednjo bitko)
+	var exists_in_roster = false
+	for item in character_roster:
+		if item.name == character_data.name:
+			exists_in_roster = true
+			break
+			
+	if not exists_in_roster:
+		character_roster.append(character_data)
+
+	print("Figura %s oživljena in vrnjena v Roster. Strošek: %d hrane." % [character_data.name, revive_cost])
+	return true

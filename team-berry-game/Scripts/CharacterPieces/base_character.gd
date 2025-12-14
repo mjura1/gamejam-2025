@@ -1,32 +1,46 @@
+# res://Scripts/BaseCharacter.gd
 extends Node2D
 class_name BaseCharacter
 
 var grid_pos: Vector2i
 
-@onready var tile_map = get_node("/root/Node/Map/TileMapLayer") # Ohranimo to, če je pot res fiksna
+# ----------------- REFERENCE -----------------
+# Uporabljamo @onready, saj so to Singletoni in vozlišča v sceni
+@onready var tile_map = get_node("/root/Node/Map/TileMapLayer") 
 @onready var player_manager = get_node("/root/PlayerManager")
 
-@export var selected: bool = false
-@export var move_range: int = 1
-# Če GridManager ni nikoli ročno nastavljen v urejevalniku, naj bo to @onready:
+# To je ključno vozlišče
 @onready var grid_manager = get_node("/root/Node/GridManager") 
 
-
+# ----------------- NASTAVITVE IN VREDNOSTI -----------------
+@export var selected: bool = false
+@export var move_range: int = 1
 @export var is_enemy: bool = false 
+@export var character_scene_path: String = "" # POT DO SCENE (Npr.: "res://Scenes/Characters/Bishop.tscn")
+
+# ----------------- INITIALIZACIJA (KLJUČNA ZA IZBIRO) -----------------
 
 func _ready():
+	# To zagotavlja, da je vsaka figura takoj registrirana in poravnana
 	if is_instance_valid(grid_manager):
+		# 1. Izračunamo mrežno pozicijo iz globalne pozicije
 		grid_pos = grid_manager.world_to_grid(global_position)
+		
+		# 2. Poravnamo globalno pozicijo (centriranje)
 		global_position = grid_manager.grid_to_world(grid_pos)
-		grid_manager.occupy(grid_pos, self)
+		
+		# 3. Registriramo figuro v slovar zasedenosti
+		grid_manager.occupy(grid_pos, self) 
 	else:
 		print("POZOR: GridManager še ni pripravljen za %s" % self.name)
 		pass 
 		
-func get_move_directions() -> Array[Vector2i]:
-	return []
+# ----------------- GIBANJE IN CILJANJE -----------------
 
-# KLJUČNI POPRAVEK: Standardizirano ime in celotna logika za izračun premika/napada
+func get_move_directions() -> Array[Vector2i]:
+	# Podrazredi (Bishop, Rook) implementirajo to
+	return [] 
+
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
 
@@ -44,27 +58,23 @@ func calculate_valid_targets() -> Array[Vector2i]:
 				
 				# PREVERJANJE: Ali je tarča sovražnik?
 				if target_char and target_char.is_enemy != is_enemy:
-					# To je sovražnik -> Veljavna tarča za napad
 					targets.append(target_pos)
 				
-				# Gibanje se vedno ustavi ob prvi zasedeni celici (lastni ali sovražni)
+				# Gibanje se vedno ustavi ob prvi zasedeni celici
 				break 
 
-			# 3. Polje je prazno -> Veljavna tarča za premik
+			# 3. Polje je prazno
 			targets.append(target_pos)
 
 	return targets
 
-# Premesti figuro na novo lokacijo (ne preverja veljavnosti, to naredi Input Controller)
+# Premesti figuro na novo lokacijo
 func execute_move(target: Vector2i):
 	grid_manager.vacate(grid_pos)
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
 	global_position = grid_manager.grid_to_world(grid_pos)
 	
-	# Nastavite has_moved = true, če ste to dodali za logiko piona
-	# has_moved = true 
-
 func try_move(target: Vector2i) -> bool:
 	if target not in calculate_valid_targets():
 		return false
@@ -74,69 +84,75 @@ func try_move(target: Vector2i) -> bool:
 
 	execute_move(target)
 	return true
-	
+
+# ----------------- SMRT IN ZAJETJE (KLJUČNO ZA REVIVE) -----------------
+
 # Odstranitev figure iz igre (umre)
 func die():
-	grid_manager.vacate(grid_pos) # Osvobodi polje
+	print("Figura %s je bila uničena in odstranjena." % name)
 	
-	if not is_enemy:
-		# Če umre zaveznik, ga odstranimo iz seznama aktivnih figur igralca
+	# Osvobodi polje na mreži
+	if is_instance_valid(grid_manager):
+		grid_manager.vacate(grid_pos)
+	
+	if not is_enemy and is_instance_valid(player_manager):
+		
+		# 1. Če umre zaveznik, ga odstranimo iz seznama aktivnih figur igralca
 		if player_manager.active_party.has(self):
 			player_manager.active_party.erase(self)
+			
 			print("Zaveznik umrl. Preostali aktivni party size: %d" % player_manager.active_party.size())
+			
+			# 2. REGISTRIRAMO PODATKE O PADLI FIGURI (ZA REVIVE)
+			player_manager.register_dead_character(name, 1, character_scene_path)
 			
 			# TODO: Preverjanje pogojev za konec igre (Game Over)
 			if player_manager.active_party.is_empty():
-				print("GAME OVER")
+				print("GAME OVER - Igralec poražen!")
 		
 	queue_free() # Uniči vozlišče
-	print("Figura je bila uničena in odstranjena.")
 
 # Logika zajetja tarče in premika napadalca na tarčino polje
 func capture(target: BaseCharacter):
 	print("Izvajam zajetje tarče...")
 	
-	# 1. Zajem/Smrt tarče (Sovražnikova figura je odstranjena)
+	# KRITIČNO: Shranimo pozicijo tarče, preden jo uničimo
+	var target_pos = target.grid_pos 
+	
+	# 1. Zajem/Smrt tarče
 	target.die()
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje
-	execute_move(target.grid_pos)
+	execute_move(target_pos)
 
 
-# ----------------- AI LOGIKA (Privzeto Vedenje) -----------------
+# ----------------- AI LOGIKA -----------------
 
-# Vrnitev: Dictionary { move_type: "CAPTURE"/"MOVE", target_pos: Vector2i } ali prazna {}, če ni potez
 func calculate_best_move() -> Dictionary:
 	
-	# 1. Prioriteta: ZAJETJE zaveznika (če je ta figura sovražnik)
 	var valid_targets = calculate_valid_targets()
-	var possible_moves: Array = [] # Shranimo prazne pozicije za morebitni premik
+	var possible_moves: Array = [] 
 	
 	for pos in valid_targets:
 		var target_char = grid_manager.get_character_at(pos)
 		
-		# Preverimo, ali tarča obstaja in ali je nasprotnik (tj. zaveznik za to figuro)
+		# 1. Prioriteta: ZAJETJE nasprotnika
 		if target_char and target_char.is_enemy != is_enemy:
-			# NAJDENO ZAJETJE! Vrni takoj, saj je to največja prioriteta.
 			return {
 				"move_type": "CAPTURE",
 				"target_pos": pos
 			}
 			
-		# Če je polje prazno, ga dodamo na seznam možnih premikov
+		# 2. Shranimo prazna polja za premik
 		elif not target_char:
 			possible_moves.append(pos)
 			
-	# 2. Če ni zajetja: NAKLJUČNI PREMIK
+	# 3. Naključni premik
 	if not possible_moves.is_empty():
-		
-		# Izberemo naključno pozicijo iz seznama možnih premikov
 		var random_pos = possible_moves[randi() % possible_moves.size()]
-		
 		return {
 			"move_type": "MOVE",
 			"target_pos": random_pos
 		}
 	
-	# 3. Če ni mogoče ne zajetje ne premik
 	return {}
