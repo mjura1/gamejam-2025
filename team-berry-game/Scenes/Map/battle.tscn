@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=4 uid="uid://8dog8tesrhq5"]
+[gd_scene load_steps=15 format=4 uid="uid://8dog8tesrhq5"]
 
 [ext_resource type="PackedScene" uid="uid://gexf8t8dh7sm" path="res://Battle/battle_controller.tscn" id="1_2wj6q"]
 [ext_resource type="Script" uid="uid://hnkupuqu7n7e" path="res://Scripts/map_behaviour.gd" id="1_t1742"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://xineak3b25qd" path="res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn" id="8_ddp7h"]
 [ext_resource type="Script" uid="uid://bo8wupstu0hfb" path="res://Scripts/TileMap/move_highlighter.gd" id="9_1ft3a"]
 [ext_resource type="PackedScene" uid="uid://c81pvaf1rewmd" path="res://Scenes/CharacterPiecesNodes/Ally/rook.tscn" id="9_ah5ul"]
+[ext_resource type="PackedScene" uid="uid://v5hjm232cawo" path="res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn" id="11_p6wcq"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_057aq"]
 texture = ExtResource("3_foqj0")
@@ -2072,3 +2073,9 @@ position = Vector2(6, 7)
 
 [node name="MoveHighlighter" type="Node2D" parent="."]
 script = ExtResource("9_1ft3a")
+
+[node name="EnemyBishop" parent="." groups=["characters"] instance=ExtResource("11_p6wcq")]
+position = Vector2(145, 81)
+
+[node name="EnemyBishop2" parent="." instance=ExtResource("11_p6wcq")]
+position = Vector2(103, 101)

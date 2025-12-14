@@ -84,12 +84,30 @@ func execute_move(target: Vector2i):
 	global_position = grid_manager.grid_to_world(grid_pos)
 	
 func try_move(target: Vector2i) -> bool:
+	
+	# 1. Ali je tarča veljavna tarča za premik/zajetje?
 	if target not in calculate_valid_targets():
 		return false
 	
-	if grid_manager.is_occupied(target):
-		return false
-
+	var target_char = grid_manager.get_character_at(target)
+	
+	# 2. Preverimo zasedenost
+	if target_char:
+		# Polje je zasedeno. Preverimo frakcijo.
+		
+		# 2a. Poskus ZAJETJA (Tarča je sovražnik)
+		if target_char.is_enemy != is_enemy:
+			
+			# Izvedemo zajetje tarče! To je manjkajoči del.
+			capture(target_char) 
+			
+			return true # Uspešno zajetje
+		
+		# 2b. Klik na ZAVEZNIKA (Ni dovoljeno, saj smo v dosegu)
+		else:
+			return false
+	
+	# 3. Polje je PRAZNO (Navaden premik)
 	execute_move(target)
 	return true
 
