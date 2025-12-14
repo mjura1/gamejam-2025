@@ -2,6 +2,7 @@ extends BaseCharacter
 
 func _ready():
 	move_range = 8
+	strName = "queen"
 	super._ready()
 
 func get_move_directions() -> Array[Vector2i]:

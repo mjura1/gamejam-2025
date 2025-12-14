@@ -27,6 +27,7 @@ var grid_manager
 @export var character_scene_path: String = ""
 @export var panic_distance: int = 2
 @export var panic_randomness: float = 0.5 # 0 = calm, 1 = total chaos
+@export var strName: String
 
 # ----------------- audio -----------------------
 @onready var move_sound = $MoveSound
@@ -134,21 +135,9 @@ func die():
 	if is_instance_valid(grid_manager):
 		grid_manager.vacate(grid_pos)
 	
-	if not is_enemy and is_instance_valid(player_manager):
-		
-		# 1. Če umre zaveznik, ga odstranimo iz seznama aktivnih figur igralca
-		if player_manager.active_party.has(self):
-			player_manager.active_party.erase(self)
-			
-			print("Zaveznik umrl. Preostali aktivni party size: %d" % player_manager.active_party.size())
-			
-			# 2. REGISTRIRAMO PODATKE O PADLI FIGURI (ZA REVIVE)
-			player_manager.register_dead_character(name, 1, character_scene_path)
-			
-			# TODO: Preverjanje pogojev za konec igre (Game Over)
-			if player_manager.active_party.is_empty():
-				print("GAME OVER - Igralec poražen!")
-		
+	if !(is_enemy == true || is_obstacle == true):
+		player_manager.register_dead_ally(strName)
+	
 	queue_free() # Uniči vozlišče
 
 # Logika zajetja tarče in premika napadalca na tarčino polje
