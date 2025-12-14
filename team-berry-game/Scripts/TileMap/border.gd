@@ -8,9 +8,9 @@ func _ready():
 	grid_manager = get_parent()
 
 func _process(delta):
-	if grid_manager == null:
+	# Najprej preverite veljavnost in tip
+	if not is_instance_valid(grid_manager) or not grid_manager is GridManager:
 		return
-	
 	cell_size = grid_manager.cell_size
 	var mouse_world = get_global_mouse_position()
 	var grid = grid_manager.world_to_grid(mouse_world)

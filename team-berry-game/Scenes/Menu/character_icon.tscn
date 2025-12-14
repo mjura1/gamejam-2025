@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqdfi4c28sk75"]
+
+[ext_resource type="Script" uid="uid://oo6vt5t3dqhq" path="res://CharacterIcon.gd" id="1_gxwhu"]
+
+[node name="CharacterIcon" type="VBoxContainer"]
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_gxwhu")
+
+[node name="TextureRect" type="TextureRect" parent="."]
+layout_mode = 2
+
+[node name="Status" type="Label" parent="."]
+layout_mode = 2

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://f8sy7dj50g8p"]
+
+[ext_resource type="Script" uid="uid://bo8wupstu0hfb" path="res://Scripts/TileMap/move_highlighter.gd" id="1_w7ydg"]
+
+[node name="MoveHighlighter" type="Node2D"]
+script = ExtResource("1_w7ydg")

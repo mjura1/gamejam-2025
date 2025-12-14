@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 uid="uid://cbtijv3c7nihu"]
+
+[ext_resource type="Script" uid="uid://du5k1g86ylfgx" path="res://Scripts/Menu/PartyPanel.gd" id="1_sc10b"]
+
+[node name="PartyScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_sc10b")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0

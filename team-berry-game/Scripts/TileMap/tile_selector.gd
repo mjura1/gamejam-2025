@@ -4,7 +4,7 @@ var cell_size: Vector2
 var selected_tile: Vector2i = Vector2i(-1, -1)
 
 func _ready():
-	var grid_manager = get_node("/root/Node/GridManager")
+	var grid_manager = get_node("../GridManager")
 	cell_size = grid_manager.cell_size
 
 

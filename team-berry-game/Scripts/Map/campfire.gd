@@ -18,6 +18,8 @@ var current_rest_state = RestMenuState.STATE_REST
 @onready var party_button = $HBoxContainer/Party
 @onready var rest_and_back_button = $HBoxContainer/RestAndBack
 
+const PARTY_SCREEN_SCENE = preload("res://Scenes/Menu/CampfirePartyPanel.tscn")
+
 # ===============================================
 # 2. GODOT FUNKCIJE
 # ===============================================
@@ -65,8 +67,26 @@ func _on_ugrade_pressed() -> void:
 # Funkcija za gumb 'PARTY'
 func _on_party_pressed() -> void:
 	print("Odpiram meni za pregled in menjavo partyja.")
-	# Tukaj vstavite kodo za odpiranje/prikaz Party menija.
+	
+	# 1. Preverimo, ali smo že v tej sceni (za preprečitev večkratnega klika)
+	if get_tree().root.find_child("PartyScreenNode", true, false):
+		print("Party Screen je že odprt.")
+		return
+	
+	# 2. Inicializiramo Party Screen
+	var party_screen_instance = PARTY_SCREEN_SCENE.instantiate()
+	
+	# 3. Dodamo ga v Root, da se prikaže čez celotno Campfire sceno
+	get_tree().root.add_child(party_screen_instance)
+	
+	# 4. (NEOBVEZNO) Dodamo skripto za zapiranje
+	if is_instance_valid(party_screen_instance) and not party_screen_instance.has_method("handle_input"):
+		# To je preprost način za zapiranje menija z ESC
+		party_screen_instance.set_process_input(true)
+		party_screen_instance.connect("ready", func(): party_screen_instance.name = "PartyScreenNode")
 
+	# Izklopimo interakcijo z glavnim Campfire menijem, dokler je Party Screen odprt
+	self.mouse_filter = Control.MOUSE_FILTER_STOP
 
 # ===============================================
 # 4. POMOŽNE FUNKCIJE (Helpsers)

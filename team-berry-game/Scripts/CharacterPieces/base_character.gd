@@ -5,35 +5,43 @@ class_name BaseCharacter
 var grid_pos: Vector2i
 
 # ----------------- REFERENCE -----------------
-# Uporabljamo @onready, saj so to Singletoni in vozlišča v sceni
-@onready var tile_map = get_node("/root/Node/Map/TileMapLayer") 
+# 1. Popravek: Odstranimo @onready za GridManagerja.
+# GridManager zdaj ročno dodeli referenco V TEM MESTU.
+var grid_manager
+ 
+@onready var tile_map = get_node("../Map/TileMapLayer") 
 @onready var player_manager = get_node("/root/PlayerManager")
 
-# To je ključno vozlišče
-@onready var grid_manager = get_node("/root/Node/GridManager") 
-
 # ----------------- NASTAVITVE IN VREDNOSTI -----------------
+# ... (Ohrani ostale spremenljivke) ...
 @export var selected: bool = false
 @export var move_range: int = 1
 @export var is_enemy: bool = false 
-@export var character_scene_path: String = "" # POT DO SCENE (Npr.: "res://Scenes/Characters/Bishop.tscn")
+@export var character_scene_path: String = ""
 
-# ----------------- INITIALIZACIJA (KLJUČNA ZA IZBIRO) -----------------
+# ----------------- INITIALIZACIJA -----------------
 
 func _ready():
-	# To zagotavlja, da je vsaka figura takoj registrirana in poravnana
-	if is_instance_valid(grid_manager):
-		# 1. Izračunamo mrežno pozicijo iz globalne pozicije
-		grid_pos = grid_manager.world_to_grid(global_position)
+	# KRITIČNO: BaseCharacter._ready NE SME več dostopati do grid_manager.
+	# Tu lahko izvajamo samo splošno logiko, ki NI ODVISNA od GridManagerja.
+	pass
 		
-		# 2. Poravnamo globalno pozicijo (centriranje)
-		global_position = grid_manager.grid_to_world(grid_pos)
+# NOVO: Kliče ga GridManager, ko je pripravljen in je dodeljena referenca.
+func on_grid_manager_registered():
+	# Tu smo 100% prepričani, da je self.grid_manager že nastavljen.
+	
+	# 1. Izračunamo mrežno pozicijo iz globalne pozicije
+	grid_pos = grid_manager.world_to_grid(global_position)
+	
+	# 2. Poravnamo globalno pozicijo (centriranje)
+	global_position = grid_manager.grid_to_world(grid_pos)
+	
+	# 3. Registriramo figuro v slovar zasedenosti
+	grid_manager.occupy(grid_pos, self)
+	
+	# Za debug:
+	print("%s: Uspešno registriran in inicializiran na mreži %s." % [self.name, str(grid_pos)])
 		
-		# 3. Registriramo figuro v slovar zasedenosti
-		grid_manager.occupy(grid_pos, self) 
-	else:
-		print("POZOR: GridManager še ni pripravljen za %s" % self.name)
-		pass 
 		
 # ----------------- GIBANJE IN CILJANJE -----------------
 
@@ -76,12 +84,30 @@ func execute_move(target: Vector2i):
 	global_position = grid_manager.grid_to_world(grid_pos)
 	
 func try_move(target: Vector2i) -> bool:
+	
+	# 1. Ali je tarča veljavna tarča za premik/zajetje?
 	if target not in calculate_valid_targets():
 		return false
 	
-	if grid_manager.is_occupied(target):
-		return false
-
+	var target_char = grid_manager.get_character_at(target)
+	
+	# 2. Preverimo zasedenost
+	if target_char:
+		# Polje je zasedeno. Preverimo frakcijo.
+		
+		# 2a. Poskus ZAJETJA (Tarča je sovražnik)
+		if target_char.is_enemy != is_enemy:
+			
+			# Izvedemo zajetje tarče! To je manjkajoči del.
+			capture(target_char) 
+			
+			return true # Uspešno zajetje
+		
+		# 2b. Klik na ZAVEZNIKA (Ni dovoljeno, saj smo v dosegu)
+		else:
+			return false
+	
+	# 3. Polje je PRAZNO (Navaden premik)
 	execute_move(target)
 	return true
 

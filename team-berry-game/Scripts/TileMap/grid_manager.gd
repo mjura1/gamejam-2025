@@ -23,42 +23,35 @@ func _ready():
 # FUNKCIJA ZA REGISTRACIJO FIGUR
 func register_all_characters_in_scene():
 	
-	# Dobimo vsa vozlišča v skupini "characters".
-	# Ta funkcija v Godotu 4 vrne PRAZNO polje, če skupina ne obstaja.
 	var character_nodes = get_tree().get_nodes_in_group("characters")
 	
 	if character_nodes.is_empty():
-		push_error("KONČNA NAPAKA: Ni najdena nobena figura v skupini 'characters'. Prosimo, preverite, ali so vse figure dodane v to Godot Group.")
+		push_error("KONČNA NAPAKA: Ni najdena nobena figura v skupini 'characters'.")
 		print("GridManager: Registracija figur končana. Velikost ekipe: 0")
 		return
 
 	var found_allies = 0
 	
 	for node in character_nodes:
-		# NOVO: Izpišemo ime vsakega vozlišča, ki ga najdemo v skupini
 		print("Najdeno vozlišče v skupini 'characters': " + node.name) 
 		
 		if node is BaseCharacter:
 			var char = node as BaseCharacter
 			
-			# 1. Registracija pozicije in GridManagerja
+			# 1. Dodelimo referenco BaseCharacterju
 			char.grid_manager = self
-			var grid_pos = world_to_grid(char.global_position)
-			occupy(grid_pos, char)
-			char.grid_pos = grid_pos
 			
-			# 2. Registracija v PlayerManager
+			# 2. KRITIČNO NOVO: Inicializacija mreže se ZDAJ zgodi v figuri
+			char.on_grid_manager_registered() 
+			
+			# (Opomba: grid_pos in occupy() se zdaj izvajata znotraj char.on_grid_manager_registered())
+			
+			# 3. Registracija v PlayerManager
 			if not char.is_enemy:
 				player_manager.add_to_active_party(char)
 				found_allies += 1
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
-			
-	if found_allies == 0:
-		push_error("OPOZORILO: Najdeni so karakterji, vendar nobeden ni zaveznik (is_enemy == false).")
-
-	print("GridManager: Registracija figur končana. Velikost ekipe po registraciji: %d" % player_manager.active_party.size())
-
 # ----------------- GRID UTILITY FUNCTIONS -----------------
 
 func world_to_grid(world_pos: Vector2) -> Vector2i:
