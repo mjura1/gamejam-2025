@@ -101,3 +101,42 @@ func capture(target: BaseCharacter):
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	execute_move(target.grid_pos)
+
+
+# ----------------- AI LOGIKA (Privzeto Vedenje) -----------------
+
+# Vrnitev: Dictionary { move_type: "CAPTURE"/"MOVE", target_pos: Vector2i } ali prazna {}, če ni potez
+func calculate_best_move() -> Dictionary:
+	
+	# 1. Prioriteta: ZAJETJE zaveznika (če je ta figura sovražnik)
+	var valid_targets = calculate_valid_targets()
+	var possible_moves: Array = [] # Shranimo prazne pozicije za morebitni premik
+	
+	for pos in valid_targets:
+		var target_char = grid_manager.get_character_at(pos)
+		
+		# Preverimo, ali tarča obstaja in ali je nasprotnik (tj. zaveznik za to figuro)
+		if target_char and target_char.is_enemy != is_enemy:
+			# NAJDENO ZAJETJE! Vrni takoj, saj je to največja prioriteta.
+			return {
+				"move_type": "CAPTURE",
+				"target_pos": pos
+			}
+			
+		# Če je polje prazno, ga dodamo na seznam možnih premikov
+		elif not target_char:
+			possible_moves.append(pos)
+			
+	# 2. Če ni zajetja: NAKLJUČNI PREMIK
+	if not possible_moves.is_empty():
+		
+		# Izberemo naključno pozicijo iz seznama možnih premikov
+		var random_pos = possible_moves[randi() % possible_moves.size()]
+		
+		return {
+			"move_type": "MOVE",
+			"target_pos": random_pos
+		}
+	
+	# 3. Če ni mogoče ne zajetje ne premik
+	return {}
