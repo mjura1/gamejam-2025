@@ -22,7 +22,8 @@ var grid_manager
 # ... (Ohrani ostale spremenljivke) ...
 @export var selected: bool = false
 @export var move_range: int = 1
-@export var is_enemy: bool = false 
+@export var is_enemy: bool = false
+@export var is_obstacle: bool = false
 @export var character_scene_path: String = ""
 @export var panic_distance: int = 2
 @export var panic_randomness: float = 0.5 # 0 = calm, 1 = total chaos
@@ -34,8 +35,6 @@ var grid_manager
 # ----------------- INITIALIZACIJA (KLJUČNA ZA IZBIRO) -----------------
 
 func _ready():
-	# KRITIČNO: BaseCharacter._ready NE SME več dostopati do grid_manager.
-	# Tu lahko izvajamo samo splošno logiko, ki NI ODVISNA od GridManagerja.
 	pass
 		
 # NOVO: Kliče ga GridManager, ko je pripravljen in je dodeljena referenca.
@@ -75,7 +74,7 @@ func calculate_valid_targets() -> Array[Vector2i]:
 			# 2. Preverjanje zasedenosti
 			if grid_manager.is_occupied(target_pos):
 				var target_char = grid_manager.get_character_at(target_pos)
-				
+					
 				# PREVERJANJE: Ali je tarča sovražnik?
 				if target_char and target_char.is_enemy != is_enemy:
 					targets.append(target_pos)
@@ -248,7 +247,8 @@ func calculate_best_move() -> Dictionary:
 	# ---------------------------------
 	for pos in valid_targets:
 		var target_char = grid_manager.get_character_at(pos)
-		if target_char and target_char.is_enemy != is_enemy:
+		# 1. Prioriteta: ZAJETJE nasprotnika
+		if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 			return {
 				"move_type": "CAPTURE",
 				"target_pos": pos
