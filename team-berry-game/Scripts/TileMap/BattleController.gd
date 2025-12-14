@@ -62,12 +62,26 @@ func end_player_turn():
 func start_enemy_turn():
 	current_state = BattleState.ENEMY_TURN
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
-	
-	# TU BI SPROŽILI KODO ZA AI
-	# ...
-	
-	# Za testiranje takoj preklopimo nazaj
+
+	for char in grid_manager.get_all_characters():
+		if not char.is_enemy:
+			continue
+
+		if not char is BaseCharacter:
+			continue
+
+		var action = char.calculate_best_move()
+		if action.is_empty():
+			continue
+
+		match action.get("move_type", ""):
+			"CAPTURE":
+				char.try_move(action["target_pos"])
+			"MOVE":
+				char.execute_move(action["target_pos"])
+
 	end_enemy_turn()
+
 
 func end_enemy_turn():
 	print("<<< KONEC POTEZE SOVRAŽNIKA >>>")
