@@ -1,11 +1,21 @@
-# map_behaviour.gd
+# res://Scripts/Battle/map_behaviour.gd
 extends Node2D
+
+# ===============================================
+# REFERENCE
+# Opomba: Vsa vozlišča so brata (siblings) pod vozliščem 'Battle' (..)
+# ===============================================
 
 @onready var tile_selector = get_node("../TileSelector")
 @onready var grid_manager = get_node("../GridManager")
-@onready var tile_map = get_node("../Map/TileMapLayer") # Referenca je že prisotna
+@onready var tile_map = get_node("../Map/TileMapLayer") 
+@onready var move_highlighter = get_node("../MoveHighlighter")
 
-var selected_character: Node = null 
+var selected_character: BaseCharacter = null 
+
+# ===============================================
+# VNOS (INPUT)
+# ===============================================
 
 func _unhandled_input(event):
 	# 1. Preverimo, ali gre za levi klik miške.
@@ -14,45 +24,74 @@ func _unhandled_input(event):
 
 	var mouse_world_pos = get_global_mouse_position()
 	var clicked_grid = grid_manager.world_to_grid(mouse_world_pos)
-	var used_rect = tile_map.get_used_rect()
 	
-	# =================================================================
-	# NOVO: ZAVRNITEV KLIKA ZUNAJ MEJA MAPE
-	# =================================================================
-	# Preverimo, ali je klik (clicked_grid) znotraj meja (used_rect),
-	# preden nadaljujemo z logiko.
+	# Za pridobitev mej mape (TileMapLayer)
+	var used_rect = tile_map.get_used_rect() 
+	
+	# 2. ZAVRNITEV KLIKA ZUNAJ MEJA MAPE
 	if not grid_manager.is_inside_boundary(clicked_grid, used_rect):
-		# Klik je zunaj mape (npr. na GUI območju). Ignoriramo ga.
+		# Klik je zunaj mape. Če je bila figura izbrana, jo deselektujemo
+		# in počistimo poudarek, da UI ostane čist.
+		if selected_character:
+			selected_character.selected = false
+			selected_character = null
+			move_highlighter.clear_moves()
 		return
 
-	# Če je klik znotraj mape, nadaljujemo z logiko igre:
-
+	# Pokaži indikator klika (TileSelector)
 	tile_selector.select_tile(clicked_grid)
 	
 	var clicked_character = grid_manager.get_character_at(clicked_grid)
 
-	# CLICK ON CHARACTER
+	# ===================================================
+	# LOGIKA 1: KLIK NA FIGURO (SELECT/DESELECT)
+	# ===================================================
+	
 	if clicked_character:
-		# Clicking the same character → deselect
+		# Klik na isto figuro → deselect
 		if selected_character == clicked_character:
 			selected_character.selected = false
 			selected_character = null
+			move_highlighter.clear_moves() # Počisti poudarke
 			return
 
-		# Switching characters
+		# Preklapljanje figur
 		if selected_character:
 			selected_character.selected = false
 
+		# Izbira nove figure (ali prve figure)
 		selected_character = clicked_character
 		selected_character.selected = true
+		
+		# Pokaži možne poteze za novo izbrano figuro
+		var valid_moves = selected_character.calculate_valid_targets()
+		move_highlighter.show_moves(valid_moves) # Pokaži poudarke
 		return
 
 
-	# CLICK ON EMPTY TILE → MOVE
+	# ===================================================
+	# LOGIKA 2: KLIK NA PRAZNO POLJE (PREMIK)
+	# ===================================================
+	
 	if selected_character:
-		# is_inside_boundary preverjanje je sedaj redundantno,
-		# a ga ohranjamo za vsak slučaj, če bi se meje mape spremenile
-		# med klikom in premikom.
-		if selected_character.try_move(clicked_grid):
+		# Poskus premika na kliknjeno polje
+		if selected_character.try_move(clicked_grid): # try_move poskrbi za veljavnost poteze
+			
+			# Uspešen premik
 			selected_character.selected = false
 			selected_character = null
+			move_highlighter.clear_moves() # Počisti poudarke po premiku
+			
+			# Klic BattleControllerja za konec poteze igralca
+			# (Predpostavljamo, da je BattleController brat)
+			var battle_controller = get_node("../BattleController")
+			if is_instance_valid(battle_controller):
+				battle_controller.end_player_turn() 
+				
+			return
+		
+		# Če premik ni bil uspešen (klikal je na prazno polje, ki ni veljavna tarča):
+		# Deselektira figuro in počisti poudarek
+		selected_character.selected = false
+		selected_character = null
+		move_highlighter.clear_moves()

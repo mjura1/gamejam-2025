@@ -2,7 +2,7 @@
 extends Node2D
 
 # Referenci na GridManager in velikost celice
-@onready var grid_manager = get_node("/root/Node/GridManager")
+@onready var grid_manager = get_node("../GridManager")
 var cell_size: Vector2 = Vector2.ZERO
 
 # Array veljavnih mrežnih pozicij (Vector2i), ki jih moramo narisati
