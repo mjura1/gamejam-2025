@@ -12,14 +12,12 @@ var is_panicking: bool = false
 
 
 # ----------------- REFERENCE -----------------
-# 1. Popravek: Odstranimo @onready za GridManagerja.
-# GridManager zdaj ročno dodeli referenco V TEM MESTU.
+# GridManager zdaj ročno dodeli referenco
 var grid_manager
-@onready var tile_map = get_node("../Map/TileMapLayer") 
+@onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var player_manager = get_node("/root/PlayerManager")
 
 # ----------------- NASTAVITVE IN VREDNOSTI -----------------
-# ... (Ohrani ostale spremenljivke) ...
 @export var selected: bool = false
 @export var move_range: int = 1
 @export var is_enemy: bool = false
@@ -59,7 +57,7 @@ func on_grid_manager_registered():
 
 func get_move_directions() -> Array[Vector2i]:
 	# Podrazredi (Bishop, Rook) implementirajo to
-	return [] 
+	return []
 
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
@@ -81,7 +79,7 @@ func calculate_valid_targets() -> Array[Vector2i]:
 					targets.append(target_pos)
 				
 				# Gibanje se vedno ustavi ob prvi zasedeni celici
-				break 
+				break
 
 			# 3. Polje je prazno
 			targets.append(target_pos)
@@ -90,11 +88,29 @@ func calculate_valid_targets() -> Array[Vector2i]:
 
 # Premesti figuro na novo lokacijo
 func execute_move(target: Vector2i):
+	# 1. Posodobitev mreže in pozicije
 	grid_manager.vacate(grid_pos)
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
 	global_position = grid_manager.grid_to_world(grid_pos)
 	move_sound.play()
+	
+	# ===============================================
+	# FOG OF WAR (NOVO)
+	# ===============================================
+	
+	# Posodobitev megle okoli nove pozicije, samo za zaveznike!
+	if not is_enemy and is_instance_valid(grid_manager):
+		
+		var positions_to_reveal: Array[Vector2i] = []
+		
+		# Vidni doseg: 3x3 območje okoli figure (x in y od -1 do 1)
+		for x in range(-1, 2):
+			for y in range(-1, 2):
+				positions_to_reveal.append(grid_pos + Vector2i(x, y))
+				
+		# Naročimo GridManagerju, da odstrani meglo na teh poljih
+		grid_manager.reveal_area(positions_to_reveal)
 	
 	
 func try_move(target: Vector2i) -> bool:
@@ -112,8 +128,8 @@ func try_move(target: Vector2i) -> bool:
 		# 2a. Poskus ZAJETJA (Tarča je sovražnik)
 		if target_char.is_enemy != is_enemy:
 			
-			# Izvedemo zajetje tarče! To je manjkajoči del.
-			capture(target_char) 
+			# Izvedemo zajetje tarče!
+			capture(target_char)
 			
 			return true # Uspešno zajetje
 		
@@ -145,13 +161,14 @@ func capture(target: BaseCharacter):
 	print("Izvajam zajetje tarče...")
 	
 	# KRITIČNO: Shranimo pozicijo tarče, preden jo uničimo
-	var target_pos = target.grid_pos 
+	var target_pos = target.grid_pos
 	
 	# 1. Zajem/Smrt tarče
 	take_sound.play()
 	target.die()
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje
+	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
 	execute_move(target_pos)
 
 

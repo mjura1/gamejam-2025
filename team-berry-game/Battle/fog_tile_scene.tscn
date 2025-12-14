@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3 uid="uid://cjsywbw71l8w3"]
+
+[ext_resource type="Texture2D" uid="uid://bt2vbqdwmlyl" path="res://Assets/Sprites/fog3.png" id="1_akdpu"]
+
+[node name="FogTileScene" type="Node2D"]
+z_index = 5
+position = Vector2(0, -7.9999995)
+scale = Vector2(0.4, 0.4)
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_left = -20.000008
+offset_top = -20.0
+offset_right = 19.999992
+offset_bottom = 20.0
+color = Color(0.50980395, 0.50980395, 0.50980395, 1)
+
+[node name="Sprite2D" type="Sprite2D" parent="ColorRect"]
+position = Vector2(19.980001, 20.480003)
+scale = Vector2(0.15640624, 0.16031249)
+texture = ExtResource("1_akdpu")
