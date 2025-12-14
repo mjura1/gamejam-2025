@@ -11,13 +11,10 @@ config_version=5
 [application]
 
 config/name="team-berry-game"
-<<<<<<< HEAD
-run/main_scene="uid://c3tc8wv28ls53"
-=======
-run/main_scene="uid://co3n6xridbt30"
->>>>>>> fog
+run/main_scene="uid://bj15yf4y43u2b"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://Assets/icon.svg"
+<<<<<<<HEADrun/main_scene="uid://c3tc8wv28ls53"
 
 [autoload]
 
