@@ -75,7 +75,7 @@ func calculate_valid_targets() -> Array[Vector2i]:
 				var target_char = grid_manager.get_character_at(target_pos)
 					
 				# PREVERJANJE: Ali je tarča sovražnik?
-				if target_char and target_char.is_enemy != is_enemy:
+				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 					targets.append(target_pos)
 				
 				# Gibanje se vedno ustavi ob prvi zasedeni celici

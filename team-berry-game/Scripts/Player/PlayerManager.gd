@@ -6,8 +6,8 @@ var food: int = 5
 var leather: int = 0
 
 # Party Management
-var active_party: Array[String] = [] # ČE JE TO PRAZNO JE IGRE KONEC
-var enemy_party: Array[String] = []
+var active_party: Array[String] = ["pawn", "pawn", "pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
+var enemy_party: Array[String] = ["pawn", "pawn", "pawn"]
 
 var max_party_size = 32
 var snowCount = 0
