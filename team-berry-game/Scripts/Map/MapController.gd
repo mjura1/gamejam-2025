@@ -7,6 +7,7 @@ const MapGenerator = preload("res://Scripts/Map/MapGenerator.gd")
 const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 
 @onready var map_camera: Camera2D = $MapCamera 
+@onready var click_sound = $ClickStreamer
 
 var map_data: Array = []
 var room_node_map: Dictionary = {}
@@ -25,6 +26,10 @@ func _ready():
 		initialize_map()
 	else:
 		queue_redraw()
+
+func _on_button_pressed():
+	UiAudio.play_click()
+	print("predvajam zvok")
 
 # =========================================================
 # METODE ZA ZAGON, VIZUALIZACIJO IN STANJE 
@@ -283,7 +288,7 @@ func _center_and_zoom_camera():
 
 func _on_room_selected(room_data: Room):
 	print("Igralec izbral sobo: %s pri %s" % [Room.RoomType.keys()[room_data.type], room_data.grid_position])
-	
+	_on_button_pressed()
 	_handle_event(room_data)
 	_update_reachable_rooms(room_data)
 	
