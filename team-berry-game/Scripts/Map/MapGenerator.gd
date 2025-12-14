@@ -21,11 +21,20 @@ const PLACEMENT_RANDOMNESS: float = 5.0
 
 # --- Definiranje uteži za naključno dodeljevanje ---
 const ROOM_WEIGHTS: Dictionary = {
-	Room.RoomType.MONSTER: 100,
-	Room.RoomType.CAMPFIRE: 120,
-	Room.RoomType.SHOP: 130,
-	Room.RoomType.TREASURE: 135
+	Room.RoomType.enemy_bishop: 2,
+	Room.RoomType.enemy_king: 0,
+	Room.RoomType.enemy_knight: 3,
+	Room.RoomType.enemy_rook: 4,
+	Room.RoomType.enemy_queen: 1,
+	Room.RoomType.enemy_pawn: 5,
+	Room.RoomType.friendly_pawn: 5,
+	Room.RoomType.friendly_knight: 2,
+	Room.RoomType.friendly_rook: 4,
+	Room.RoomType.friendly_bishop: 3,
+	Room.RoomType.friendly_queen: 1,
+	Room.RoomType.friendly_king: 1
 }
+
 
 # Glavni podatkovni objekt: Matrika virov Room
 var map_data: Array = [] # Array[Array[Room]]
@@ -193,17 +202,15 @@ func _assign_room_types():
 				continue
 			
 			match i:
-				# 0. Nadstropje: Vedno bitke
 				START_FLOOR:
-					room.type = Room.RoomType.MONSTER
+					room.type = Room.RoomType.enemy_knight
 				
-				# Zadnje nadstropje: Šef
 				FLOORS - 1:
-					room.type = Room.RoomType.BOSS
+					room.type = Room.RoomType.enemy_king
 				
-				# Nadstropje 9: Zaklad
+				# Nadstropje 9: kraljica
 				9:
-					room.type = Room.RoomType.TREASURE
+					room.type = Room.RoomType.friendly_queen
 				
 				# Vsa ostala nadstropja: Utežena naključna izbira
 				_:
@@ -223,4 +230,4 @@ func _get_random_room_type() -> Room.RoomType:
 			return type_key
 			
 	# V primeru napake, vrnemo privzeti tip
-	return Room.RoomType.MONSTER
+	return Room.RoomType.friendly_pawn

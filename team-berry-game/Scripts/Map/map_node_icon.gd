@@ -13,14 +13,16 @@ class_name MapNodeIcon
 # Signal, ki ga posluša MapController, ko je soba kliknjena
 signal room_clicked(room_data) 
 
-# Naložite teksture (GRAFIKO)
-const ICON_LOOKUP: Dictionary = {
-	Room.RoomType.MONSTER: preload("res://Assets/Icons/sword.jpg"),
-	Room.RoomType.TREASURE: preload("res://Assets/Icons/chest.png"),
-	Room.RoomType.CAMPFIRE: preload("res://Assets/Icons/tent.jpg"),
-	Room.RoomType.SHOP: preload("res://Assets/Icons/shop.jpg"),
-	Room.RoomType.BOSS: preload("res://Assets/Icons/skull.png"),
-}
+func _ready():
+	_init_icon_lookup()
+
+static var ICON_LOOKUP: Dictionary = {}
+
+static func _init_icon_lookup():
+	for rtype in Room.RoomTypeNames.keys():
+		var name = Room.RoomTypeNames[rtype]
+		var path = "res://Assets/Sprites/%s.png" % [name]
+		ICON_LOOKUP[rtype] = load(path)
 
 
 # =========================================================
@@ -44,11 +46,7 @@ func _update_icon():
 		icon_display.texture = ICON_LOOKUP[room_resource.type]
 
 func _update_scale():
-	if room_resource.type == Room.RoomType.BOSS:
-		scale = Vector2(3.5, 3.5)
-	else:
-		# Nastavi standarno velikost ikon
-		scale = Vector2(3.0, 3.0)
+	scale = Vector2(3.0, 3.0)
 
 ## Kliče jo MapController, da vizualno posodobi ikono (barva, aktivnost)
 func update_look(unlocked: bool, selected: bool):

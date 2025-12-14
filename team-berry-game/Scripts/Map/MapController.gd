@@ -295,16 +295,11 @@ func _on_room_selected(room_data: Room):
 	queue_redraw()
 
 func _handle_event(room_data: Room):
-	match room_data.type:
-		Room.RoomType.MONSTER:
-			print("Zagon BITKE...")
-		Room.RoomType.SHOP:
-			print("Zagon TRGOVINE...")
-		Room.RoomType.BOSS:
-			print("Zagon ŠEFA!")
-		Room.RoomType.CAMPFIRE:
-			print("OPEN SHOP")
-		_:
-			print("Zagon neznanega dogodka.")
-			
+	var name = Room.RoomTypeNames.get(room_data.type, "unknown_event").capitalize()
+	print("Zagon %s..." % name)
+	
+	if name.begins_with("enemy_"):
+		PlayerManager.add_to_enemy_party(name)
+	else:
+		PlayerManager.add_to_active_party(name)
 	GF.start_event(room_data.type)

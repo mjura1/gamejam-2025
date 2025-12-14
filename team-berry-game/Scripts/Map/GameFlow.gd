@@ -7,8 +7,7 @@ class_name GameFlow
 # =========================================================
 
 const MAP_SCENE      = preload("res://Scenes/Map/map.tscn")
-const CAMPFIRE_SCENE = preload("res://Scenes/Map/campfire.tscn")
-# const BATTLE_SCENE   = preload("res://Scenes/Map/battle.tscn") 
+const BATTLE_SCENE = preload("res://Scenes/Map/battle.tscn")
 
 var game_initialized: bool = false 
 var current_map_instance: Node = null
@@ -48,14 +47,7 @@ func _initialize_game():
 # =========================================================
 # (Ostaja nespremenjeno)
 func start_event(room_type: int):
-	
-	match room_type:
-		Room.RoomType.MONSTER, Room.RoomType.SHOP, Room.RoomType.BOSS, Room.RoomType.TREASURE, Room.RoomType.CAMPFIRE:
-			var event_instance = CAMPFIRE_SCENE.instantiate()
-			_change_scene_instance(event_instance)
-			
-		_:
-			push_error("GF: Neznan tip sobe: %d" % room_type)
+	_change_scene_instance(BATTLE_SCENE.instantiate())
 
 
 # =========================================================
@@ -65,7 +57,6 @@ func start_event(room_type: int):
 func return_to_map(event_results: Dictionary = {}):
 	print("GF: Vračanje na že obstoječo sceno Map.")
 	_change_scene_instance(current_map_instance)
-
 
 # =========================================================
 # 5. OSNOVNA LOGIKA MENJAVE SCENE

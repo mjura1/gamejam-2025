@@ -14,10 +14,31 @@ class_name Room
 
 # Definirajte enumerator RoomType, če ga še nimate (Godot 4.x)
 enum RoomType {
-	MONSTER,    # 0
-	CAMPFIRE,   # 1
-	SHOP,       # 2
-	TREASURE,   # 3
-	BOSS,       # 4
-	UNKNOWN     # 5
+	enemy_bishop,    # 0
+	enemy_king,   # 1
+	enemy_knight,       # 2
+	enemy_rook,   # 3
+	enemy_queen,       # 4
+	enemy_pawn,
+	friendly_pawn,
+	friendly_knight,
+	friendly_rook,
+	friendly_bishop,
+	friendly_queen,
+	friendly_king
+}
+
+static var RoomTypeNames: Dictionary = {
+	RoomType.enemy_bishop : "enemy_bishop",
+	RoomType.enemy_king : "enemy_king",
+	RoomType.enemy_knight : "enemy_knight",
+	RoomType.enemy_rook : "enemy_rook",
+	RoomType.enemy_queen : "enemy_queen",
+	RoomType.enemy_pawn : "enemy_pawn",
+	RoomType.friendly_pawn : "friendly_pawn",
+	RoomType.friendly_knight : "friendly_knight",
+	RoomType.friendly_rook : "friendly_rook",
+	RoomType.friendly_bishop : "friendly_bishop",
+	RoomType.friendly_queen : "friendly_queen",
+	RoomType.friendly_king : "friendly_king"
 }
