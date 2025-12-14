@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://bg8xf41tcrapl" path="res://Assets/Sprites/friendly_bishop.png" id="3_djaqy"]
 
 [node name="Bishop" instance=ExtResource("1_nlvit")]
+scale = Vector2(1e-05, 1e-05)
 script = ExtResource("2_uqrk8")
 
 [node name="Sprite2D" parent="." index="0"]

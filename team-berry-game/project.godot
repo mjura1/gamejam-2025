@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="team-berry-game"
-run/main_scene="uid://bj15yf4y43u2b"
+run/main_scene="uid://co3n6xridbt30"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://Assets/icon.svg"
 
@@ -24,6 +24,7 @@ UiAudio="*res://Scenes/ui_audio.tscn"
 [global_group]
 
 buttons=""
+characters=""
 
 [input]
 

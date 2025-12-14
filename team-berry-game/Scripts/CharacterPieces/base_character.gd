@@ -16,14 +16,13 @@ var grid_manager
 # ... (Ohrani ostale spremenljivke) ...
 @export var selected: bool = false
 @export var move_range: int = 1
-@export var is_enemy: bool = false 
+@export var is_enemy: bool = false
+@export var is_obstacle: bool = false
 @export var character_scene_path: String = ""
 
 # ----------------- INITIALIZACIJA -----------------
 
 func _ready():
-	# KRITIČNO: BaseCharacter._ready NE SME več dostopati do grid_manager.
-	# Tu lahko izvajamo samo splošno logiko, ki NI ODVISNA od GridManagerja.
 	pass
 		
 # NOVO: Kliče ga GridManager, ko je pripravljen in je dodeljena referenca.
@@ -163,7 +162,7 @@ func calculate_best_move() -> Dictionary:
 		var target_char = grid_manager.get_character_at(pos)
 		
 		# 1. Prioriteta: ZAJETJE nasprotnika
-		if target_char and target_char.is_enemy != is_enemy:
+		if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 			return {
 				"move_type": "CAPTURE",
 				"target_pos": pos

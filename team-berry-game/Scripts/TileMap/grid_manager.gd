@@ -19,6 +19,14 @@ func _ready():
 	register_all_characters_in_scene()
 	print("GridManager: Pripravljen.")
 
+func spawn_character(characterScene: String, pos: Vector2):
+	var CharacterScene: PackedScene = load(characterScene)
+	var character_instance = CharacterScene.instantiate()
+	character_instance.position = pos
+	get_parent().add_child(character_instance)
+	character_instance.add_to_group("characters")
+	print(character_instance.is_in_group("characters"))
+	register_all_characters_in_scene()
 
 # FUNKCIJA ZA REGISTRACIJO FIGUR
 func register_all_characters_in_scene():
