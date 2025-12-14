@@ -1,6 +1,9 @@
 extends Node
 
 @onready var grid_manager = $GridManager
+@onready var move_sound = $MoveSound
+@onready var take_sound = $TakeSound
+
 
 const obstacle = "res://Scenes/CharacterPiecesNodes/Neutral/House.tscn"
 var to_spawn_enemy: Array
@@ -49,7 +52,7 @@ func _ready() -> void:
 			if spawn == 0 or grid_manager.is_occupied(grid_manager.grid_to_world(Vector2i(i, 0))) or to_spawn_ally.is_empty():
 				continue
 				
-			var piece = to_spawn_ally.pop_at(randi_range(0, PlayerManager.active_party.size() - 1))
+			var piece = to_spawn_ally.pop_at(randi_range(0, to_spawn_ally.size() - 1))
 			grid_manager.spawn_character(friendly_pieces[piece], grid_manager.grid_to_world(Vector2(i,0)))
 			
 	for i in range(0, 12):

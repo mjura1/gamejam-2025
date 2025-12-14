@@ -32,17 +32,18 @@ func _ready():
 	print("DEBUG: GridManager ready. TileMap referenca (v ready): " + str(is_instance_valid(tile_map)))
 	
 	# Opomba: Prepričajte se, da je tile_map nastavljen v Inšpektorju ali kodi pred tem klicem.
-	register_all_characters_in_scene()
-	print("GridManager: Pripravljen.")
 
 func spawn_character(characterScene: String, pos: Vector2):
-	var CharacterScene: PackedScene = load(characterScene)
-	var character_instance = CharacterScene.instantiate()
-	character_instance.position = pos
-	get_parent().add_child(character_instance)
-	character_instance.add_to_group("characters")
-	print(character_instance.is_in_group("characters"))
-	register_all_characters_in_scene()
+	var ps: PackedScene = load(characterScene)
+	var character = ps.instantiate()
+
+	character.position = pos
+	get_parent().add_child(character)
+	character.add_to_group("characters")
+
+	# ✅ počakamo 1 frame, da je node RES v tree-ju
+	call_deferred("register_all_characters_in_scene")
+
 
 # FUNKCIJA ZA REGISTRACIJO FIGUR
 func register_all_characters_in_scene():
@@ -64,6 +65,10 @@ func register_all_characters_in_scene():
 			var char = node as BaseCharacter
 			
 			# 1. Dodelimo referenco BaseCharacterju
+			if char.grid_manager == self:
+				continue
+
+			# ✅ prva registracija
 			char.grid_manager = self
 			
 			# 2. KRITIČNO NOVO: Inicializacija mreže se ZDAJ zgodi v figuri
@@ -71,7 +76,7 @@ func register_all_characters_in_scene():
 			
 			# 3. Registracija v PlayerManager
 			if not char.is_enemy:
-				player_manager.add_to_active_party(char)
+				player_manager.add_to_active_party(char.strName) # assuming char.character_type is a string
 				found_allies += 1
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
