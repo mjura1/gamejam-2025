@@ -4,11 +4,15 @@ extends Node2D
 @onready var grid_manager = get_node("/root/Node/GridManager")
 @onready var tile_map = get_node("/root/Node/Map/TileMapLayer")
 @onready var move_highlighter = get_node("/root/Node/MoveHighlighter")
+@onready var battle_controller = get_parent().get_node("BattleController")
 
 var selected_character: Node = null # trenutno izbrana figura
 
 func _input(event):
 	# Preverjanje dogodka klika miške (pravilno)
+	if battle_controller.current_state != battle_controller.TurnState.PLAYER_TURN:
+		return
+	
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
 
@@ -39,6 +43,7 @@ func _input(event):
 				selected_character.selected = false
 				selected_character = null
 				move_highlighter.clear_moves()
+				battle_controller.end_player_turn()
 				get_viewport().set_input_as_handled() 
 				return # KONEC: Zajetje je končano
 
@@ -87,6 +92,7 @@ func _input(event):
 					selected_character.selected = false
 					selected_character = null
 					move_highlighter.clear_moves()
+					battle_controller.end_player_turn()
 					get_viewport().set_input_as_handled()
 					return
 

@@ -3,20 +3,26 @@ class_name BaseCharacter
 
 var grid_pos: Vector2i
 
-@onready var tile_map = get_node("/root/Node/Map/TileMapLayer")
+@onready var tile_map = get_node("/root/Node/Map/TileMapLayer") # Ohranimo to, če je pot res fiksna
+@onready var player_manager = get_node("/root/PlayerManager")
 
 @export var selected: bool = false
 @export var move_range: int = 1
-@export var grid_manager: Node
-@export var is_enemy: bool = false # NEW: Za razlikovanje med ekipami in tarčami napada
+# Če GridManager ni nikoli ročno nastavljen v urejevalniku, naj bo to @onready:
+@onready var grid_manager = get_node("/root/Node/GridManager") 
+
+
+@export var is_enemy: bool = false 
 
 func _ready():
-	grid_manager = get_node("/root/Node/GridManager")
-	grid_pos = grid_manager.world_to_grid(global_position)
-	global_position = grid_manager.grid_to_world(grid_pos)
-	grid_manager.occupy(grid_pos, self)
-
-# 🔹 ABSTRAKTNA FUNKCIJA: Vračanje smeri, določene s figuro (Bishop, Rook, Knight, itd.)
+	if is_instance_valid(grid_manager):
+		grid_pos = grid_manager.world_to_grid(global_position)
+		global_position = grid_manager.grid_to_world(grid_pos)
+		grid_manager.occupy(grid_pos, self)
+	else:
+		print("POZOR: GridManager še ni pripravljen za %s" % self.name)
+		pass 
+		
 func get_move_directions() -> Array[Vector2i]:
 	return []
 
@@ -72,6 +78,17 @@ func try_move(target: Vector2i) -> bool:
 # Odstranitev figure iz igre (umre)
 func die():
 	grid_manager.vacate(grid_pos) # Osvobodi polje
+	
+	if not is_enemy:
+		# Če umre zaveznik, ga odstranimo iz seznama aktivnih figur igralca
+		if player_manager.active_party.has(self):
+			player_manager.active_party.erase(self)
+			print("Zaveznik umrl. Preostali aktivni party size: %d" % player_manager.active_party.size())
+			
+			# TODO: Preverjanje pogojev za konec igre (Game Over)
+			if player_manager.active_party.is_empty():
+				print("GAME OVER")
+		
 	queue_free() # Uniči vozlišče
 	print("Figura je bila uničena in odstranjena.")
 

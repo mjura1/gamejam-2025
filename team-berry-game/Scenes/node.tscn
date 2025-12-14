@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=4 uid="uid://dubog4wrxompp"]
+[gd_scene load_steps=15 format=4 uid="uid://dubog4wrxompp"]
 
 [ext_resource type="Script" uid="uid://bt1rkh3qcjglr" path="res://Scripts/TileMap/map_behaviour.gd" id="1_qtqr5"]
 [ext_resource type="Texture2D" uid="uid://b6gxm0osxkxqh" path="res://Assets/Tilesets/Solaria Demo Tiles.png" id="2_2itt3"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://xineak3b25qd" path="res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn" id="9_63ye5"]
 [ext_resource type="Script" uid="uid://bo8wupstu0hfb" path="res://Scenes/move_highlighter.gd" id="10_6e2d7"]
 [ext_resource type="PackedScene" uid="uid://v5hjm232cawo" path="res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn" id="11_tjbu5"]
+[ext_resource type="PackedScene" uid="uid://gexf8t8dh7sm" path="res://Battle/battle_controller.tscn" id="12_nivui"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_112p8"]
 texture = ExtResource("2_2itt3")
@@ -408,7 +409,7 @@ zoom = Vector2(3, 3)
 [node name="TileSelector" type="Node2D" parent="."]
 script = ExtResource("5_63ye5")
 
-[node name="Bishop" parent="." instance=ExtResource("6_2itt3")]
+[node name="Bishop" parent="." groups=["characters"] instance=ExtResource("6_2itt3")]
 position = Vector2(129, 145)
 scale = Vector2(0.1, 0.1)
 
@@ -427,3 +428,8 @@ script = ExtResource("10_6e2d7")
 
 [node name="EnemyBishop" parent="." instance=ExtResource("11_tjbu5")]
 position = Vector2(156, 98)
+
+[node name="BattleController" parent="." instance=ExtResource("12_nivui")]
+
+[node name="EnemyBishop2" parent="." instance=ExtResource("11_tjbu5")]
+position = Vector2(214, 49)

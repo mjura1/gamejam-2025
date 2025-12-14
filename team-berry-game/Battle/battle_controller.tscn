@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://gexf8t8dh7sm"]
+
+[ext_resource type="Script" uid="uid://btrseynheam2u" path="res://Scripts/TileMap/BattleController.gd" id="1_0uuqs"]
+
+[node name="BattleController" type="Node"]
+script = ExtResource("1_0uuqs")

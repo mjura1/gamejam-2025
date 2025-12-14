@@ -18,6 +18,7 @@ config/icon="res://Assets/icon.svg"
 [autoload]
 
 GF="*res://Scripts/Map/GameFlow.gd"
+PlayerManager="*res://Scripts/Player/PlayerManager.gd"
 
 [input]
 
