@@ -7,13 +7,14 @@ var grid_pos: Vector2i
 
 var has_spotted_player: bool = false
 var last_known_player_pos: Vector2i = Vector2i.ZERO
+var last_known_direction: Vector2i = Vector2i.ZERO
+var is_panicking: bool = false
 
 
 # ----------------- REFERENCE -----------------
 # 1. Popravek: Odstranimo @onready za GridManagerja.
 # GridManager zdaj ročno dodeli referenco V TEM MESTU.
 var grid_manager
- 
 @onready var tile_map = get_node("../Map/TileMapLayer") 
 @onready var player_manager = get_node("/root/PlayerManager")
 
@@ -23,6 +24,8 @@ var grid_manager
 @export var move_range: int = 1
 @export var is_enemy: bool = false 
 @export var character_scene_path: String = ""
+@export var panic_distance: int = 2
+@export var panic_randomness: float = 0.5 # 0 = calm, 1 = total chaos
 
 # ----------------- audio -----------------------
 @onready var move_sound = $MoveSound
@@ -165,42 +168,111 @@ func capture(target: BaseCharacter):
 
 
 # ----------------- AI LOGIKA -----------------
+func can_see_player(max_view_range: int) -> BaseCharacter:
+	for dir in get_move_directions():
+		for step in range(1, max_view_range + 1):
+			var check_pos = grid_pos + dir * step
+
+			if not grid_manager.is_inside_boundary(check_pos, tile_map.get_used_rect()):
+				break
+
+			if grid_manager.is_occupied(check_pos):
+				var char = grid_manager.get_character_at(check_pos)
+
+				# Sees player
+				if char and char.is_enemy != is_enemy:
+					return char
+
+				# Vision blocked by any piece
+				break
+
+	return null
 
 func calculate_best_move() -> Dictionary:
-	var valid_targets = calculate_valid_targets()
-	var closest_player: BaseCharacter = null
-	var min_distance = 999
+	# -------------------------------
+	# 1. LINE-OF-SIGHT SPOTTING
+	# -------------------------------
+	var seen_player = can_see_player(move_range)
 
-	# Look for player pieces in view range
+	if seen_player and not has_spotted_player:
+		has_spotted_player = true
+		last_known_player_pos = seen_player.grid_pos
+		last_known_direction = (seen_player.grid_pos - grid_pos).sign()
+		return {} # wake-up turn, no movement
+
+	if seen_player:
+		last_known_player_pos = seen_player.grid_pos
+		last_known_direction = (seen_player.grid_pos - grid_pos).sign()
+
+	# Never seen anyone → idle forever
+	if not has_spotted_player:
+		return {}
+
+
+	# ---------------------------------
+	# 2. MOVEMENT OPTIONS
+	# ---------------------------------
+	var valid_targets = calculate_valid_targets()
+	if valid_targets.is_empty():
+		return {}
+
+	# ---------------------------------
+	# 3. CHECK FOR CURRENTLY VISIBLE PLAYER
+	# ---------------------------------
+	var closest_player: BaseCharacter = null
+	var min_distance := INF
+
 	for char in grid_manager.get_all_characters():
 		if char.is_enemy == is_enemy:
 			continue
+
 		var dist = grid_pos.distance_to(char.grid_pos)
 		if dist <= move_range and dist < min_distance:
 			min_distance = dist
 			closest_player = char
 
+	# Update tracking if visible this turn
 	if closest_player:
-		# Player spotted → remember it
-		has_spotted_player = true
 		last_known_player_pos = closest_player.grid_pos
-	elif not has_spotted_player:
-		# Never spotted a player → do nothing
-		return {}
+		last_known_direction = (closest_player.grid_pos - grid_pos).sign()
 
-	# Determine direction toward last known player
-	var target_vector = (last_known_player_pos - grid_pos).sign()
-	var max_partial_move = min(4, move_range) # Partial move distance
+	# ---------------------------------
+	# 4. PANIC CHECK
+	# ---------------------------------
+	is_panicking = false
+	if closest_player and min_distance <= panic_distance:
+		is_panicking = true
 
-	# Step toward last known position, furthest valid square first
-	for step in range(max_partial_move, 0, -1):
-		var target_pos = grid_pos + target_vector * step
-		if target_pos in valid_targets:
-			var target_char = grid_manager.get_character_at(target_pos)
-			if target_char and target_char.is_enemy != is_enemy:
-				return {"move_type": "CAPTURE", "target_pos": target_pos}
-			else:
-				return {"move_type": "MOVE", "target_pos": target_pos}
+	# ---------------------------------
+	# 5. CAPTURE HAS ABSOLUTE PRIORITY
+	# ---------------------------------
+	for pos in valid_targets:
+		var target_char = grid_manager.get_character_at(pos)
+		if target_char and target_char.is_enemy != is_enemy:
+			return {
+				"move_type": "CAPTURE",
+				"target_pos": pos
+			}
 
-	# Blocked → do nothing
-	return {}
+	# ---------------------------------
+	# 6. NORMAL CHASE (TOWARD LAST SEEN)
+	# ---------------------------------
+	var best_move: Vector2i = valid_targets[0]
+	var best_score := INF
+
+	for pos in valid_targets:
+		var score = pos.distance_to(last_known_player_pos)
+		if score < best_score:
+			best_score = score
+			best_move = pos
+
+	# ---------------------------------
+	# 7. PANIC RANDOMNESS
+	# ---------------------------------
+	if is_panicking and randf() < panic_randomness:
+		best_move = valid_targets[randi() % valid_targets.size()]
+
+	return {
+		"move_type": "MOVE",
+		"target_pos": best_move
+	}

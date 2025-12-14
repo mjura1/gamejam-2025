@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://bbanbdmqj5fw8"]
+[gd_scene load_steps=5 format=3 uid="uid://bbanbdmqj5fw8"]
 
 [ext_resource type="Script" uid="uid://1civrgg6q7yl" path="res://Scripts/CharacterPieces/base_character.gd" id="1_tm8wl"]
-[ext_resource type="Texture2D" uid="uid://dbong8q0yleu1" path="res://Assets/Sprites/enemy_pawn.png" id="2_foqlb"]
 [ext_resource type="AudioStream" uid="uid://tjuulftt5o8n" path="res://Assets/audio/unfriendly_move.mp3" id="3_e88lp"]
 [ext_resource type="AudioStream" uid="uid://db2rllywxiuse" path="res://Assets/audio/capture.mp3" id="4_e88lp"]
 
@@ -12,7 +11,6 @@ script = ExtResource("1_tm8wl")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 material = SubResource("CanvasItemMaterial_ubrwk")
-texture = ExtResource("2_foqlb")
 
 [node name="MoveSound" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("3_e88lp")
