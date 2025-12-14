@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="team-berry-game"
-run/main_scene="uid://dubog4wrxompp"
+run/main_scene="uid://c3tc8wv28ls53"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://Assets/icon.svg"
 
@@ -19,6 +19,11 @@ config/icon="res://Assets/icon.svg"
 
 GF="*res://Scripts/Map/GameFlow.gd"
 PlayerManager="*res://Scripts/Player/PlayerManager.gd"
+UiAudio="*res://Scenes/ui_audio.tscn"
+
+[global_group]
+
+buttons=""
 
 [input]
 
