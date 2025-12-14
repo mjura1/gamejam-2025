@@ -63,7 +63,7 @@ func calculate_valid_targets() -> Array[Vector2i]:
 			# 2. Preverjanje zasedenosti
 			if grid_manager.is_occupied(target_pos):
 				var target_char = grid_manager.get_character_at(target_pos)
-				
+					
 				# PREVERJANJE: Ali je tarča sovražnik?
 				if target_char and target_char.is_enemy != is_enemy:
 					targets.append(target_pos)
