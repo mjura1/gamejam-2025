@@ -8,12 +8,13 @@ var leather: int = 0
 # Party Management
 var active_party: Array = [] # Trenutno aktivne figure v boju (vozlišča BaseCharacter)
 var dead_party: Array = []   # Podatki o figurah, ki so padle (za Campfire/Revive)
+var enemy_party: Array = []
 var character_roster: Array = [
 	# To je seznam VSEH figur, ki jih igralec poseduje in so na voljo.
 	# Uporablja se za inicializacijo bitke in za Campfire po oživitvi.
 	{"name": "Bishop", "revive_cost": 1, "scene_path": "res://Scenes/Characters/Bishop.tscn"},
 ]
-var max_party_size: int = 4
+const max_party_size: int = 4
 
 func _ready():
 	print("PlayerManager naložen. Hrana: %d, Party size: %d" % [food, active_party.size()])
