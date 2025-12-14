@@ -29,3 +29,6 @@ func register_dead_ally(character):
 	for item in active_party:
 		if character == item:
 			active_party.erase(character)
+			
+func add_to_enemy_party(character):
+	enemy_party.append(character)
