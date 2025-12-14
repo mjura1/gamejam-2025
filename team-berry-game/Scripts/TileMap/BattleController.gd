@@ -1,4 +1,3 @@
-
 # res://Scripts/BattleController.gd
 extends Node
 
@@ -10,12 +9,15 @@ enum TurnState {
 
 var current_state = TurnState.PLAYER_TURN
 
-# REFERENCE:
-@onready var player_manager = get_node("/root/PlayerManager")
-@onready var grid_manager = get_node("../GridManager")
+# ===============================================
+# REFERENCE
+# ===============================================
 
+@onready var player_manager = get_node("/root/PlayerManager") # Globalni Singleton
+@onready var grid_manager = get_node("../GridManager") # Brat (sibling) vozlišče
 
 func _ready():
+	# Opomba: Klic za generiranje mape ni več potreben.
 	print("Igra se je začela! Na vrsti je igralec.")
 	start_player_turn()
 
@@ -30,9 +32,6 @@ func end_player_turn():
 	if player_manager.active_party.is_empty():
 		print("GAME OVER - Igralec poražen.")
 		return
-
-	# 2. Preverjanje Pogojev Zmage (če na mreži ni sovražnikov)
-	# Če klic get_all_characters() ne vrne sovražnikov, bo to obravnavano v execute_enemy_move().
 	
 	# 3. Preklop na AI
 	start_enemy_turn()
