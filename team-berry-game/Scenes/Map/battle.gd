@@ -47,11 +47,6 @@ func _ready() -> void:
 		if spawn == 1:
 			var piece = randi_range(0, 5)
 			grid_manager.spawn_character(enemy_pieces[piece], grid_manager.grid_to_world(Vector2(i, 11)))
-				
-	
-
-	
->>>>>>> 8ca6cc6390cb5a309317198306d7b35b443dcd18
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
