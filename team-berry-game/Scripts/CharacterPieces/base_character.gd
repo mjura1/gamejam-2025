@@ -151,8 +151,16 @@ func die():
 	if is_instance_valid(grid_manager):
 		grid_manager.vacate(grid_pos)
 	
-	if !(is_enemy == true || is_obstacle == true):
-		player_manager.register_dead_ally(strName)
+	if is_enemy == true:
+		player_manager.register_dead_character("enemy_" + strName)
+	else:
+		player_manager.register_dead_character("friendly_" + strName)
+	
+	if player_manager.enemyGone():
+		GF.return_to_map()
+		
+	if player_manager.activeGone():
+		GF.return_to_map()
 	
 	queue_free() # Uniči vozlišče
 

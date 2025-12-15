@@ -18,7 +18,7 @@ const friendly_pieces := {
 	"friendly_bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
 	"friendly_knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
 	"friendly_king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
-	"friendly_queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
+	"queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
 }
 
 # Enemy pieces dictionary

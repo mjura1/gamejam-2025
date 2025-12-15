@@ -47,6 +47,7 @@ func _initialize_game():
 # =========================================================
 # (Ostaja nespremenjeno)
 func start_event(room_type: int):
+	PlayerManager.resetActiveEnemies()
 	_change_scene_instance(BATTLE_SCENE.instantiate())
 
 
@@ -54,7 +55,7 @@ func start_event(room_type: int):
 # 4. VRAČANJE NA MAPO
 # =========================================================
 # (Ostaja nespremenjeno)
-func return_to_map(event_results: Dictionary = {}):
+func return_to_map():
 	print("GF: Vračanje na že obstoječo sceno Map.")
 	_change_scene_instance(current_map_instance)
 
