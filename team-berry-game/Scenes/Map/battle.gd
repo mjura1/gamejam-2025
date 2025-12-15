@@ -84,7 +84,7 @@ func _ready() -> void:
 	var enemy_spawn_rows = [0, 1]
 	
 	while not to_spawn_enemy.is_empty():	
-ssss		for x in range(0, map_width):
+		for x in range(0, map_width):
 			for y in enemy_spawn_rows:
 				if to_spawn_enemy.is_empty():
 					break
