@@ -24,7 +24,7 @@ func _process(delta: float) -> void:
 
 func _on_start_pressed():
 	print("Start pressed. Sprožam zagon igre...")
-	
+	PlayerManager.setStarting()
 	# KLJUČNO: Kličemo funkcijo na ŽIVI INSTANCI Singletona,
 	# ki prevzame nadzor in naloži Mapo.
 	GF.start_new_game()

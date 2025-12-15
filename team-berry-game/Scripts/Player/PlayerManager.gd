@@ -2,8 +2,10 @@
 extends Node
 
 # Party Management
-var friendly_party: Array[String] = ["friendly_king", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
-var enemy_party: Array[String] = ["enemy_king", "enemy_pawn", "enemy_pawn"]
+var default_friends: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"]
+var default_enemies: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
+var friendly_party: Array[String]
+var enemy_party: Array[String]
 
 var active_enemies: Array[String]
 
@@ -50,6 +52,10 @@ func add_to_enemy_party(character):
 func resetActives():
 	active_enemies = enemy_party.duplicate()
 	active_party = friendly_party.duplicate()
+	
+func setStarting() -> void:
+	friendly_party = default_friends.duplicate()
+	enemy_party = default_enemies.duplicate()
 
 func addSnow():
 	snowCount += 2
@@ -67,7 +73,6 @@ func set_current_floor(new_floor: int):
 		# Če je novo nadstropje nižje ali enako, ohrani najvišjo vrednost
 		current_map_floor = current_map_floor + 1
 		print("PlayerManager: Ohranjeno nadstropje: %d (novo nadstropje je bilo %d)." % [current_map_floor, new_floor])
-
 
 func activeGone() -> bool:
 	if active_party.is_empty():
