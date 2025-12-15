@@ -2,8 +2,8 @@
 extends Node
 
 # Party Management
-var friendly_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
-var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
+var friendly_party: Array[String] = ["friendly_king", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
+var enemy_party: Array[String] = ["enemy_king", "enemy_pawn", "enemy_pawn"]
 
 var active_enemies: Array[String]
 

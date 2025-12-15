@@ -22,7 +22,7 @@ const PLACEMENT_RANDOMNESS: float = 5.0
 # --- Definiranje uteži za naključno dodeljevanje ---
 const ROOM_WEIGHTS: Dictionary = {
 	Room.RoomType.enemy_bishop: 2,
-	Room.RoomType.enemy_king: 1,
+	Room.RoomType.enemy_king: 0,
 	Room.RoomType.enemy_knight: 3,
 	Room.RoomType.enemy_rook: 4,
 	Room.RoomType.enemy_queen: 1,
@@ -32,7 +32,7 @@ const ROOM_WEIGHTS: Dictionary = {
 	Room.RoomType.friendly_rook: 4,
 	Room.RoomType.friendly_bishop: 3,
 	Room.RoomType.friendly_queen: 1,
-	Room.RoomType.friendly_king: 1
+	Room.RoomType.friendly_king: 0
 }
 
 # Glavni podatkovni objekt: Matrika virov Room
