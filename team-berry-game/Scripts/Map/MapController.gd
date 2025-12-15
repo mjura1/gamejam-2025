@@ -288,6 +288,14 @@ func _center_and_zoom_camera():
 
 func _on_room_selected(room_data: Room):
 	print("Igralec izbral sobo: %s pri %s" % [Room.RoomType.keys()[room_data.type], room_data.grid_position])
+	
+	var new_floor = room_data.grid_position.y # Predpostavka: Y koordinata mreže je nadstropje
+	
+	# Posodobitev globalnega stanja v PlayerManagerju
+	# PlayerManager naj bo globalno dostopen (npr. /root/PlayerManager)
+	if PlayerManager: 
+		PlayerManager.set_current_floor(new_floor)
+	
 	_on_button_pressed()
 	_handle_event(room_data)
 	_update_reachable_rooms(room_data)

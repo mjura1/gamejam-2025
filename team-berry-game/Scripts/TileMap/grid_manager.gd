@@ -112,6 +112,10 @@ func get_character_at(grid_pos: Vector2i):
 func get_all_characters():
 	return occupied.values()
 
+
+
+# res://Scripts/GridManager.gd
+
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)
 # ===============================================
@@ -120,13 +124,21 @@ func get_all_characters():
 ## current_map_floor: 0 (začetek) do 14 (Boss nadstropje)
 func initialize_all_fog(current_map_floor: int = 0):
 	print("DEBUG FOG: Klic initialize_all_fog().")
+	current_map_floor = player_manager.current_map_floor
+	
+	if current_map_floor > 10:
+		current_map_floor = 10
 	
 	# Konstante za skaliranje (ustrezajo MapGenerator.FLOORS = 15)
 	const MAX_MAP_FLOOR = 14 # 15 - 1
-	const MAX_FOG_ROWS = 10  # Maksimalno število pokritih vrstic (Y=0 do Y=9)
+	# Stara konstanta MAX_FOG_ROWS odstranjena
+	
+	# NOVO: Število vrstic na dnu, ki so vedno čiste
+	const CLEAN_ROWS = 2 
 	
 	if not is_instance_valid(tile_map):
-		push_error("TileMap ni nastavljen v GridManagerju. Inicializacija megle ni mogoča.")
+		push_error("TileMap ni nastavljen v GridManagerju.
+ Inicializacija megle ni mogoča.")
 		print("DEBUG FOG: Napaka! tile_map je neveljaven ali null.")
 		return
 		
@@ -135,20 +147,26 @@ func initialize_all_fog(current_map_floor: int = 0):
 	clear_all_fog()
 	
 	var used_rect = tile_map.get_used_rect()
+	var total_map_rows = used_rect.size.y # Skupno število vrstic na TileMap-u
 	
-	# 1. Izračunamo število vrstic, ki jih pokrije megla, na podlagi napredka
+	if total_map_rows <= CLEAN_ROWS:
+		print("OPOZORILO: Mapa je premajhna za čiste vrstice.")
+		return
+		
+	# 1. Izračunamo število vrstic, ki so ZAKRITE z meglo, od vrha navzdol.
+	# Zgornje 2 vrstici (CLEAN_ROWS) so minimalni prostor, ki mora biti vedno viden.
+	var max_fog_rows = total_map_rows - CLEAN_ROWS
 	var fog_rows_to_cover: int = 0
 	
 	if MAX_MAP_FLOOR > 0:
-		# Skaliranje: Uporabimo razmerje napredka (0/14 do 14/14) na območje megle (0 do 10 vrstic)
-		var ratio = float(current_map_floor) / MAX_MAP_FLOOR
-		fog_rows_to_cover = ceil(ratio * MAX_FOG_ROWS)
-		fog_rows_to_cover = min(fog_rows_to_cover, MAX_FOG_ROWS) # Ne sme preseči 10
+		# LOGIKA ZAKRIVANJA: Na N. nadstropju zakrijemo N vrstic.
+		# Uporabimo min(), da zagotovimo, da ne zakrijemo spodnjih 2 vrstic.
+		fog_rows_to_cover = min(current_map_floor, max_fog_rows) 
 		
 	# 2. Določimo zgornjo mejo Y koordinat (vrstice Y < fog_limit_y bodo pokrite)
 	var fog_limit_y = fog_rows_to_cover 
 	
-	print("DEBUG FOG: Nadstropje %d. Pokrivanje %d vrstic z meglo (Y=0 do Y=%d)." % [current_map_floor, fog_rows_to_cover, fog_limit_y - 1])
+	print("DEBUG FOG: Nadstropje %d. Pokrivanje %d vrstic z meglo (Y=0 do Y=%d). Skupno vrstic: %d." % [current_map_floor, fog_rows_to_cover, fog_limit_y - 1, total_map_rows])
 
 	# 3. Generiranje megle
 	for x in range(used_rect.position.x, used_rect.end.x):
@@ -156,14 +174,14 @@ func initialize_all_fog(current_map_floor: int = 0):
 			var tile_pos = Vector2i(x, y)
 			
 			# POGOJ: Meglo generiraj samo, če je Y koordinata manjša od izračunane meje.
-			# (Y=0 je vrh, Y=11 je dno)
 			if y < fog_limit_y: 
 				if tile_map.get_cell_source_id(tile_pos) != -1:
 					_spawn_fog_tile(tile_pos)
 	
 	print("GridManager: Megla inicializirana na %d poljih." % fog_nodes.size())
-
-
+	
+	
+	
 # Odstrani vsa vozlišča megle
 func clear_all_fog():
 	for pos in fog_nodes.keys():

@@ -4,14 +4,11 @@ extends Node
 # Party Management
 var friendly_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
 var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
-<<<<<<< HEAD
-=======
+
 var active_enemies: Array[String]
-<<<<<<< HEAD
+
 var active_party: Array[String]
-=======
->>>>>>> b3900e2d34e7413839858195dac9a968a19a61b3
->>>>>>> ab6deee08341f319e4d8f4df3e5348a5678e1aaa
+
 
 var max_party_size = 32
 var snowCount = 6
@@ -57,10 +54,20 @@ func resetActives():
 func addSnow():
 	snowCount += 2
 
-# NOVO: Funkcija za posodobitev trenutnega nadstropja (kliče se, ko igralec premaga sobo)
-func set_current_floor(floor: int):
-	current_map_floor = floor
-	print("PlayerManager: Igralec je sedaj na nadstropju %d." % current_map_floor)
+# Funkcija za posodobitev trenutnega nadstropja (kliče se, ko igralec premaga sobo)
+func set_current_floor(new_floor: int):
+	# Logika, ki preprečuje, da bi se current_map_floor zmanjšal
+	if new_floor > 10:
+		current_map_floor = 10
+		
+	if new_floor > current_map_floor:
+		current_map_floor = current_map_floor + 1
+		print("PlayerManager: Igralec je sedaj na nadstropju %d." % current_map_floor)
+	else:
+		# Če je novo nadstropje nižje ali enako, ohrani najvišjo vrednost
+		current_map_floor = current_map_floor + 1
+		print("PlayerManager: Ohranjeno nadstropje: %d (novo nadstropje je bilo %d)." % [current_map_floor, new_floor])
+
 
 func activeGone() -> bool:
 	if active_party.is_empty():
