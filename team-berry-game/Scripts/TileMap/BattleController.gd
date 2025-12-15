@@ -101,7 +101,8 @@ func start_enemy_turn():
 			"CAPTURE":
 				char.try_move(action["target_pos"])
 			"MOVE":
-				char.try_move(action["target_pos"]) # Uporabimo try_move, ki znotraj sebe kliče execute_move/capture
+				
+				char.execute_move(action["target_pos"]) # Uporabimo try_move, ki znotraj sebe kliče execute_move/capture
 			_:
 				print("Opozorilo: Nepričakovan move_type v AI akciji.")
 
@@ -126,7 +127,7 @@ func update_fog_after_turn_start():
 	for char in player_manager.active_party:
 		# Ker PlayerManager sedaj shrani BaseCharacter objekte po spawn-u, to preverjanje zagotovi, 
 		# da obdelujemo le veljavne figure.
-		if is_instance_valid(char) and char is BaseCharacter: 
+		if is_instance_valid(char): 
 			var char_pos = char.grid_pos
 			
 			# 2. Izračunamo vsa polja, ki jih je treba razkriti (3x3 območje)
