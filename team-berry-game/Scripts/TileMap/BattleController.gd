@@ -2,10 +2,9 @@ extends Node
 class_name BattleController
 
 # ===============================================
-# REFERENCE (POPRAVLJENO)
+# REFERENCE
 # ===============================================
 
-# POPRAVEK: Spremenjena pot za dostop do bratskega vozlišča GridManager
 @onready var grid_manager: GridManager = get_node("../GridManager")
 @onready var player_manager = get_node("/root/PlayerManager")
 
@@ -41,7 +40,6 @@ func initialize_battle():
 		
 	# 2. Pokrijemo mapo z dinamično meglo (snežno odejo)
 	if is_instance_valid(grid_manager):
-		# KRITIČEN POPRAVEK: Podamo trenutno nadstropje, da GridManager izračuna obseg megle
 		grid_manager.initialize_all_fog(current_floor) 
 		
 	# 3. Zaženemo prvo potezo

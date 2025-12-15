@@ -18,8 +18,6 @@ var current_map_instance: Node = null
 # =========================================================
 
 func _ready():
-	# KLJUČNO POPRAVILO: _ready() v Autoloadu je zdaj prazen!
-	# Vse čaka na klic iz Main Menu.
 	pass
 
 
@@ -30,7 +28,6 @@ func start_new_game():
 		return
 		
 	game_initialized = true
-	# (Tukaj bi prišlo do preklopa scene na loading screen, če bi bil ustvarjen)
 	call_deferred("_initialize_game")
 
 
@@ -46,7 +43,7 @@ func _initialize_game():
 # =========================================================
 # 3. ZAGON DOGODKOV
 # =========================================================
-# (Ostaja nespremenjeno)
+
 func start_event(room_type: int):
 	PlayerManager.resetActives()
 	_change_scene_instance(BATTLE_SCENE.instantiate())
@@ -55,7 +52,7 @@ func start_event(room_type: int):
 # =========================================================
 # 4. VRAČANJE NA MAPO
 # =========================================================
-# (Ostaja nespremenjeno)
+
 func return_to_map():
 	print("GF: Vračanje na že obstoječo sceno Map.")
 	_change_scene_instance(current_map_instance)
@@ -63,7 +60,7 @@ func return_to_map():
 # =========================================================
 # 5. OSNOVNA LOGIKA MENJAVE SCENE
 # =========================================================
-# (Ostaja nespremenjeno)
+
 func _change_scene_instance(new_instance: Node):
 	
 	if get_tree().current_scene:

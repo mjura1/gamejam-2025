@@ -12,9 +12,7 @@ const MOVE_COLOR = Color(0.1, 0.9, 0.1, 0.6) # Svetla Zelena
 const CAPTURE_COLOR = Color(0.9, 0.1, 0.1, 0.6) # Svetla Rdeča
 
 func _ready():
-	# Preverite, ali je referenca pravilna, in pridobite velikost celice
 	if is_instance_valid(grid_manager):
-		# Grid Manager je v drugem delu vaše skripte (dummy.txt) določil velikost: Vector2(16, 16)
 		cell_size = grid_manager.cell_size
 	else:
 		push_error("MoveHighlighter: GridManager ni najden na poti /root/Node/GridManager.")
