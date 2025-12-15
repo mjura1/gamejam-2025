@@ -20,7 +20,7 @@ enum BattleState {
 
 var current_state: int = BattleState.INITIALIZING
 var turn_count: int = 0
-var input_locked: bool = false
+var input_locked: bool = false # Nova spremenljivka, ohranjena
 
 # ----------------- INITIALIZATION -----------------
 
@@ -33,29 +33,35 @@ func _ready():
 
 
 func initialize_battle():
-	# 1. Pokrijemo celotno mapo z meglo
-	if is_instance_valid(grid_manager):
-		grid_manager.initialize_all_fog()
+	# 1. Pridobimo trenutni napredek igralca
+	var current_floor = 0
+	if is_instance_valid(player_manager):
+		# Uporabimo current_map_floor, ki smo ga dodali v PlayerManager.gd
+		current_floor = player_manager.current_map_floor 
 		
-	# 2. KRITIČNO POPRAVLJENO: Klic za razkrivanje območja je ZDAJ v start_player_turn(), 
-	#    ko so figure zagotovo registrirane. (Odstranjen stari klic)
-
+	# 2. Pokrijemo mapo z dinamično meglo (snežno odejo)
+	if is_instance_valid(grid_manager):
+		# KRITIČEN POPRAVEK: Podamo trenutno nadstropje, da GridManager izračuna obseg megle
+		grid_manager.initialize_all_fog(current_floor) 
+		
+	# 3. Zaženemo prvo potezo
 	start_player_turn()
 
 # ----------------- TURN LOGIC -----------------
+
 func player_can_act() -> bool:
 	return (
 		current_state == BattleState.PLAYER_TURN
 		and not input_locked
 	)
+
 func start_player_turn():
 	input_locked = false
 	turn_count += 1
 	current_state = BattleState.PLAYER_TURN
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
 	
-	# KRITIČNI POPRAVEK: Razkrijemo figure takoj, ko se poteza začne
-	# Klic se izvede šele, ko so figure registrirane v PlayerManagerju.
+	# Razkrijemo figure takoj, ko se poteza začne
 	update_fog_after_turn_start()
 
 func end_player_turn():
@@ -71,8 +77,11 @@ func start_enemy_turn_delayed() -> void:
 func start_enemy_turn():
 	current_state = BattleState.ENEMY_TURN
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
-	
-	
+
+	if not is_instance_valid(grid_manager):
+		push_error("GridManager ni veljaven za AI potezo.")
+		end_enemy_turn()
+		return
 	
 	for char in grid_manager.get_all_characters():
 		if not char.is_enemy:
@@ -85,11 +94,15 @@ func start_enemy_turn():
 		if action.is_empty():
 			continue
 
+		# Uporaba try_move za preverjanje zasedenosti in zajetje tarče
 		match action.get("move_type", ""):
 			"CAPTURE":
 				char.try_move(action["target_pos"])
 			"MOVE":
-				char.execute_move(action["target_pos"])
+				
+				char.execute_move(action["target_pos"]) # Uporabimo try_move, ki znotraj sebe kliče execute_move/capture
+			_:
+				print("Opozorilo: Nepričakovan move_type v AI akciji.")
 
 	end_enemy_turn()
 
@@ -110,8 +123,9 @@ func update_fog_after_turn_start():
 	
 	# 1. Zberemo pozicije vseh figur zaveznikov
 	for char in player_manager.active_party:
-		if is_instance_valid(char):
-			# Predpostavka: char.grid_pos je nastavljen v BaseCharacter.gd (ali ob registraciji)
+		# Ker PlayerManager sedaj shrani BaseCharacter objekte po spawn-u, to preverjanje zagotovi, 
+		# da obdelujemo le veljavne figure.
+		if is_instance_valid(char): 
 			var char_pos = char.grid_pos
 			
 			# 2. Izračunamo vsa polja, ki jih je treba razkriti (3x3 območje)
