@@ -155,11 +155,10 @@ func die():
 	if is_instance_valid(grid_manager):
 		grid_manager.vacate(grid_pos)
 	
-	if !(is_enemy == true || is_obstacle == true):
-		# Preverjanje, ali je v PlayerManagerju shranjen objekt (BaseCharacter), ali samo ime (string).
-		# Glede na zadnje popravke (register_all_characters_in_scene) bi morali brisati objekt char!
-		# Če PlayerManager še vedno hrani samo strName, pustimo takole:
-		player_manager.register_dead_ally(strName)
+	if is_enemy == true:
+		player_manager.register_dead_character("enemy_" + strName)
+	else:
+		player_manager.register_dead_character("friendly_" + strName)
 	
 	if player_manager.enemyGone():
 		GF.return_to_map()
