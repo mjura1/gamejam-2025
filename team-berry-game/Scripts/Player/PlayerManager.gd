@@ -4,8 +4,14 @@ extends Node
 # Party Management
 var friendly_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
 var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
+<<<<<<< HEAD
+=======
 var active_enemies: Array[String]
+<<<<<<< HEAD
 var active_party: Array[String]
+=======
+>>>>>>> b3900e2d34e7413839858195dac9a968a19a61b3
+>>>>>>> ab6deee08341f319e4d8f4df3e5348a5678e1aaa
 
 var max_party_size = 32
 var snowCount = 6
