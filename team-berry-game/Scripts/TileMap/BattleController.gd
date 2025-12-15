@@ -66,7 +66,6 @@ func end_player_turn():
 
 func start_enemy_turn_delayed() -> void:
 	input_locked = true
-	await get_tree().create_timer(0.5).timeout
 	start_enemy_turn()
 
 func start_enemy_turn():
