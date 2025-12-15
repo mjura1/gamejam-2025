@@ -13,22 +13,22 @@ var to_spawn_ally
 
 # Friendly pieces dictionary
 const friendly_pieces := {
-	"pawn": "res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn",
-	"rook": "res://Scenes/CharacterPiecesNodes/Ally/rook.tscn",
-	"bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
-	"knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
-	"king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
+	"friendly_pawn": "res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn",
+	"friendly_rook": "res://Scenes/CharacterPiecesNodes/Ally/rook.tscn",
+	"friendly_bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
+	"friendly_knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
+	"friendly_king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
 	"queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
 }
 
 # Enemy pieces dictionary
 const enemy_pieces := {
-	"pawn": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn",
-	"rook": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn",
-	"bishop": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn",
-	"knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
-	"king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
-	"queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
+	"enemy_pawn": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn",
+	"enemy_rook": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn",
+	"enemy_bishop": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn",
+	"enemy_knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
+	"enemy_king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
+	"enemy_queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
 }
 	
 
@@ -41,11 +41,6 @@ func _ready() -> void:
 		return
 	
 	# Logika za dodajanje figur ostane v _ready()
-	player_manager.add_to_active_party("rook")
-	player_manager.add_to_active_party("pawn")
-	
-	player_manager.add_to_enemy_party("rook")
-	player_manager.add_to_enemy_party("pawn")
 	
 	to_spawn_ally = player_manager.active_party.duplicate(true)
 	to_spawn_enemy = player_manager.enemy_party.duplicate(true)
@@ -66,7 +61,7 @@ func _ready() -> void:
 					break
 					
 				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
-				if randf() < 0.1 or grid_manager.is_occupied(Vector2i(x, y)):
+				if randf() < 0.01 or grid_manager.is_occupied(Vector2i(x, y)):
 					continue
 					
 				var piece_name = to_spawn_ally.pop_at(randi_range(0, to_spawn_ally.size() - 1))
@@ -78,7 +73,7 @@ func _ready() -> void:
 	
 	for x in range(0, map_width):
 		for y in range(2, map_height - 2):
-			var spawn_chance = randi_range(0, 10)
+			var spawn_chance = randi_range(0, 100)
 			if spawn_chance == 1 and not grid_manager.is_occupied(Vector2i(x, y)):
 				grid_manager.spawn_character(obstacle, grid_manager.grid_to_world(Vector2(x, y)))
 	
@@ -95,7 +90,7 @@ func _ready() -> void:
 					break
 				
 				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
-				if randf() < 0.1 or grid_manager.is_occupied(Vector2i(x, y)):
+				if randf() < 0.01 or grid_manager.is_occupied(Vector2i(x, y)):
 					continue
 					
 				var piece_name = to_spawn_enemy.pop_at(randi_range(0, to_spawn_enemy.size() - 1))

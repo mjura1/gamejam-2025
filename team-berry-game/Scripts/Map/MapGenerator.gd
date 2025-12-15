@@ -32,7 +32,7 @@ const ROOM_WEIGHTS: Dictionary = {
 	Room.RoomType.friendly_rook: 4,
 	Room.RoomType.friendly_bishop: 3,
 	Room.RoomType.friendly_queen: 1,
-	Room.RoomType.friendly_king: 1
+	Room.RoomType.friendly_king: 0
 }
 
 
@@ -210,7 +210,7 @@ func _assign_room_types():
 				
 				# Nadstropje 9: kraljica
 				9:
-					room.type = Room.RoomType.friendly_queen
+					room.type = Room.RoomType.friendly_king
 				
 				# Vsa ostala nadstropja: Utežena naključna izbira
 				_:

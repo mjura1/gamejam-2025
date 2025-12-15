@@ -44,8 +44,6 @@ func _draw():
 		
 		# Če je na polju figura:
 		if target_char:
-			# Vse figure v 'valid_moves', ki so zasedene, so zagotovo SOVRAŽNIKI, 
-			# ker je BaseCharacter.gd filtriral lastne figure.
 			draw_color = CAPTURE_COLOR # Rdeča
 		
 		# Risanje polnila (fill)
