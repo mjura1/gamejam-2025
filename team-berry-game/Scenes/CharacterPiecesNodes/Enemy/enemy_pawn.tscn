@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://dbong8q0yleu1" path="res://Assets/Sprites/enemy_pawn.png" id="3_msa2k"]
 
 [node name="EnemyPawn" instance=ExtResource("1_1gt11")]
-scale = Vector2(0.1, 0.1)
+scale = Vector2(0.08, 0.08)
 script = ExtResource("2_c6s3h")
 is_enemy = true
 

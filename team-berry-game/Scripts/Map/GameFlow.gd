@@ -6,8 +6,9 @@ class_name GameFlow
 # 1. REFERENCE IN STANJE
 # =========================================================
 
-const MAP_SCENE      = preload("res://Scenes/Map/map.tscn")
+const MAP_SCENE = preload("res://Scenes/Map/map.tscn")
 const BATTLE_SCENE = preload("res://Scenes/Map/battle.tscn")
+const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
 
 var game_initialized: bool = false 
 var current_map_instance: Node = null
@@ -47,7 +48,7 @@ func _initialize_game():
 # =========================================================
 # (Ostaja nespremenjeno)
 func start_event(room_type: int):
-	PlayerManager.resetActiveEnemies()
+	PlayerManager.resetActives()
 	_change_scene_instance(BATTLE_SCENE.instantiate())
 
 
@@ -80,3 +81,11 @@ func _change_scene_instance(new_instance: Node):
 	get_tree().call_deferred("set_current_scene", new_instance)
 	
 	print("--- Uspešno naložena scena: {} ---".format([new_instance.name]))
+
+func game_over():
+	print("GF: Player lost. Returning to Main Menu.")
+
+	game_initialized = false
+	current_map_instance = null
+
+	_change_scene_instance(MAIN_MENU_SCENE.instantiate())

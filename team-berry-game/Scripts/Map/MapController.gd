@@ -301,7 +301,7 @@ func _handle_event(room_data: Room):
 	if name.begins_with("enemy_"):
 		PlayerManager.add_to_enemy_party(name)
 	else:
-		PlayerManager.add_to_active_party(name)
+		PlayerManager.add_to_friendly_party(name)
 	
 	PlayerManager.addSnow()
 	

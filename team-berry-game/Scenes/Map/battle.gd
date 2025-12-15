@@ -18,7 +18,7 @@ const friendly_pieces := {
 	"friendly_bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
 	"friendly_knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
 	"friendly_king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
-	"queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
+	"friendly_queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
 }
 
 # Enemy pieces dictionary
@@ -37,11 +37,11 @@ func _ready() -> void:
 	# Preverimo, ali obstaja PlayerManager in ga shranimo
 	var player_manager = get_node("/root/PlayerManager")
 	if not is_instance_valid(player_manager):
-		push_error("PlayerManager singleton ni naložen!")
+		push_error("PlayerManager singleton ni naložen")
 		return
 	
 	# Logika za dodajanje figur ostane v _ready()
-	
+	print("test")
 	to_spawn_ally = player_manager.active_party.duplicate(true)
 	to_spawn_enemy = player_manager.enemy_party.duplicate(true)
 	
@@ -73,7 +73,7 @@ func _ready() -> void:
 	
 	for x in range(0, map_width):
 		for y in range(2, map_height - 2):
-			var spawn_chance = randi_range(0, 100)
+			var spawn_chance = randi_range(0, 12)
 			if spawn_chance == 1 and not grid_manager.is_occupied(Vector2i(x, y)):
 				grid_manager.spawn_character(obstacle, grid_manager.grid_to_world(Vector2(x, y)))
 	
@@ -84,8 +84,8 @@ func _ready() -> void:
 	var enemy_spawn_rows = [0, 1]
 	
 	while not to_spawn_enemy.is_empty():	
-		for x in range(0, map_width):
-			for y in enemy_spawn_rows:
+		for y in range(0, 1):
+			for x in range(0, map_width):
 				if to_spawn_enemy.is_empty():
 					break
 				

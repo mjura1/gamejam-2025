@@ -2,9 +2,10 @@
 extends Node
 
 # Party Management
-var active_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
+var friendly_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
 var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
 var active_enemies: Array[String]
+var active_party: Array[String]
 
 var max_party_size = 32
 var snowCount = 6
@@ -17,11 +18,11 @@ func _ready():
 
 # ----------------- PARTY MANAGEMENT (Aktivna ekipa) -----------------
 
-func add_to_active_party(character):
-	if active_party.size() < max_party_size:
+func add_to_friendly_party(character):
+	if friendly_party.size() < max_party_size:
 		print("char name ", character)
-		active_party.append(character)
-		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % active_party.size())
+		friendly_party.append(character)
+		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % friendly_party.size())
 
 # ----------------- SMRT IN OŽIVITEV (Revive) -----------------
 
@@ -35,6 +36,7 @@ func register_dead_character(character):
 		if character == item:
 			active_enemies.erase(character)
 			break
+	print(friendly_party)
 	print(active_party)
 	print(enemy_party)
 	print(active_enemies)
@@ -42,8 +44,9 @@ func register_dead_character(character):
 func add_to_enemy_party(character):
 	enemy_party.append(character)
 
-func resetActiveEnemies():
+func resetActives():
 	active_enemies = enemy_party.duplicate()
+	active_party = friendly_party.duplicate()
 
 func addSnow():
 	snowCount += 2

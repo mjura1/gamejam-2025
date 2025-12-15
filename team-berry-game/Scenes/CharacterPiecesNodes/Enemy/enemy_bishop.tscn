@@ -5,7 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://56d17a7e0a8n" path="res://Assets/Sprites/enemy_bishop.png" id="2_x3ayq"]
 
 [node name="EnemyBishop" instance=ExtResource("1_1gt11")]
-scale = Vector2(0.1, 0.1)
+scale = Vector2(0.08, 0.08)
 script = ExtResource("2_wtdry")
 is_enemy = true
 

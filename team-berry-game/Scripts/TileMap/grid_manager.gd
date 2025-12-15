@@ -73,7 +73,7 @@ func register_all_characters_in_scene():
 			# 3. Registracija v PlayerManager
 			if not char.is_enemy:
 				# KRITIČEN POPRAVEK: V PlayerManager shranimo objekt figure (char), NE SAMO IME!
-				player_manager.add_to_active_party(char) 
+				player_manager.add_to_friendly_party(char) 
 				found_allies += 1
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
