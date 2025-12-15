@@ -1,9 +1,5 @@
 extends Control
 
-# POPRAVEK: Izbrisana je bila neuporabna konstanta GF = preload(...).
-# Godot Autoload Singletonu dostopamo neposredno preko imena, ki ste mu ga dali 
-# v Project Settings (predpostavimo, da je to globalno ime 'GF').
-
 @onready var click_sound = $ClickStreamer
 
 # Called when the node enters the scene tree for the first time.
