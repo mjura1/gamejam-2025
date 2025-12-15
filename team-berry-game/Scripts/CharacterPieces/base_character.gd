@@ -177,8 +177,8 @@ func capture(target: BaseCharacter):
 	var target_pos = target.grid_pos
 	
 	# 1. Zajem/Smrt tarče
-	take_sound.play()
 	target.die()
+	take_sound.play()
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
@@ -303,6 +303,7 @@ func calculate_best_move() -> Dictionary:
 				"move_type": "CAPTURE",
 				"target_pos": pos
 			}
+			take_sound.play()
 
 
 	# ---------------------------------

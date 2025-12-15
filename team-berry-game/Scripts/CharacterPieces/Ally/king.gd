@@ -1,7 +1,7 @@
 extends BaseCharacter
 
 func _ready():
-	move_range = 1
+	move_range = 12
 	strName = "king"
 	super._ready()
 

@@ -2,8 +2,10 @@
 extends Node
 
 # Party Management
-var friendly_party: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"] # ČE JE TO PRAZNO JE IGRE KONEC
-var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
+var default_friends: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"]
+var default_enemies: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
+var friendly_party: Array[String]
+var enemy_party: Array[String]
 
 var active_enemies: Array[String]
 
@@ -50,6 +52,10 @@ func add_to_enemy_party(character):
 func resetActives():
 	active_enemies = enemy_party.duplicate()
 	active_party = friendly_party.duplicate()
+	
+func setStarting() -> void:
+	friendly_party = default_friends.duplicate()
+	enemy_party = default_enemies.duplicate()
 
 func addSnow():
 	snowCount += 2
