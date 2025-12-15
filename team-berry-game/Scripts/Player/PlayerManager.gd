@@ -12,6 +12,9 @@ var enemy_party: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
 var max_party_size = 32
 var snowCount = 0
 
+# NOVO: Sledenje napredku igralca na mapi (0 do 14)
+var current_map_floor: int = 0 
+
 func _ready():
 	print("PlayerManager naložen. Party size: %d" % [active_party.size()])
 
@@ -36,3 +39,8 @@ func add_to_enemy_party(character):
 	
 func addSnow():
 	snowCount += 3
+
+# NOVO: Funkcija za posodobitev trenutnega nadstropja (kliče se, ko igralec premaga sobo)
+func set_current_floor(floor: int):
+	current_map_floor = floor
+	print("PlayerManager: Igralec je sedaj na nadstropju %d." % current_map_floor)
