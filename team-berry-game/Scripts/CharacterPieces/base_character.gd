@@ -164,6 +164,7 @@ func die():
 		GF.return_to_map()
 		
 	if player_manager.activeGone():
+		PlayerManager.reset_floor_number()
 		GF.game_over()
 	
 	queue_free() # Uniči vozlišče

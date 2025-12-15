@@ -74,6 +74,9 @@ func set_current_floor(new_floor: int):
 		current_map_floor = current_map_floor + 1
 		print("PlayerManager: Ohranjeno nadstropje: %d (novo nadstropje je bilo %d)." % [current_map_floor, new_floor])
 
+func reset_floor_number():
+	current_map_floor = 0
+
 func activeGone() -> bool:
 	if active_party.is_empty():
 		return true
