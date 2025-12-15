@@ -3,7 +3,7 @@ extends Node
 class_name GridManager
 
 # ===============================================
-# FOG OF WAR (NOVO)
+# FOG OF WAR 
 # ===============================================
 
 # Pot do scene, ki predstavlja eno polje megle
@@ -72,7 +72,6 @@ func register_all_characters_in_scene():
 			
 			# 3. Registracija v PlayerManager
 			if not char.is_enemy:
-				# KRITIČEN POPRAVEK: V PlayerManager shranimo objekt figure (char), NE SAMO IME!
 				player_manager.add_to_friendly_party(char) 
 				found_allies += 1
 		else:
