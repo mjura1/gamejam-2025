@@ -61,7 +61,7 @@ func _ready() -> void:
 					break
 					
 				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
-				if randf() < 0.01 or grid_manager.is_occupied(Vector2i(x, y)):
+				if randf() < 0.8 or grid_manager.is_occupied(Vector2i(x, y)):
 					continue
 					
 				var piece_name = to_spawn_ally.pop_at(randi_range(0, to_spawn_ally.size() - 1))
@@ -84,13 +84,13 @@ func _ready() -> void:
 	var enemy_spawn_rows = [0, 1]
 	
 	while not to_spawn_enemy.is_empty():	
-		for y in range(0, 1):
+		for y in enemy_spawn_rows:
 			for x in range(0, map_width):
 				if to_spawn_enemy.is_empty():
 					break
 				
 				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
-				if randf() < 0.01 or grid_manager.is_occupied(Vector2i(x, y)):
+				if randf() < 0.8 or grid_manager.is_occupied(Vector2i(x, y)):
 					continue
 					
 				var piece_name = to_spawn_enemy.pop_at(randi_range(0, to_spawn_enemy.size() - 1))
