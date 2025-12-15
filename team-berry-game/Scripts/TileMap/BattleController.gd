@@ -20,7 +20,7 @@ enum BattleState {
 
 var current_state: int = BattleState.INITIALIZING
 var turn_count: int = 0
-
+var input_locked: bool = false
 
 # ----------------- INITIALIZATION -----------------
 
@@ -43,8 +43,13 @@ func initialize_battle():
 	start_player_turn()
 
 # ----------------- TURN LOGIC -----------------
-
+func player_can_act() -> bool:
+	return (
+		current_state == BattleState.PLAYER_TURN
+		and not input_locked
+	)
 func start_player_turn():
+	input_locked = false
 	turn_count += 1
 	current_state = BattleState.PLAYER_TURN
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
@@ -55,14 +60,21 @@ func start_player_turn():
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
-	
+
 	# Preklopimo na naslednjo fazo (npr. nasprotnikovo potezo)
+	start_enemy_turn_delayed()
+
+func start_enemy_turn_delayed() -> void:
+	input_locked = true
+	await get_tree().create_timer(0.5).timeout
 	start_enemy_turn()
 
 func start_enemy_turn():
 	current_state = BattleState.ENEMY_TURN
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
-
+	
+	
+	
 	for char in grid_manager.get_all_characters():
 		if not char.is_enemy:
 			continue

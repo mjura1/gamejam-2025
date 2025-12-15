@@ -14,6 +14,7 @@ var is_panicking: bool = false
 # ----------------- REFERENCE -----------------
 # GridManager zdaj ročno dodeli referenco
 var grid_manager
+@onready var battle_controller = get_node("/root/Battle/BattleController")
 @onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var player_manager = get_node("/root/PlayerManager")
 
@@ -114,7 +115,8 @@ func execute_move(target: Vector2i):
 	
 	
 func try_move(target: Vector2i) -> bool:
-	
+	if not battle_controller.player_can_act():
+		return false
 	# 1. Ali je tarča veljavna tarča za premik/zajetje?
 	if target not in calculate_valid_targets():
 		return false
