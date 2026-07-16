@@ -15,7 +15,7 @@ func _ready():
 	if is_instance_valid(grid_manager):
 		cell_size = grid_manager.cell_size
 	else:
-		push_error("MoveHighlighter: GridManager ni najden na poti /root/Node/GridManager.")
+		push_error("MoveHighlighter: GridManager ni najden na poti ../GridManager.")
 
 func show_moves(moves: Array[Vector2i]):
  #"""Sprejme seznam veljavnih pozicij in sproži ponovno risanje."""
