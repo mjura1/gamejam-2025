@@ -2041,9 +2041,6 @@ sources/1 = SubResource("TileSetAtlasSource_ddp7h")
 [node name="Battle" type="Node"]
 script = ExtResource("1_s8jfi")
 
-[node name="Border" type="Node2D" parent="."]
-script = ExtResource("3_mptdr")
-
 [node name="Map" type="Node2D" parent="."]
 script = ExtResource("1_t1742")
 
@@ -2055,7 +2052,7 @@ tile_set = SubResource("TileSet_aynew")
 script = ExtResource("2_mabft")
 tile_map = NodePath("../Map/TileMapLayer")
 
-[node name="Broder" type="Node2D" parent="GridManager"]
+[node name="Border" type="Node2D" parent="GridManager"]
 script = ExtResource("3_mptdr")
 
 [node name="BattleController" parent="." instance=ExtResource("1_2wj6q")]
