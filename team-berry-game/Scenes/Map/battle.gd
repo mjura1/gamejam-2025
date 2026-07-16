@@ -1,8 +1,6 @@
 extends Node
 
 @onready var grid_manager = $GridManager
-@onready var move_sound = $MoveSound
-@onready var take_sound = $TakeSound
 @onready var battle_controller = $BattleController # Dodana referenca za zagon bitke
 
 const obstacle = "res://Scenes/CharacterPiecesNodes/Neutral/House.tscn"
@@ -103,5 +101,3 @@ func _ready() -> void:
 	
 	
 
-func _process(delta: float) -> void:
-	pass
