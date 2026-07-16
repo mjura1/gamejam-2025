@@ -55,8 +55,6 @@ func register_all_characters_in_scene():
 		print("GridManager: Registracija figur končana. Velikost ekipe: 0")
 		return
 
-	var found_allies = 0
-	
 	for node in character_nodes:
 		# Pazi: BaseCharacter mora biti pravilno definiran kot razred v svoji skripti
 		if node is BaseCharacter:
@@ -71,11 +69,6 @@ func register_all_characters_in_scene():
 			
 			# 2. Inicializacija mreže
 			char.on_grid_manager_registered()
-			
-			# 3. Registracija v PlayerManager
-			if not char.is_enemy:
-				player_manager.add_to_friendly_party(char) 
-				found_allies += 1
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
 			

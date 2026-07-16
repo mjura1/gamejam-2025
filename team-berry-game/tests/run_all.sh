@@ -28,8 +28,6 @@ echo
 # When you land the matching task, delete its line here so run_all.sh starts
 # hard-failing on any regression instead of silently tolerating it.
 KNOWN_BATTLE_ERROR_PATTERNS=(
-	"Attempted to push_back a variable of type 'Object' into a TypedArray of type 'String'"  # C2, fixed by T4.1
-	'Condition "!_p->typed.validate\(value, "push_back"\)" is true'                             # C2 companion line, fixed by T4.1
 	'Node not found: "MoveSound" \(relative to "/root/Battle/'                                 # M3/House, fixed by T4.7
 	'Node not found: "TakeSound" \(relative to "/root/Battle/'                                 # M3/House, fixed by T4.7
 )
