@@ -114,24 +114,25 @@ func end_enemy_turn():
 
 # Ta funkcija posodobi meglo na podlagi trenutnih pozicij figur
 func update_fog_after_turn_start():
-	if not is_instance_valid(grid_manager) or not is_instance_valid(player_manager):
+	if not is_instance_valid(grid_manager):
 		return
-	
-	var reveal_positions: Array[Vector2i] = []
-	
-	# 1. Zberemo pozicije vseh figur zaveznikov
-	for char in player_manager.active_party:
-		# Ker PlayerManager sedaj shrani BaseCharacter objekte po spawn-u, to preverjanje zagotovi, 
-		# da obdelujemo le veljavne figure.
-		if is_instance_valid(char): 
-			var char_pos = char.grid_pos
-			
-			# 2. Izračunamo vsa polja, ki jih je treba razkriti (3x3 območje)
-			for x in range(-1, 2):
-				for y in range(-1, 2):
-					var new_pos = char_pos + Vector2i(x, y)
-					if new_pos not in reveal_positions:
-						reveal_positions.append(new_pos)
 
-	# 3. Naročimo GridManagerju, da razkrije (odstrani meglo) na teh poljih
+	var reveal_positions: Array[Vector2i] = []
+
+	# Zberemo pozicije vseh ŽIVIH zavezniških figur na mreži
+	for character in grid_manager.get_all_characters():
+		if not (character is BaseCharacter):
+			continue
+		if character.is_enemy or character.is_obstacle:
+			continue
+
+		var char_pos: Vector2i = character.grid_pos
+
+		# Razkrijemo 3x3 območje okoli figure
+		for x in range(-1, 2):
+			for y in range(-1, 2):
+				var new_pos = char_pos + Vector2i(x, y)
+				if new_pos not in reveal_positions:
+					reveal_positions.append(new_pos)
+
 	grid_manager.reveal_area(reveal_positions)
