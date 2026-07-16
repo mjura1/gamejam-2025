@@ -1,4 +1,4 @@
-# res://Scripts/Battle/map_behaviour.gd
+# res://Scripts/map_behaviour.gd
 extends Node2D
 
 # ===============================================

@@ -1,4 +1,4 @@
-# res://Scripts/GridManager.gd
+# res://Scripts/TileMap/grid_manager.gd
 extends Node
 class_name GridManager
 
@@ -106,10 +106,6 @@ func get_character_at(grid_pos: Vector2i):
 
 func get_all_characters():
 	return occupied.values()
-
-
-
-# res://Scripts/GridManager.gd
 
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)

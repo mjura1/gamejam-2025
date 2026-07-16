@@ -1,4 +1,4 @@
-# res://Scripts/UI/PartyPanel.gd
+# res://Scripts/Menu/PartyPanel.gd
 extends Control
 
 const CHARACTER_ICON_SCENE = preload("res://Scenes/Menu/character_icon.tscn") 

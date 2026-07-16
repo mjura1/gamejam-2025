@@ -1,4 +1,4 @@
-# res://Scripts/Battle/MoveHighlighter.gd
+# res://Scripts/TileMap/move_highlighter.gd
 extends Node2D
 
 # Referenci na GridManager in velikost celice

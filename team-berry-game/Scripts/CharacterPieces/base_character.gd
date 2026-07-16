@@ -1,4 +1,4 @@
-# res://Scripts/BaseCharacter.gd
+# res://Scripts/CharacterPieces/base_character.gd
 extends Node2D
 class_name BaseCharacter
 

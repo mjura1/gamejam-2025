@@ -1,4 +1,4 @@
-# res://Scripts/PlayerManager.gd
+# res://Scripts/Player/PlayerManager.gd
 extends Node
 
 # Party Management
