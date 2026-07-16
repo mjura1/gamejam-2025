@@ -14,7 +14,7 @@ var is_panicking: bool = false
 # ----------------- REFERENCE -----------------
 # GridManager zdaj ročno dodeli referenco
 var grid_manager
-@onready var battle_controller = get_node("/root/Battle/BattleController")
+@onready var battle_controller = get_node("../BattleController")
 @onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var player_manager = get_node("/root/PlayerManager")
 
