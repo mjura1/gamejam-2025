@@ -147,26 +147,20 @@ func try_move(target: Vector2i) -> bool:
 
 # ----------------- SMRT IN ZAJETJE (KLJUČNO ZA REVIVE) -----------------
 
-# Odstranitev figure iz igre (umre)
+# Odstranitev figure iz igre (umre). Funkcija SAMO poroča in odstrani figuro -
+# konec bitke po koncu akcije zazna BattleController.check_battle_end().
 func die():
 	print("Figura %s je bila uničena in odstranjena." % name)
-	
+
 	# Osvobodi polje na mreži
 	if is_instance_valid(grid_manager):
 		grid_manager.vacate(grid_pos)
-	
-	if is_enemy == true:
+
+	if is_enemy:
 		player_manager.register_dead_character("enemy_" + strName)
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
-	
-	if player_manager.enemyGone():
-		GF.return_to_map()
-		
-	if player_manager.activeGone():
-		PlayerManager.reset_floor_number()
-		GF.game_over()
-	
+
 	queue_free() # Uniči vozlišče
 
 # Logika zajetja tarče in premika napadalca na tarčino polje

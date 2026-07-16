@@ -64,7 +64,10 @@ func start_player_turn():
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
 
-	# Preklopimo na naslednjo fazo (npr. nasprotnikovo potezo)
+	if check_battle_end():
+		return
+
+	# Preklopimo na naslednjo fazo (nasprotnikovo potezo)
 	start_enemy_turn_delayed()
 
 func start_enemy_turn_delayed() -> void:
@@ -79,35 +82,51 @@ func start_enemy_turn():
 		push_error("GridManager ni veljaven za AI potezo.")
 		end_enemy_turn()
 		return
-	
-	for char in grid_manager.get_all_characters():
-		if not char.is_enemy:
+
+	for character in grid_manager.get_all_characters():
+		if not (character is BaseCharacter):
+			continue
+		if not character.is_enemy:
 			continue
 
-		if not char is BaseCharacter:
-			continue
-
-		var action = char.calculate_best_move()
+		var action = character.calculate_best_move()
 		if action.is_empty():
 			continue
 
-		# Uporaba try_move za preverjanje zasedenosti in zajetje tarče
-		match action.get("move_type", ""):
-			"CAPTURE":
-				char.try_move(action["target_pos"])
-			"MOVE":
-				
-				char.execute_move(action["target_pos"]) # Uporabimo try_move, ki znotraj sebe kliče execute_move/capture
-			_:
-				print("Opozorilo: Nepričakovan move_type v AI akciji.")
+		# try_move sam ponovno preveri veljavnost tarče in izvede premik ALI zajetje
+		character.try_move(action["target_pos"])
+
+		# Če je ta akcija končala bitko, takoj prekinemo potezo
+		if check_battle_end():
+			return
 
 	end_enemy_turn()
 
 
 func end_enemy_turn():
 	print("<<< KONEC POTEZE SOVRAŽNIKA >>>")
-	
+
 	start_player_turn()
+
+# Preveri, ali je bitke konec, in po potrebi sproži prehod scene.
+# Prehod je call_deferred, da se trenutna akcija (capture/premik) varno dokonča,
+# preden GameFlow odstrani sceno iz drevesa.
+func check_battle_end() -> bool:
+	if not is_instance_valid(player_manager):
+		return false
+
+	if player_manager.enemyGone():
+		current_state = BattleState.GAME_OVER
+		GF.call_deferred("return_to_map")
+		return true
+
+	if player_manager.activeGone():
+		current_state = BattleState.GAME_OVER
+		player_manager.reset_floor_number()
+		GF.call_deferred("game_over")
+		return true
+
+	return false
 
 # ----------------- FOG OF WAR LOGIC -----------------
 

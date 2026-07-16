@@ -47,6 +47,21 @@ check_scene() {
 	fi
 }
 
+check_script() {
+	local label="$1" script_path="$2" quit_after="$3"
+	local out
+	out=$("$GODOT" --headless --path . --script "$script_path" --quit-after "$quit_after" 2>&1)
+	local errors
+	errors=$(echo "$out" | grep "^ERROR" | grep -v "resources still in use at exit" || true)
+	if [ -z "$errors" ]; then
+		echo "PASS: $label"
+	else
+		echo "FAIL: $label"
+		echo "$errors" | sed 's/^/    /'
+		OVERALL_FAIL=1
+	fi
+}
+
 echo "== Scene load smoke tests =="
 check_scene "main_menu.tscn" "res://Scenes/Menu/main_menu.tscn"
 check_scene "map.tscn" "res://Scenes/Map/map.tscn"
@@ -71,6 +86,10 @@ if [ -n "$(echo "$UNKNOWN_ERRORS" | tr -d '[:space:]')" ]; then
 else
 	echo "PASS: smoke_battle ($KNOWN_COUNT known outstanding error lines tolerated - see KNOWN_BATTLE_ERROR_PATTERNS)"
 fi
+echo
+
+echo "== Battle-end smoke test (res://tests/smoke/smoke_battle_end.gd) =="
+check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 8
 echo
 
 if [ "$OVERALL_FAIL" -ne 0 ]; then
