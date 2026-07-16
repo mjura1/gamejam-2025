@@ -39,7 +39,6 @@ func _ready() -> void:
 		return
 	
 	# Logika za dodajanje figur ostane v _ready()
-	print("test")
 	to_spawn_ally = player_manager.active_party.duplicate(true)
 	to_spawn_enemy = player_manager.enemy_party.duplicate(true)
 	

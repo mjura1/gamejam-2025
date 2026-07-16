@@ -27,9 +27,11 @@ var occupied := {}
 # ----------------- INITIALIZATION -----------------
 
 func _ready():
-	print("DEBUG: GridManager ready. TileMap referenca (v ready): " + str(is_instance_valid(tile_map)))
-	
-	# register_all_characters_in_scene() se kliče v BattleControllerju ali spawn_character()
+	# tile_map (@export zgoraj) MORA biti ročno povezan v urejevalniku/scene datoteki
+	# preden se bitka zažene - initialize_all_fog() brez njega samo izpiše push_error
+	# in megla se nikoli ne generira (glej Scenes/test_sandbox.tscn za primer popravka).
+	if not is_instance_valid(tile_map):
+		push_warning("GridManager: tile_map ni povezan - fog of war ne bo deloval.")
 
 func spawn_character(characterScene: String, pos: Vector2):
 	var ps: PackedScene = load(characterScene)
