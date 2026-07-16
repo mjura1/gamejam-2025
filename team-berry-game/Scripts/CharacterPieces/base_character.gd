@@ -303,7 +303,6 @@ func calculate_best_move() -> Dictionary:
 				"move_type": "CAPTURE",
 				"target_pos": pos
 			}
-			take_sound.play()
 
 
 	# ---------------------------------
