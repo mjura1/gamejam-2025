@@ -83,6 +83,12 @@ func start_enemy_turn():
 		return
 
 	for character in grid_manager.get_all_characters():
+		# Snapshot may contain a piece captured earlier in this same loop -
+		# await below means real frames pass, so queue_free() can have
+		# actually deallocated it by the time we get here (unlike the old
+		# fully-synchronous version, where nothing was freed mid-loop yet).
+		if not is_instance_valid(character):
+			continue
 		if not (character is BaseCharacter):
 			continue
 		if not character.is_enemy:

@@ -105,6 +105,8 @@ echo
 echo "== Enemy turn pacing / move visualizer smoke test =="
 check_script "smoke_enemy_turn_pacing" "res://tests/smoke/smoke_enemy_turn_pacing.gd" 200 \
 	"SMOKE TEST: enemy turn completed after"
+check_script "smoke_enemy_turn_stale_reference (regression)" "res://tests/smoke/smoke_enemy_turn_stale_reference.gd" 250 \
+	"SMOKE TEST: enemy turn completed without crashing"
 echo
 
 if [ "$OVERALL_FAIL" -ne 0 ]; then
