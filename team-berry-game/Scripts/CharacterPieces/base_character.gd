@@ -189,11 +189,11 @@ func can_see_player(max_view_range: int) -> BaseCharacter:
 				break
 
 			if grid_manager.is_occupied(check_pos):
-				var char = grid_manager.get_character_at(check_pos)
+				var seen_char = grid_manager.get_character_at(check_pos)
 
 				# Sees player
-				if char and char.is_enemy != is_enemy and not char.is_obstacle:
-					return char
+				if seen_char and seen_char.is_enemy != is_enemy and not seen_char.is_obstacle:
+					return seen_char
 
 				# Vision blocked by any piece (or obstacle)
 				break
@@ -259,17 +259,17 @@ func calculate_best_move() -> Dictionary:
 	var closest_player: BaseCharacter = null
 	var min_distance := INF
 
-	for char in grid_manager.get_all_characters():
-		if char.is_enemy == is_enemy:
-			continue
-		
-		if not char is BaseCharacter:
+	for nearby_char in grid_manager.get_all_characters():
+		if nearby_char.is_enemy == is_enemy:
 			continue
 
-		var dist = grid_pos.distance_to(char.grid_pos)
+		if not nearby_char is BaseCharacter:
+			continue
+
+		var dist = grid_pos.distance_to(nearby_char.grid_pos)
 		if dist <= move_range and dist < min_distance:
 			min_distance = dist
-			closest_player = char
+			closest_player = nearby_char
 
 	# Update tracking if visible this turn
 	if closest_player:
