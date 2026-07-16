@@ -207,7 +207,7 @@ func _assign_room_types():
 				FLOORS - 1:
 					room.type = Room.RoomType.enemy_king
 				
-				# Nadstropje 9: kraljica
+				# Nadstropje 9: prijateljski kralj
 				9:
 					room.type = Room.RoomType.friendly_king
 				
