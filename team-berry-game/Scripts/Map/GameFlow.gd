@@ -81,8 +81,14 @@ func _change_scene_instance(new_instance: Node):
 
 func game_over():
 	print("GF: Player lost. Returning to Main Menu.")
-
-	game_initialized = false
-	current_map_instance = null
-
+	_end_run()
 	_change_scene_instance(MAIN_MENU_SCENE.instantiate())
+
+
+# Počisti stanje trenutnega runa. Mapa med bitkami živi IZVEN drevesa,
+# zato je get_tree() ne sprosti sam - brez tega klica pušča spomin (leak).
+func _end_run():
+	game_initialized = false
+	if is_instance_valid(current_map_instance) and not current_map_instance.is_inside_tree():
+		current_map_instance.queue_free()
+	current_map_instance = null

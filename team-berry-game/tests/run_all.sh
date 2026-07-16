@@ -48,17 +48,24 @@ check_scene() {
 }
 
 check_script() {
-	local label="$1" script_path="$2" quit_after="$3"
+	# expect_str: a substring that MUST appear in the output for a real pass -
+	# not just "no errors". A script that silently no-ops (as smoke_battle_end/
+	# smoke_battle_loss did before their MainLoop return-value bug was found)
+	# produces zero ERROR lines too, so absence of errors alone proves nothing.
+	local label="$1" script_path="$2" quit_after="$3" expect_str="$4"
 	local out
 	out=$("$GODOT" --headless --path . --script "$script_path" --quit-after "$quit_after" 2>&1)
 	local errors
 	errors=$(echo "$out" | grep "^ERROR" | grep -v "resources still in use at exit" || true)
-	if [ -z "$errors" ]; then
-		echo "PASS: $label"
-	else
-		echo "FAIL: $label"
+	if [ -n "$errors" ]; then
+		echo "FAIL: $label - unexpected errors"
 		echo "$errors" | sed 's/^/    /'
 		OVERALL_FAIL=1
+	elif [ -n "$expect_str" ] && ! echo "$out" | grep -qF "$expect_str"; then
+		echo "FAIL: $label - expected confirmation not found: \"$expect_str\""
+		OVERALL_FAIL=1
+	else
+		echo "PASS: $label"
 	fi
 }
 
@@ -88,8 +95,11 @@ else
 fi
 echo
 
-echo "== Battle-end smoke test (res://tests/smoke/smoke_battle_end.gd) =="
-check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 8
+echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
+check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
+	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"
+check_script "smoke_battle_loss (LOSS path, map-leak check)" "res://tests/smoke/smoke_battle_loss.gd" 15 \
+	"SMOKE TEST: old (detached) map instance was freed - no leak"
 echo
 
 if [ "$OVERALL_FAIL" -ne 0 ]; then

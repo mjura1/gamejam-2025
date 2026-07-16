@@ -4,9 +4,15 @@ extends SceneTree
 # T5.1 fixed: die() no longer directly calls GF.return_to_map()/game_over()
 # mid-capture; BattleController.check_battle_end() does it instead, deferred,
 # after the action that ended the battle has fully resolved.
-# Run with: godot4 --headless --path . --script res://tests/smoke/smoke_battle_end.gd --quit-after 6
+# Run with: godot4 --headless --path . --script res://tests/smoke/smoke_battle_end.gd --quit-after 10
+#
+# IMPORTANT: MainLoop._process() returning true TERMINATES the loop, false
+# continues it - this script always returns false and lets --quit-after cut
+# it off, so deferred calls (call_deferred) get frames to actually fire
+# before the process ever stops.
 
 var killed_enemies := false
+var checked_result := false
 
 func _initialize():
 	print(">>> SMOKE TEST: battle-end WIN path (C7/T5.1) <<<")
@@ -26,20 +32,27 @@ func _initialize():
 	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
 	var battle_instance = battle_scene.instantiate()
 	root.add_child(battle_instance)
+	# _change_scene_instance() only removes/frees the OLD scene when it matches
+	# get_tree().current_scene - the real game flow always sets this via the
+	# previous transition, so replicate it or the removal silently no-ops.
+	current_scene = battle_instance
 
 func _process(_delta: float) -> bool:
 	var battle_instance = root.get_node_or_null("Battle")
+
 	if battle_instance == null:
-		print(">>> SMOKE TEST: Battle scene left the tree - transition happened cleanly <<<")
+		if not checked_result:
+			checked_result = true
+			print(">>> SMOKE TEST: Battle scene left the tree - transition happened cleanly <<<")
 		return false
 
 	if killed_enemies:
-		return true # give the deferred call a frame to fire
+		return false # give the deferred call more frames to fire
 
 	var grid_manager = battle_instance.get_node_or_null("GridManager")
 	var battle_controller = battle_instance.get_node_or_null("BattleController")
 	if grid_manager == null or battle_controller == null:
-		return true # still spawning
+		return false # still spawning
 
 	var enemies: Array = []
 	for character in grid_manager.get_all_characters():
@@ -47,7 +60,7 @@ func _process(_delta: float) -> bool:
 			enemies.append(character)
 
 	if enemies.is_empty():
-		return true # pieces haven't spawned yet
+		return false # pieces haven't spawned yet
 
 	print(">>> SMOKE TEST: killing %d enemies to force a WIN <<<" % enemies.size())
 	for enemy in enemies:
@@ -56,4 +69,4 @@ func _process(_delta: float) -> bool:
 
 	# Same check the real turn loop runs right after an action resolves.
 	battle_controller.check_battle_end()
-	return true
+	return false
