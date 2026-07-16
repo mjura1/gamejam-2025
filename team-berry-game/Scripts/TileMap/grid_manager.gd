@@ -33,12 +33,11 @@ func _ready():
 	if not is_instance_valid(tile_map):
 		push_warning("GridManager: tile_map ni povezan - fog of war ne bo deloval.")
 
-func spawn_character(characterScene: String, pos: Vector2):
-	var ps: PackedScene = load(characterScene)
-	var character = ps.instantiate()
+func spawn_character(characterScene: PackedScene, pos: Vector2):
+	var character = characterScene.instantiate()
 
 	character.position = pos
-	character.name = "%s_%d" % [characterScene.get_file().get_basename(), occupied.size()]
+	character.name = "%s_%d" % [characterScene.resource_path.get_file().get_basename(), occupied.size()]
 	get_parent().add_child(character)
 	character.add_to_group("characters")
 

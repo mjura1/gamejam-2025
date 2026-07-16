@@ -3,30 +3,30 @@ extends Node
 @onready var grid_manager = $GridManager
 @onready var battle_controller = $BattleController # Dodana referenca za zagon bitke
 
-const obstacle = "res://Scenes/CharacterPiecesNodes/Neutral/House.tscn"
+const obstacle: PackedScene = preload("res://Scenes/CharacterPiecesNodes/Neutral/House.tscn")
 
 # Enostavna deklaracija brez tipnih namigov, da se izognemo sintaktičnim napakam
 var to_spawn_enemy
-var to_spawn_ally 
+var to_spawn_ally
 
 # Friendly pieces dictionary
 const friendly_pieces := {
-	"friendly_pawn": "res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn",
-	"friendly_rook": "res://Scenes/CharacterPiecesNodes/Ally/rook.tscn",
-	"friendly_bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
-	"friendly_knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
-	"friendly_king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
-	"friendly_queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
+	"friendly_pawn": preload("res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn"),
+	"friendly_rook": preload("res://Scenes/CharacterPiecesNodes/Ally/rook.tscn"),
+	"friendly_bishop": preload("res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn"),
+	"friendly_knight": preload("res://Scenes/CharacterPiecesNodes/Ally/knight.tscn"),
+	"friendly_king": preload("res://Scenes/CharacterPiecesNodes/Ally/king.tscn"),
+	"friendly_queen": preload("res://Scenes/CharacterPiecesNodes/Ally/queen.tscn")
 }
 
 # Enemy pieces dictionary
 const enemy_pieces := {
-	"enemy_pawn": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn",
-	"enemy_rook": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn",
-	"enemy_bishop": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn",
-	"enemy_knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
-	"enemy_king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
-	"enemy_queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
+	"enemy_pawn": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn"),
+	"enemy_rook": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn"),
+	"enemy_bishop": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn"),
+	"enemy_knight": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn"),
+	"enemy_king": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn"),
+	"enemy_queen": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn")
 }
 	
 
