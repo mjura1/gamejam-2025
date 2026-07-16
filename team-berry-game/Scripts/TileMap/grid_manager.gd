@@ -38,6 +38,7 @@ func spawn_character(characterScene: String, pos: Vector2):
 	var character = ps.instantiate()
 
 	character.position = pos
+	character.name = "%s_%d" % [characterScene.get_file().get_basename(), occupied.size()]
 	get_parent().add_child(character)
 	character.add_to_group("characters")
 
