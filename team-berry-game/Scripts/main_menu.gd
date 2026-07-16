@@ -1,7 +1,5 @@
 extends Control
 
-@onready var click_sound = $ClickStreamer
-
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	# Preverjanje za debug: Prepričamo se, da je GF dostopen ob zagonu
@@ -13,10 +11,6 @@ func _ready() -> void:
 func _on_button_pressed():
 	UiAudio.play_click()
 	print("predvajam zvok")
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
 
 func _on_start_pressed():
 	print("Start pressed. Sprožam zagon igre...")
