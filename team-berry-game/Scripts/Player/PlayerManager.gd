@@ -79,8 +79,8 @@ func reset_floor_number():
 
 func activeGone() -> bool:
 	if active_party.is_empty():
-		return true
 		print("active gone")
+		return true
 	return false
 	
 func enemyGone() -> bool:
