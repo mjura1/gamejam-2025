@@ -24,10 +24,9 @@ var input_locked: bool = false # Nova spremenljivka, ohranjena
 # ----------------- INITIALIZATION -----------------
 
 func _ready():
-	# Inicializiramo logiko bitke, vključno z meglo
-	if is_instance_valid(grid_manager):
-		initialize_battle()
-	else:
+	# Bitko inicializira battle.gd (Scenes/Map/battle.gd) PO spawnu figur,
+	# zato tukaj samo preverimo reference.
+	if not is_instance_valid(grid_manager):
 		push_error("BattleController: GridManager ni najden. Inicializacija bitke ni mogoča.")
 
 
