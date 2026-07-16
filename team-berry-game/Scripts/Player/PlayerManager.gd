@@ -61,18 +61,12 @@ func addSnow():
 	snowCount += 2
 
 # Funkcija za posodobitev trenutnega nadstropja (kliče se, ko igralec premaga sobo)
+# Posodobi napredek igralca. new_floor je INDEKS NADSTROPJA sobe (grid_position.x).
+# Vrednost samo narašča - nikoli ne pada.
 func set_current_floor(new_floor: int):
-	# Logika, ki preprečuje, da bi se current_map_floor zmanjšal
-	if new_floor > 10:
-		current_map_floor = 10
-		
 	if new_floor > current_map_floor:
-		current_map_floor = current_map_floor + 1
+		current_map_floor = new_floor
 		print("PlayerManager: Igralec je sedaj na nadstropju %d." % current_map_floor)
-	else:
-		# Če je novo nadstropje nižje ali enako, ohrani najvišjo vrednost
-		current_map_floor = current_map_floor + 1
-		print("PlayerManager: Ohranjeno nadstropje: %d (novo nadstropje je bilo %d)." % [current_map_floor, new_floor])
 
 func reset_floor_number():
 	current_map_floor = 0
