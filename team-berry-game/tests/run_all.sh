@@ -107,6 +107,8 @@ check_script "smoke_enemy_turn_pacing" "res://tests/smoke/smoke_enemy_turn_pacin
 	"SMOKE TEST: enemy turn completed after"
 check_script "smoke_enemy_turn_stale_reference (regression)" "res://tests/smoke/smoke_enemy_turn_stale_reference.gd" 250 \
 	"SMOKE TEST: enemy turn completed without crashing"
+check_script "smoke_enemy_turn_highlight_reset (regression)" "res://tests/smoke/smoke_enemy_turn_highlight_reset.gd" 15 \
+	"SMOKE TEST: leftover flash correctly cleared when new enemy turn started"
 echo
 
 if [ "$OVERALL_FAIL" -ne 0 ]; then

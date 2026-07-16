@@ -77,6 +77,11 @@ func start_enemy_turn():
 	current_state = BattleState.ENEMY_TURN
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
 
+	# Počisti poudarke prejšnjega kroga (tudi če še niso do konca izginili),
+	# da se ne mešajo s poudarki tega kroga.
+	if is_instance_valid(move_highlighter):
+		move_highlighter.clear_enemy_moves()
+
 	if not is_instance_valid(grid_manager):
 		push_error("GridManager ni veljaven za AI potezo.")
 		end_enemy_turn()
