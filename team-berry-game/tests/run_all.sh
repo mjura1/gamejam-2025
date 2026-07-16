@@ -111,6 +111,11 @@ check_script "smoke_enemy_turn_highlight_reset (regression)" "res://tests/smoke/
 	"SMOKE TEST: leftover flash correctly cleared when new enemy turn started"
 echo
 
+echo "== test_sandbox.tscn smoke test =="
+check_script "smoke_test_sandbox (regression)" "res://tests/smoke/smoke_test_sandbox.gd" 5 \
+	"SMOKE TEST: all"
+echo
+
 if [ "$OVERALL_FAIL" -ne 0 ]; then
 	echo "=== RESULT: FAIL ==="
 else
