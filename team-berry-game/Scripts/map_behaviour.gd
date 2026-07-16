@@ -33,6 +33,7 @@ func _unhandled_input(event):
 			selected_character.selected = false
 			selected_character = null
 			move_highlighter.clear_moves()
+			tile_selector.clear_selection()
 		return
 
 	# Pokaži indikator klika (TileSelector)
@@ -50,6 +51,7 @@ func _unhandled_input(event):
 			selected_character.selected = false
 			selected_character = null
 			move_highlighter.clear_moves()
+			tile_selector.clear_selection()
 			return
 
 		# B) KLIK NA ŽE IZBRANO FIGURO (selected_character je nastavljen)
@@ -64,7 +66,8 @@ func _unhandled_input(event):
 					# Uspešno zajetje (captured)
 					selected_character = null
 					move_highlighter.clear_moves()
-					
+					tile_selector.clear_selection()
+
 					# Klic BattleControllerja za konec poteze igralca
 					if is_instance_valid(battle_controller):
 						battle_controller.end_player_turn() 
@@ -77,6 +80,7 @@ func _unhandled_input(event):
 					selected_character.selected = false
 					selected_character = null
 					move_highlighter.clear_moves()
+					tile_selector.clear_selection()
 					return
 
 
@@ -117,7 +121,8 @@ func _unhandled_input(event):
 			selected_character.selected = false
 			selected_character = null
 			move_highlighter.clear_moves()
-			
+			tile_selector.clear_selection()
+
 			# Klic BattleControllerja za konec poteze igralca
 			if is_instance_valid(battle_controller):
 				battle_controller.end_player_turn() 
@@ -128,3 +133,4 @@ func _unhandled_input(event):
 		selected_character.selected = false
 		selected_character = null
 		move_highlighter.clear_moves()
+		tile_selector.clear_selection()

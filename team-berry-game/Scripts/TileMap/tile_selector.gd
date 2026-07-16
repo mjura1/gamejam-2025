@@ -12,6 +12,10 @@ func select_tile(tile: Vector2i):
 	selected_tile = tile
 	queue_redraw()
 
+func clear_selection():
+	selected_tile = Vector2i(-1, -1)
+	queue_redraw()
+
 
 func _draw():
 	if selected_tile.x == -1:
