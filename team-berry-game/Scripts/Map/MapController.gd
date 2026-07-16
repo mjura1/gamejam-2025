@@ -6,8 +6,7 @@ class_name MapController
 const MapGenerator = preload("res://Scripts/Map/MapGenerator.gd")
 const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 
-@onready var map_camera: Camera2D = $MapCamera 
-@onready var click_sound = $ClickStreamer
+@onready var map_camera: Camera2D = $MapCamera
 
 var map_data: Array = []
 var room_node_map: Dictionary = {}
@@ -289,7 +288,8 @@ func _center_and_zoom_camera():
 func _on_room_selected(room_data: Room):
 	print("Igralec izbral sobo: %s pri %s" % [Room.RoomType.keys()[room_data.type], room_data.grid_position])
 	
-	var new_floor = room_data.grid_position.y # Predpostavka: Y koordinata mreže je nadstropje
+	# grid_position = Vector2i(nadstropje, stolpec) - glej MapGenerator._initialize_grid()
+	var new_floor = room_data.grid_position.x
 	
 	# Posodobitev globalnega stanja v PlayerManagerju
 	# PlayerManager naj bo globalno dostopen (npr. /root/PlayerManager)
@@ -303,13 +303,13 @@ func _on_room_selected(room_data: Room):
 	queue_redraw()
 
 func _handle_event(room_data: Room):
-	var name = Room.RoomTypeNames.get(room_data.type, "unknown_event")
-	print("Zagon %s..." % name)
-	
-	if name.begins_with("enemy_"):
-		PlayerManager.add_to_enemy_party(name)
+	var room_name = Room.RoomTypeNames.get(room_data.type, "unknown_event")
+	print("Zagon %s..." % room_name)
+
+	if room_name.begins_with("enemy_"):
+		PlayerManager.add_to_enemy_party(room_name)
 	else:
-		PlayerManager.add_to_friendly_party(name)
+		PlayerManager.add_to_friendly_party(room_name)
 	
 	PlayerManager.addSnow()
 	

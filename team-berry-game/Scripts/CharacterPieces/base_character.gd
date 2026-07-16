@@ -1,4 +1,4 @@
-# res://Scripts/BaseCharacter.gd
+# res://Scripts/CharacterPieces/base_character.gd
 extends Node2D
 class_name BaseCharacter
 
@@ -14,7 +14,7 @@ var is_panicking: bool = false
 # ----------------- REFERENCE -----------------
 # GridManager zdaj ročno dodeli referenco
 var grid_manager
-@onready var battle_controller = get_node("/root/Battle/BattleController")
+@onready var battle_controller = get_node("../BattleController")
 @onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var player_manager = get_node("/root/PlayerManager")
 
@@ -29,8 +29,8 @@ var grid_manager
 @export var strName: String
 
 # ----------------- audio -----------------------
-@onready var move_sound = $MoveSound
-@onready var take_sound = $TakeSound
+@onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
+@onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
 
 # ----------------- INITIALIZACIJA (KLJUČNA ZA IZBIRO) -----------------
 
@@ -94,7 +94,7 @@ func execute_move(target: Vector2i):
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
 	global_position = grid_manager.grid_to_world(grid_pos)
-	move_sound.play()
+	if move_sound: move_sound.play()
 	
 	# ===============================================
 	# FOG OF WAR (NOVO)
@@ -147,26 +147,20 @@ func try_move(target: Vector2i) -> bool:
 
 # ----------------- SMRT IN ZAJETJE (KLJUČNO ZA REVIVE) -----------------
 
-# Odstranitev figure iz igre (umre)
+# Odstranitev figure iz igre (umre). Funkcija SAMO poroča in odstrani figuro -
+# konec bitke po koncu akcije zazna BattleController.check_battle_end().
 func die():
 	print("Figura %s je bila uničena in odstranjena." % name)
-	
+
 	# Osvobodi polje na mreži
 	if is_instance_valid(grid_manager):
 		grid_manager.vacate(grid_pos)
-	
-	if is_enemy == true:
+
+	if is_enemy:
 		player_manager.register_dead_character("enemy_" + strName)
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
-	
-	if player_manager.enemyGone():
-		GF.return_to_map()
-		
-	if player_manager.activeGone():
-		PlayerManager.reset_floor_number()
-		GF.game_over()
-	
+
 	queue_free() # Uniči vozlišče
 
 # Logika zajetja tarče in premika napadalca na tarčino polje
@@ -178,7 +172,7 @@ func capture(target: BaseCharacter):
 	
 	# 1. Zajem/Smrt tarče
 	target.die()
-	take_sound.play()
+	if take_sound: take_sound.play()
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
@@ -195,11 +189,11 @@ func can_see_player(max_view_range: int) -> BaseCharacter:
 				break
 
 			if grid_manager.is_occupied(check_pos):
-				var char = grid_manager.get_character_at(check_pos)
+				var seen_char = grid_manager.get_character_at(check_pos)
 
 				# Sees player
-				if char and char.is_enemy != is_enemy and not char.is_obstacle:
-					return char
+				if seen_char and seen_char.is_enemy != is_enemy and not seen_char.is_obstacle:
+					return seen_char
 
 				# Vision blocked by any piece (or obstacle)
 				break
@@ -239,16 +233,16 @@ func calculate_best_move() -> Dictionary:
 	# 3. SLEPO ISKANJE (BLIND SEEK) - NOV DODATEK
 	# ---------------------------------
 	if not has_spotted_player:
-		var target_y = 7 # Ciljna vrstica (približna sredina bojišča, če je 12 vrstic)
+		const BLIND_SEEK_TARGET_ROW := 7 # Ciljna vrstica (približna sredina bojišča, če je 12 vrstic)
 		var best_move: Vector2i = grid_pos
-		var min_distance_sq = INF
-		
+		var min_distance := INF
+
 		# Izberemo potezo, ki sovražnika najbolj približa centru bojišča (navzdol)
 		for move_pos in valid_targets:
-			var distance_to_center = abs(move_pos.y - target_y)
-			
-			if distance_to_center < min_distance_sq:
-				min_distance_sq = distance_to_center
+			var distance_to_center = abs(move_pos.y - BLIND_SEEK_TARGET_ROW)
+
+			if distance_to_center < min_distance:
+				min_distance = distance_to_center
 				best_move = move_pos
 				
 		# Če se sploh lahko premakne
@@ -265,17 +259,17 @@ func calculate_best_move() -> Dictionary:
 	var closest_player: BaseCharacter = null
 	var min_distance := INF
 
-	for char in grid_manager.get_all_characters():
-		if char.is_enemy == is_enemy:
-			continue
-		
-		if not char is BaseCharacter:
+	for nearby_char in grid_manager.get_all_characters():
+		if nearby_char.is_enemy == is_enemy:
 			continue
 
-		var dist = grid_pos.distance_to(char.grid_pos)
+		if not nearby_char is BaseCharacter:
+			continue
+
+		var dist = grid_pos.distance_to(nearby_char.grid_pos)
 		if dist <= move_range and dist < min_distance:
 			min_distance = dist
-			closest_player = char
+			closest_player = nearby_char
 
 	# Update tracking if visible this turn
 	if closest_player:
@@ -303,7 +297,6 @@ func calculate_best_move() -> Dictionary:
 				"move_type": "CAPTURE",
 				"target_pos": pos
 			}
-			take_sound.play()
 
 
 	# ---------------------------------

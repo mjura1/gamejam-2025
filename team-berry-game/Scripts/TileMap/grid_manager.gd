@@ -1,4 +1,4 @@
-# res://Scripts/GridManager.gd
+# res://Scripts/TileMap/grid_manager.gd
 extends Node
 class_name GridManager
 
@@ -27,15 +27,17 @@ var occupied := {}
 # ----------------- INITIALIZATION -----------------
 
 func _ready():
-	print("DEBUG: GridManager ready. TileMap referenca (v ready): " + str(is_instance_valid(tile_map)))
-	
-	# register_all_characters_in_scene() se kliče v BattleControllerju ali spawn_character()
+	# tile_map (@export zgoraj) MORA biti ročno povezan v urejevalniku/scene datoteki
+	# preden se bitka zažene - initialize_all_fog() brez njega samo izpiše push_error
+	# in megla se nikoli ne generira (glej Scenes/test_sandbox.tscn za primer popravka).
+	if not is_instance_valid(tile_map):
+		push_warning("GridManager: tile_map ni povezan - fog of war ne bo deloval.")
 
-func spawn_character(characterScene: String, pos: Vector2):
-	var ps: PackedScene = load(characterScene)
-	var character = ps.instantiate()
+func spawn_character(characterScene: PackedScene, pos: Vector2):
+	var character = characterScene.instantiate()
 
 	character.position = pos
+	character.name = "%s_%d" % [characterScene.resource_path.get_file().get_basename(), occupied.size()]
 	get_parent().add_child(character)
 	character.add_to_group("characters")
 
@@ -53,8 +55,6 @@ func register_all_characters_in_scene():
 		print("GridManager: Registracija figur končana. Velikost ekipe: 0")
 		return
 
-	var found_allies = 0
-	
 	for node in character_nodes:
 		# Pazi: BaseCharacter mora biti pravilno definiran kot razred v svoji skripti
 		if node is BaseCharacter:
@@ -69,11 +69,6 @@ func register_all_characters_in_scene():
 			
 			# 2. Inicializacija mreže
 			char.on_grid_manager_registered()
-			
-			# 3. Registracija v PlayerManager
-			if not char.is_enemy:
-				player_manager.add_to_friendly_party(char) 
-				found_allies += 1
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
 			
@@ -90,9 +85,9 @@ func is_occupied(grid_pos: Vector2i) -> bool:
 
 func occupy(grid_pos: Vector2i, obj):
 	if is_occupied(grid_pos):
-		pass
-	else:
-		occupied[grid_pos] = obj
+		push_error("GridManager.occupy: polje %s je že zasedeno (poskus: %s)." % [grid_pos, obj])
+		return
+	occupied[grid_pos] = obj
 
 func vacate(grid_pos: Vector2i):
 	occupied.erase(grid_pos)
@@ -111,76 +106,45 @@ func get_character_at(grid_pos: Vector2i):
 func get_all_characters():
 	return occupied.values()
 
-
-
-# res://Scripts/GridManager.gd
-
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)
 # ===============================================
 
-## Klicano s strani BattleControllerja, da na novo inicializira meglo
-## current_map_floor: 0 (začetek) do 14 (Boss nadstropje)
+## Klicano s strani BattleControllerja, da na novo inicializira meglo.
+## current_map_floor: 0 (začetek) do 14 (Boss); prikaz je omejen na MAX_FOG_ROWS_CAP vrstic.
 func initialize_all_fog(current_map_floor: int = 0):
-	print("DEBUG FOG: Klic initialize_all_fog().")
-	current_map_floor = player_manager.current_map_floor
-	
-	if current_map_floor > 10:
-		current_map_floor = 10
-	
-	# Konstante za skaliranje (ustrezajo MapGenerator.FLOORS = 15)
-	const MAX_MAP_FLOOR = 14 # 15 - 1
-	# Stara konstanta MAX_FOG_ROWS odstranjena
-	
-	# NOVO: Število vrstic na dnu, ki so vedno čiste
-	const CLEAN_ROWS = 2 
-	
+	const MAX_FOG_ROWS_CAP = 10 # megla nikoli ne pokrije več kot 10 vrstic
+	const CLEAN_ROWS = 2 # spodnji vrstici (spawn zaveznikov) morata ostati čisti
+
 	if not is_instance_valid(tile_map):
-		push_error("TileMap ni nastavljen v GridManagerju.
- Inicializacija megle ni mogoča.")
-		print("DEBUG FOG: Napaka! tile_map je neveljaven ali null.")
+		push_error("TileMap ni nastavljen v GridManagerju. Inicializacija megle ni mogoča.")
 		return
-		
-	print("DEBUG FOG: tile_map je veljaven. Začenjam generiranje.")
-	
+
 	clear_all_fog()
-	
+
 	var used_rect = tile_map.get_used_rect()
-	var total_map_rows = used_rect.size.y # Skupno število vrstic na TileMap-u
-	
+	var total_map_rows = used_rect.size.y
+
 	if total_map_rows <= CLEAN_ROWS:
 		print("OPOZORILO: Mapa je premajhna za čiste vrstice.")
 		return
-		
-	# 1. Izračunamo število vrstic, ki so ZAKRITE z meglo, od vrha navzdol.
-	# Zgornje 2 vrstici (CLEAN_ROWS) so minimalni prostor, ki mora biti vedno viden.
-	var max_fog_rows = total_map_rows - CLEAN_ROWS
-	var fog_rows_to_cover: int = 0
-	
-	if MAX_MAP_FLOOR > 0:
-		# LOGIKA ZAKRIVANJA: Na N. nadstropju zakrijemo N vrstic.
-		# Uporabimo min(), da zagotovimo, da ne zakrijemo spodnjih 2 vrstic.
-		fog_rows_to_cover = min(current_map_floor, max_fog_rows) 
-		
-	# 2. Določimo zgornjo mejo Y koordinat (vrstice Y < fog_limit_y bodo pokrite)
-	var fog_limit_y = fog_rows_to_cover 
-	
-	print("DEBUG FOG: Nadstropje %d. Pokrivanje %d vrstic z meglo (Y=0 do Y=%d). Skupno vrstic: %d." % [current_map_floor, fog_rows_to_cover, fog_limit_y - 1, total_map_rows])
 
-	# 3. Generiranje megle
+	# LOGIKA ZAKRIVANJA: na N. nadstropju zakrijemo N vrstic od vrha navzdol.
+	var max_fog_rows = total_map_rows - CLEAN_ROWS
+	var fog_rows_to_cover: int = mini(mini(current_map_floor, MAX_FOG_ROWS_CAP), max_fog_rows)
+	var fog_limit_y = fog_rows_to_cover
+
+	print("DEBUG FOG: Nadstropje %d. Pokrivanje %d vrstic z meglo. Skupno vrstic: %d." % [current_map_floor, fog_rows_to_cover, total_map_rows])
+
 	for x in range(used_rect.position.x, used_rect.end.x):
 		for y in range(used_rect.position.y, used_rect.end.y):
 			var tile_pos = Vector2i(x, y)
-			
-			# POGOJ: Meglo generiraj samo, če je Y koordinata manjša od izračunane meje.
-			if y < fog_limit_y: 
+			if y < fog_limit_y:
 				if tile_map.get_cell_source_id(tile_pos) != -1:
 					_spawn_fog_tile(tile_pos)
-	
+
 	print("GridManager: Megla inicializirana na %d poljih." % fog_nodes.size())
-	
-	
-	
+
 # Odstrani vsa vozlišča megle
 func clear_all_fog():
 	for pos in fog_nodes.keys():

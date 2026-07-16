@@ -19,9 +19,11 @@ func _ready():
 static var ICON_LOOKUP: Dictionary = {}
 
 static func _init_icon_lookup():
+	if not ICON_LOOKUP.is_empty():
+		return
 	for rtype in Room.RoomTypeNames.keys():
-		var name = Room.RoomTypeNames[rtype]
-		var path = "res://Assets/Sprites/%s.png" % [name]
+		var room_type_name = Room.RoomTypeNames[rtype]
+		var path = "res://Assets/Sprites/%s.png" % [room_type_name]
 		ICON_LOOKUP[rtype] = load(path)
 
 

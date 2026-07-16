@@ -1,8 +1,10 @@
-[gd_scene load_steps=13 format=4 uid="uid://bj15yf4y43u2b"]
+[gd_scene load_steps=13 format=4]
 
 [ext_resource type="PackedScene" uid="uid://gexf8t8dh7sm" path="res://Battle/battle_controller.tscn" id="1_2wj6q"]
-[ext_resource type="Script" uid="uid://ckulnlduftc2g" path="res://Scenes/Map/battle.gd" id="1_s8jfi"]
+[ext_resource type="Script" uid="uid://capowiwthnqfg" path="res://Scenes/test_sandbox.gd" id="1_s8jfi"]
 [ext_resource type="Script" uid="uid://hnkupuqu7n7e" path="res://Scripts/map_behaviour.gd" id="1_t1742"]
+[ext_resource type="PackedScene" uid="uid://7j1a3ayq8ar6" path="res://Scenes/CharacterPiecesNodes/Ally/king.tscn" id="20_king"]
+[ext_resource type="PackedScene" uid="uid://cq85cdordmsty" path="res://Scenes/CharacterPiecesNodes/Ally/queen.tscn" id="21_queen"]
 [ext_resource type="Script" uid="uid://c41oqie4etyl6" path="res://Scripts/TileMap/grid_manager.gd" id="2_mabft"]
 [ext_resource type="Texture2D" uid="uid://crcxt5kakhv81" path="res://Assets/Tilesets/floorfull.png" id="3_foqj0"]
 [ext_resource type="Script" uid="uid://b6kurpldjabth" path="res://Scripts/TileMap/border.gd" id="3_mptdr"]
@@ -2067,3 +2069,9 @@ zoom = Vector2(3.4, 3.4)
 
 [node name="MoveHighlighter" type="Node2D" parent="."]
 script = ExtResource("9_1ft3a")
+
+[node name="King" parent="." groups=["characters"] instance=ExtResource("20_king")]
+position = Vector2(56, 88)
+
+[node name="Queen" parent="." groups=["characters"] instance=ExtResource("21_queen")]
+position = Vector2(136, 88)

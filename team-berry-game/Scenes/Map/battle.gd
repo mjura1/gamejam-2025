@@ -1,34 +1,32 @@
 extends Node
 
 @onready var grid_manager = $GridManager
-@onready var move_sound = $MoveSound
-@onready var take_sound = $TakeSound
 @onready var battle_controller = $BattleController # Dodana referenca za zagon bitke
 
-const obstacle = "res://Scenes/CharacterPiecesNodes/Neutral/House.tscn"
+const obstacle: PackedScene = preload("res://Scenes/CharacterPiecesNodes/Neutral/House.tscn")
 
 # Enostavna deklaracija brez tipnih namigov, da se izognemo sintaktičnim napakam
 var to_spawn_enemy
-var to_spawn_ally 
+var to_spawn_ally
 
 # Friendly pieces dictionary
 const friendly_pieces := {
-	"friendly_pawn": "res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn",
-	"friendly_rook": "res://Scenes/CharacterPiecesNodes/Ally/rook.tscn",
-	"friendly_bishop": "res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn",
-	"friendly_knight": "res://Scenes/CharacterPiecesNodes/Ally/knight.tscn",
-	"friendly_king": "res://Scenes/CharacterPiecesNodes/Ally/king.tscn",
-	"friendly_queen": "res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"
+	"friendly_pawn": preload("res://Scenes/CharacterPiecesNodes/Ally/pawn.tscn"),
+	"friendly_rook": preload("res://Scenes/CharacterPiecesNodes/Ally/rook.tscn"),
+	"friendly_bishop": preload("res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn"),
+	"friendly_knight": preload("res://Scenes/CharacterPiecesNodes/Ally/knight.tscn"),
+	"friendly_king": preload("res://Scenes/CharacterPiecesNodes/Ally/king.tscn"),
+	"friendly_queen": preload("res://Scenes/CharacterPiecesNodes/Ally/queen.tscn")
 }
 
 # Enemy pieces dictionary
 const enemy_pieces := {
-	"enemy_pawn": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn",
-	"enemy_rook": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn",
-	"enemy_bishop": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn",
-	"enemy_knight": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn",
-	"enemy_king": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn",
-	"enemy_queen": "res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn"
+	"enemy_pawn": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_pawn.tscn"),
+	"enemy_rook": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_rook.tscn"),
+	"enemy_bishop": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_bishop.tscn"),
+	"enemy_knight": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_knight.tscn"),
+	"enemy_king": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_king.tscn"),
+	"enemy_queen": preload("res://Scenes/CharacterPiecesNodes/Enemy/enemy_queen.tscn")
 }
 	
 
@@ -41,9 +39,8 @@ func _ready() -> void:
 		return
 	
 	# Logika za dodajanje figur ostane v _ready()
-	print("test")
 	to_spawn_ally = player_manager.active_party.duplicate(true)
-	to_spawn_enemy = player_manager.enemy_party.duplicate(true)
+	to_spawn_enemy = player_manager.active_enemies.duplicate(true)
 	
 	var map_width = 12 
 	var map_height = 12 
@@ -53,7 +50,11 @@ func _ready() -> void:
 	# ========================================================
 	
 	var ally_spawn_rows = [map_height - 1, map_height - 2] # 11 in 10
-	
+	var max_ally_slots = map_width * ally_spawn_rows.size()
+	if to_spawn_ally.size() > max_ally_slots:
+		push_warning("battle.gd: preveč zaveznikov za spawn (%d > %d) - odvečni so izpuščeni." % [to_spawn_ally.size(), max_ally_slots])
+		to_spawn_ally.resize(max_ally_slots)
+
 	while not to_spawn_ally.is_empty():
 		for x in range(0, map_width):
 			for y in ally_spawn_rows:
@@ -82,8 +83,12 @@ func _ready() -> void:
 	# ========================================================
 	
 	var enemy_spawn_rows = [0, 1]
-	
-	while not to_spawn_enemy.is_empty():	
+	var max_enemy_slots = map_width * enemy_spawn_rows.size()
+	if to_spawn_enemy.size() > max_enemy_slots:
+		push_warning("battle.gd: preveč sovražnikov za spawn (%d > %d) - odvečni so izpuščeni." % [to_spawn_enemy.size(), max_enemy_slots])
+		to_spawn_enemy.resize(max_enemy_slots)
+
+	while not to_spawn_enemy.is_empty():
 		for y in enemy_spawn_rows:
 			for x in range(0, map_width):
 				if to_spawn_enemy.is_empty():
@@ -103,5 +108,3 @@ func _ready() -> void:
 	
 	
 
-func _process(delta: float) -> void:
-	pass

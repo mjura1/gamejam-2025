@@ -1,4 +1,4 @@
-# res://Scripts/UI/CampfirePartyScreen.gd
+# res://Scenes/Menu/CampfirePartyPanel.gd
 extends CanvasLayer # Koren CampfirePartyPanel je CanvasLayer
 
 const CHARACTER_ICON_SCENE = preload("res://Scenes/Menu/character_icon.tscn") # Predpostavimo, da je pot pravilna
