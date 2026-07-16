@@ -233,16 +233,16 @@ func calculate_best_move() -> Dictionary:
 	# 3. SLEPO ISKANJE (BLIND SEEK) - NOV DODATEK
 	# ---------------------------------
 	if not has_spotted_player:
-		var target_y = 7 # Ciljna vrstica (približna sredina bojišča, če je 12 vrstic)
+		const BLIND_SEEK_TARGET_ROW := 7 # Ciljna vrstica (približna sredina bojišča, če je 12 vrstic)
 		var best_move: Vector2i = grid_pos
-		var min_distance_sq = INF
-		
+		var min_distance := INF
+
 		# Izberemo potezo, ki sovražnika najbolj približa centru bojišča (navzdol)
 		for move_pos in valid_targets:
-			var distance_to_center = abs(move_pos.y - target_y)
-			
-			if distance_to_center < min_distance_sq:
-				min_distance_sq = distance_to_center
+			var distance_to_center = abs(move_pos.y - BLIND_SEEK_TARGET_ROW)
+
+			if distance_to_center < min_distance:
+				min_distance = distance_to_center
 				best_move = move_pos
 				
 		# Če se sploh lahko premakne
