@@ -40,7 +40,7 @@ func _ready() -> void:
 	
 	# Logika za dodajanje figur ostane v _ready()
 	to_spawn_ally = player_manager.active_party.duplicate(true)
-	to_spawn_enemy = player_manager.enemy_party.duplicate(true)
+	to_spawn_enemy = player_manager.active_enemies.duplicate(true)
 	
 	var map_width = 12 
 	var map_height = 12 
@@ -50,7 +50,11 @@ func _ready() -> void:
 	# ========================================================
 	
 	var ally_spawn_rows = [map_height - 1, map_height - 2] # 11 in 10
-	
+	var max_ally_slots = map_width * ally_spawn_rows.size()
+	if to_spawn_ally.size() > max_ally_slots:
+		push_warning("battle.gd: preveč zaveznikov za spawn (%d > %d) - odvečni so izpuščeni." % [to_spawn_ally.size(), max_ally_slots])
+		to_spawn_ally.resize(max_ally_slots)
+
 	while not to_spawn_ally.is_empty():
 		for x in range(0, map_width):
 			for y in ally_spawn_rows:
@@ -79,8 +83,12 @@ func _ready() -> void:
 	# ========================================================
 	
 	var enemy_spawn_rows = [0, 1]
-	
-	while not to_spawn_enemy.is_empty():	
+	var max_enemy_slots = map_width * enemy_spawn_rows.size()
+	if to_spawn_enemy.size() > max_enemy_slots:
+		push_warning("battle.gd: preveč sovražnikov za spawn (%d > %d) - odvečni so izpuščeni." % [to_spawn_enemy.size(), max_enemy_slots])
+		to_spawn_enemy.resize(max_enemy_slots)
+
+	while not to_spawn_enemy.is_empty():
 		for y in enemy_spawn_rows:
 			for x in range(0, map_width):
 				if to_spawn_enemy.is_empty():
