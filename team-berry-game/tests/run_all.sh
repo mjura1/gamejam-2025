@@ -27,10 +27,10 @@ echo
 # These are audit findings with a planned fix later in FIX_TODO.md.
 # When you land the matching task, delete its line here so run_all.sh starts
 # hard-failing on any regression instead of silently tolerating it.
-KNOWN_BATTLE_ERROR_PATTERNS=(
-	'Node not found: "MoveSound" \(relative to "/root/Battle/'                                 # M3/House, fixed by T4.7
-	'Node not found: "TakeSound" \(relative to "/root/Battle/'                                 # M3/House, fixed by T4.7
-)
+# Currently empty - all known audit findings that used to hit the battle
+# smoke test (C2, M3/House) are fixed. Add lines back here if a new,
+# understood-but-not-yet-fixed finding starts showing up in this test.
+KNOWN_BATTLE_ERROR_PATTERNS=()
 
 check_scene() {
 	local label="$1" scene_path="$2"
@@ -54,12 +54,14 @@ echo
 
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
 BATTLE_OUT=$("$GODOT" --headless --path . --script res://tests/smoke/smoke_battle.gd --quit-after 4 2>&1)
-BATTLE_ERRORS=$(echo "$BATTLE_OUT" | grep "^ERROR" || true)
+# "resources still in use at exit" is a harmless engine-shutdown artifact
+# (confirmed unrelated to game logic), not a real finding - excluded up
+# front so it never counts toward "known outstanding" or fails the build.
+BATTLE_ERRORS=$(echo "$BATTLE_OUT" | grep "^ERROR" | grep -v "resources still in use at exit" || true)
 UNKNOWN_ERRORS="$BATTLE_ERRORS"
 for pattern in "${KNOWN_BATTLE_ERROR_PATTERNS[@]}"; do
 	UNKNOWN_ERRORS=$(echo "$UNKNOWN_ERRORS" | grep -vE "$pattern" || true)
 done
-UNKNOWN_ERRORS=$(echo "$UNKNOWN_ERRORS" | grep -v "resources still in use at exit" || true)
 
 KNOWN_COUNT=$(( $(echo "$BATTLE_ERRORS" | grep -c "^ERROR" || true) - $(echo "$UNKNOWN_ERRORS" | grep -c "^ERROR" || true) ))
 if [ -n "$(echo "$UNKNOWN_ERRORS" | tr -d '[:space:]')" ]; then

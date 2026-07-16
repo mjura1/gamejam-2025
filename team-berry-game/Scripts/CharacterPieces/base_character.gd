@@ -29,8 +29,8 @@ var grid_manager
 @export var strName: String
 
 # ----------------- audio -----------------------
-@onready var move_sound = $MoveSound
-@onready var take_sound = $TakeSound
+@onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
+@onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
 
 # ----------------- INITIALIZACIJA (KLJUČNA ZA IZBIRO) -----------------
 
@@ -94,7 +94,7 @@ func execute_move(target: Vector2i):
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
 	global_position = grid_manager.grid_to_world(grid_pos)
-	move_sound.play()
+	if move_sound: move_sound.play()
 	
 	# ===============================================
 	# FOG OF WAR (NOVO)
@@ -178,7 +178,7 @@ func capture(target: BaseCharacter):
 	
 	# 1. Zajem/Smrt tarče
 	target.die()
-	take_sound.play()
+	if take_sound: take_sound.play()
 	
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
