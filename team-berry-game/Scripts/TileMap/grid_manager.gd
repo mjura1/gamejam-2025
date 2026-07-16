@@ -85,9 +85,9 @@ func is_occupied(grid_pos: Vector2i) -> bool:
 
 func occupy(grid_pos: Vector2i, obj):
 	if is_occupied(grid_pos):
-		pass
-	else:
-		occupied[grid_pos] = obj
+		push_error("GridManager.occupy: polje %s je že zasedeno (poskus: %s)." % [grid_pos, obj])
+		return
+	occupied[grid_pos] = obj
 
 func vacate(grid_pos: Vector2i):
 	occupied.erase(grid_pos)
