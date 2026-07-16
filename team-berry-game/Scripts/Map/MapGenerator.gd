@@ -186,6 +186,16 @@ func _cleanup_unconnected_rooms():
 		new_map_data.append(floor_row)
 		
 	map_data = new_map_data
+
+	# Odstranimo viseče povezave na sobe, ki so bile odstranjene z mape
+	# (npr. povezave 13. nadstropja v naključne, zdaj izbrisane sobe Boss nadstropja)
+	for room in rooms_to_keep:
+		var kept_links: Array[Room] = []
+		for next_room in room.next_rooms:
+			if rooms_to_keep.has(next_room):
+				kept_links.append(next_room)
+		room.next_rooms = kept_links
+
 	print("Očiščenih je %d neuporabljenih vozlišč." % (FLOORS * MAP_WIDTH - rooms_to_keep.size()))
 
 
