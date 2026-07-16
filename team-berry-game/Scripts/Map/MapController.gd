@@ -6,8 +6,7 @@ class_name MapController
 const MapGenerator = preload("res://Scripts/Map/MapGenerator.gd")
 const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 
-@onready var map_camera: Camera2D = $MapCamera 
-@onready var click_sound = $ClickStreamer
+@onready var map_camera: Camera2D = $MapCamera
 
 var map_data: Array = []
 var room_node_map: Dictionary = {}
