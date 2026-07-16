@@ -7,6 +7,7 @@ class_name BattleController
 
 @onready var grid_manager: GridManager = get_node("../GridManager")
 @onready var player_manager = get_node("/root/PlayerManager")
+@onready var move_highlighter = get_node("../MoveHighlighter")
 
 # ENUM za stanja bitke
 enum BattleState {
@@ -19,7 +20,9 @@ enum BattleState {
 
 var current_state: int = BattleState.INITIALIZING
 var turn_count: int = 0
-var input_locked: bool = false # Nova spremenljivka, ohranjena
+
+const ENEMY_MOVE_DELAY := 0.3 # premor med posameznimi sovražnikovimi potezami
+const ENEMY_MOVE_FADE_DURATION := 5.0 # kako dolgo počasi izginjajo poudarki potez
 
 # ----------------- INITIALIZATION -----------------
 
@@ -35,31 +38,31 @@ func initialize_battle():
 	var current_floor = 0
 	if is_instance_valid(player_manager):
 		# Uporabimo current_map_floor, ki smo ga dodali v PlayerManager.gd
-		current_floor = player_manager.current_map_floor 
-		
+		current_floor = player_manager.current_map_floor
+
 	# 2. Pokrijemo mapo z dinamično meglo (snežno odejo)
 	if is_instance_valid(grid_manager):
-		grid_manager.initialize_all_fog(current_floor) 
-		
+		grid_manager.initialize_all_fog(current_floor)
+
 	# 3. Zaženemo prvo potezo
 	start_player_turn()
 
 # ----------------- TURN LOGIC -----------------
 
 func player_can_act() -> bool:
-	return (
-		current_state == BattleState.PLAYER_TURN
-		and not input_locked
-	)
+	return current_state == BattleState.PLAYER_TURN
 
 func start_player_turn():
-	input_locked = false
 	turn_count += 1
 	current_state = BattleState.PLAYER_TURN
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
-	
+
 	# Razkrijemo figure takoj, ko se poteza začne
 	update_fog_after_turn_start()
+
+	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
+	if is_instance_valid(move_highlighter):
+		move_highlighter.start_fade_out(ENEMY_MOVE_FADE_DURATION)
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
@@ -68,10 +71,6 @@ func end_player_turn():
 		return
 
 	# Preklopimo na naslednjo fazo (nasprotnikovo potezo)
-	start_enemy_turn_delayed()
-
-func start_enemy_turn_delayed() -> void:
-	input_locked = true
 	start_enemy_turn()
 
 func start_enemy_turn():
@@ -93,8 +92,19 @@ func start_enemy_turn():
 		if action.is_empty():
 			continue
 
+		var from_pos: Vector2i = character.grid_pos
+		var is_capture: bool = action.get("move_type", "") == "CAPTURE"
+
 		# try_move sam ponovno preveri veljavnost tarče in izvede premik ALI zajetje
-		character.try_move(action["target_pos"])
+		var moved: bool = character.try_move(action["target_pos"])
+
+		if moved:
+			if is_instance_valid(move_highlighter):
+				var path_tiles = _compute_path_tiles(from_pos, action["target_pos"])
+				move_highlighter.flash_enemy_move(from_pos, action["target_pos"], path_tiles, is_capture)
+
+			# Kratek premor, da je poteza vidna, preden se premakne naslednji sovražnik
+			await get_tree().create_timer(ENEMY_MOVE_DELAY).timeout
 
 		# Če je ta akcija končala bitko, takoj prekinemo potezo
 		if check_battle_end():
@@ -127,6 +137,35 @@ func check_battle_end() -> bool:
 		return true
 
 	return false
+
+# Izračuna vmesna polja med from in to, da MoveHighlighter lahko nariše
+# pot sovražnikove poteze. Drseče figure (pešec/trdnjava/lovec/kraljica/
+# kralj) se premikajo po ravni črti, zato je pot preprosto vsako polje
+# med izhodiščem in ciljem. Skakač (vitez) nima resničnih vmesnih polj
+# (skoči neposredno) - zanj vrnemo eno samo "upognjeno" polje, ki
+# stilizirano nakaže obliko črke L (najprej daljša os, nato krajša).
+func _compute_path_tiles(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	var delta = to - from
+	var path: Array[Vector2i] = []
+
+	var is_knight_jump = delta.x != 0 and delta.y != 0 and absi(delta.x) != absi(delta.y)
+	if is_knight_jump:
+		if absi(delta.x) > absi(delta.y):
+			path.append(from + Vector2i(delta.x, 0))
+		else:
+			path.append(from + Vector2i(0, delta.y))
+		return path
+
+	var step_x = 0 if delta.x == 0 else (1 if delta.x > 0 else -1)
+	var step_y = 0 if delta.y == 0 else (1 if delta.y > 0 else -1)
+	var step = Vector2i(step_x, step_y)
+
+	var current = from + step
+	while current != to:
+		path.append(current)
+		current += step
+
+	return path
 
 # ----------------- FOG OF WAR LOGIC -----------------
 

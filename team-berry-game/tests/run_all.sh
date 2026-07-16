@@ -102,6 +102,11 @@ check_script "smoke_battle_loss (LOSS path, map-leak check)" "res://tests/smoke/
 	"SMOKE TEST: old (detached) map instance was freed - no leak"
 echo
 
+echo "== Enemy turn pacing / move visualizer smoke test =="
+check_script "smoke_enemy_turn_pacing" "res://tests/smoke/smoke_enemy_turn_pacing.gd" 200 \
+	"SMOKE TEST: enemy turn completed after"
+echo
+
 if [ "$OVERALL_FAIL" -ne 0 ]; then
 	echo "=== RESULT: FAIL ==="
 else
