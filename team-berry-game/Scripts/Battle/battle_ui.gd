@@ -450,6 +450,18 @@ func _rebuild_rows():
 			alive_by_type[roster_name] = []
 		alive_by_type[roster_name].append(character)
 
+	# _placed_characters() vrsti red izhaja iz grid_managerjevega "occupied"
+	# slovarja (ključ = grid_pos) - premik figure jo vacate/occupy prestavi na
+	# konec vrstnega reda vstavljanja, čeprav gre za isto figuro. Če je istega
+	# tipa na plošči več figur, bi to zamenjalo njihove dodeljene bližnjice
+	# (glej pop_front spodaj). Sortiramo po get_instance_id() (stabilen za
+	# celo življenjsko dobo figure, se ne spremeni ob premiku) namesto po
+	# trenutnem vrstnem redu v "occupied".
+	for roster_name in alive_by_type.keys():
+		alive_by_type[roster_name].sort_custom(
+			func(a, b): return a.get_instance_id() < b.get_instance_id()
+		)
+
 	# Število mrtvih po tipu (za razločevanje mrtev/na klopi).
 	var dead_counts: Dictionary = {}
 	for dead_name in player_manager.dead_party:
