@@ -28,9 +28,11 @@ const FRIENDLY_WEIGHTS: Dictionary = {
 	Room.RoomType.friendly_king: 0
 }
 
-# Utež za item sobo (upgrade itemi brez bitke) - enaka na vseh 3 mapah,
-# primerljiva z redkejšimi prijateljskimi sobami.
-const ITEM_ROOM_WEIGHT: int = 2
+# Verjetnost za item sobo (upgrade itemi brez bitke) - enaka na vseh 3 mapah.
+# Preverjena LOČENO od uteženega izbora spodaj (glej _get_random_room_type),
+# ker so skupne uteži enemy/friendly poola različne po nivojih - željeni delež
+# bi se sicer razlikoval od nivoja do nivoja.
+const ITEM_ROOM_CHANCE: float = 0.4
 
 # --- Konfiguracija 3 zaporednih map: naraščajoča globina in nabor sovražnikov ---
 const TIER_CONFIGS: Array[Dictionary] = [
@@ -119,7 +121,6 @@ func _configure_tier(tier: int) -> void:
 		ROOM_WEIGHTS[enemy_type] = config["enemy_pool"][enemy_type]
 	for friendly_type in FRIENDLY_WEIGHTS:
 		ROOM_WEIGHTS[friendly_type] = FRIENDLY_WEIGHTS[friendly_type]
-	ROOM_WEIGHTS[Room.RoomType.item] = ITEM_ROOM_WEIGHT
 
 	total_weight = 0
 	for weight in ROOM_WEIGHTS.values():
@@ -295,6 +296,9 @@ func _assign_room_types():
 
 ## Pomožna funkcija: Utežena naključna izbira
 func _get_random_room_type() -> Room.RoomType:
+	if randf() < ITEM_ROOM_CHANCE:
+		return Room.RoomType.item
+
 	var random_value = randi_range(1, total_weight)
 	var accumulated_weight = 0
 	
