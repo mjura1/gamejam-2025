@@ -128,6 +128,11 @@ check_script "smoke_placement_auto_fill" "res://tests/smoke/smoke_placement_auto
 	"SMOKE TEST: placement auto-fill/remove-all works end to end"
 echo
 
+echo "== Item use smoke test (battle_ui.use_item / extra_move) =="
+check_script "smoke_item_use" "res://tests/smoke/smoke_item_use.gd" 4 \
+	"SMOKE TEST: extra_move item used cleanly, moves incremented, inventory decremented"
+echo
+
 echo "== Ability activation smoke test =="
 check_script "smoke_abilities" "res://tests/smoke/smoke_abilities.gd" 4 \
 	"SMOKE TEST: ability activated cleanly and use count decremented"

@@ -45,6 +45,10 @@ const MAX_PLACED := 5
 @onready var auto_fill_button: Button = %AutoFillButton
 @onready var remove_all_button: Button = %RemoveAllButton
 @onready var tile_map = get_node("../Map/TileMapLayer")
+@onready var item_drawer: HBoxContainer = %ItemDrawer
+@onready var item_panel: PanelContainer = %ItemPanel
+@onready var item_rows: VBoxContainer = %ItemRows
+@onready var item_toggle_button: Button = %ToggleButton
 
 const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
@@ -57,6 +61,12 @@ var placement_active: bool = false
 var dragging: bool = false
 var drag_piece_name: String = ""
 var drag_source_character: BaseCharacter = null
+
+# Stanje drag & dropa za itemsko predalo (ločeno od figur, da se drag-a ne
+# moreta prepletati - glej _input()). item_drawer_open sledi </> gumbu.
+var item_drawer_open: bool = false
+var dragging_item: bool = false
+var drag_item_id: String = ""
 
 # Figura, ki je trenutno prikazana v detail panelu (null, če gre za mrtvo/
 # klopno figuro brez žive instance - takrat gumbi ostanejo onemogočeni).
@@ -75,6 +85,8 @@ func _ready():
 	action_button.pressed.connect(_on_action_button_pressed)
 	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
 	remove_all_button.pressed.connect(_on_remove_all_pressed)
+	item_toggle_button.pressed.connect(_on_item_toggle_pressed)
+	player_manager.items_changed.connect(_rebuild_item_drawer)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
 	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
@@ -83,6 +95,7 @@ func _ready():
 
 	_update_item_counts()
 	_clear_detail_panel()
+	_rebuild_item_drawer()
 
 	# Figure (sovražniki/ovire) se spawnajo šele v battle.gd._ready() (starš
 	# se inicializira ZA otroki), zato prvo gradnjo vrstic odložimo za en frame.
@@ -137,6 +150,10 @@ func _select_roster_slot(index: int):
 # ===============================================
 
 func _on_battle_state_changed(new_state):
+	# Predala za iteme med placementom nima smisla (itemi se uporabljajo na
+	# figurah/plošči med bitko) - skrijemo jo, dokler igralec ne potrdi postavitve.
+	item_drawer.visible = new_state != battle_controller.BattleState.PLACEMENT
+
 	match new_state:
 		battle_controller.BattleState.PLACEMENT:
 			placement_active = true
@@ -378,6 +395,14 @@ func _on_board_area_input(event):
 
 
 func _input(event):
+	if dragging_item:
+		if event is InputEventMouseMotion:
+			drag_ghost.position = event.position - drag_ghost.size / 2
+		elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_resolve_item_drop(event.position)
+			get_viewport().set_input_as_handled()
+		return
+
 	if not dragging:
 		return
 
@@ -765,6 +790,105 @@ func _highlight_icon_only(target: PieceIcon):
 func _update_item_counts():
 	upgrade_count_label.text = "x%d" % player_manager.upgrade_items
 	revive_count_label.text = "x%d" % player_manager.revive_items
+
+
+# ===============================================
+# ITEM PREDALA (</> in drag-to-use na plošči)
+# ===============================================
+
+func _on_item_toggle_pressed():
+	item_drawer_open = not item_drawer_open
+	item_panel.visible = item_drawer_open
+	item_toggle_button.text = ">" if item_drawer_open else "<"
+
+
+func _rebuild_item_drawer():
+	for child in item_rows.get_children():
+		child.queue_free()
+
+	var ids: Array = player_manager.owned_items.keys()
+	var any_shown := false
+	for id in ids:
+		var count: int = player_manager.owned_items[id]
+		if count <= 0:
+			continue
+		item_rows.add_child(_build_item_row(id, count))
+		any_shown = true
+
+	if not any_shown:
+		var empty := Label.new()
+		empty.text = "NO ITEMS"
+		item_rows.add_child(empty)
+
+
+func _build_item_row(id: String, count: int) -> Control:
+	var row := PanelContainer.new()
+	row.custom_minimum_size = Vector2(0, 40)
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.gui_input.connect(_on_item_row_input.bind(id))
+
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(hbox)
+
+	var icon := TextureRect.new()
+	icon.texture = load("res://Assets/Sprites/item_%s.png" % id)
+	icon.custom_minimum_size = Vector2(32, 32)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(icon)
+
+	var label := Label.new()
+	label.text = "x%d" % count
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(label)
+
+	return row
+
+
+# Klik/pritisk na vrstico itema med igralčevo potezo začne drag (placement
+# faza je izključena - drawer je takrat itak skrit, glej _on_battle_state_changed).
+func _on_item_row_input(event: InputEvent, id: String):
+	if dragging or dragging_item:
+		return
+	if battle_controller.current_state != battle_controller.BattleState.PLAYER_TURN:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		dragging_item = true
+		drag_item_id = id
+		drag_ghost.texture = load("res://Assets/Sprites/item_%s.png" % id)
+		drag_ghost.position = get_viewport().get_mouse_position() - drag_ghost.size / 2
+		drag_ghost.visible = true
+
+
+# Spuščeno izven plošče (BoardArea) = no-op, item ostane v inventarju.
+func _resolve_item_drop(screen_pos: Vector2):
+	dragging_item = false
+	drag_ghost.visible = false
+
+	if board_area.get_global_rect().has_point(screen_pos):
+		var grid_pos := _screen_to_grid(screen_pos)
+		use_item(drag_item_id, grid_pos)
+
+	drag_item_id = ""
+
+
+# Dejanska uporaba itema - ločena od _resolve_item_drop, da jo lahko smoke
+# test pokliče neposredno (isti vzorec kot place_piece/move_placed_piece).
+# Vrne true, če je bil item uporabljen in porabljen iz inventarja.
+func use_item(id: String, grid_pos: Vector2i) -> bool:
+	if player_manager.get_item_count(id) <= 0:
+		return false
+	var item: BaseItem = ItemData.create_item(id)
+	if item == null:
+		return false
+	if not (item.can_use(battle_controller, grid_pos) and item.apply(battle_controller, grid_pos)):
+		return false
+
+	player_manager.remove_item(id) # emits items_changed -> _rebuild_item_drawer
+	UiAudio.play_click()
+	return true
 
 
 func _on_party_changed():
