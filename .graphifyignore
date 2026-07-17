@@ -1,0 +1,23 @@
+# graphify's own ignore rules (takes precedence over .gitignore for graphify's
+# traversal — see graphify-out/GDSCRIPT_MIRROR_NOTE.md for why this file
+# exists separately from .gitignore).
+#
+# Deliberately mirrors .gitignore EXCEPT it does NOT ignore .gd_mirror/ —
+# that directory must stay visible to graphify even though it's gitignored.
+
+# Godot 4+ specific ignores
+.godot/
+.nomedia
+
+# Godot-specific ignores
+.import/
+export.cfg
+export_credentials.cfg
+
+# Imported translations (automatically generated from CSV files)
+*.translation
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
