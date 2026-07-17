@@ -1,6 +1,61 @@
-[gd_scene load_steps=2 format=3 uid="uid://ddon7t0ionnr7"]
+[gd_scene load_steps=8 format=3 uid="uid://ddon7t0ionnr7"]
 
 [ext_resource type="Script" uid="uid://bxeqm8lnxgobu" path="res://Scenes/Menu/CampfirePartyPanel.gd" id="1_ceq58"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 20.0
+content_margin_bottom = 20.0
+bg_color = Color(0.40352374, 0.24540782, 0.13312465, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_roster"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.85, 0.45, 0.25, 0.35)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_active"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.9, 0.85, 0.25, 0.35)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+bg_color = Color(0.55082357, 0.34482267, 0.19923377, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+bg_color = Color(0.68852353, 0.44540787, 0.23312467, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [node name="CampfirePartyPanel" type="CanvasLayer"]
 script = ExtResource("1_ceq58")
@@ -13,44 +68,78 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.25882354, 0.25882354, 0.25882354, 0.39215687)
 
-[node name="CenterContainer" type="Control" parent="."]
-layout_mode = 3
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -198.0
-offset_top = -156.0
-offset_right = 198.0
-offset_bottom = 156.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Panel" type="PanelContainer" parent="CenterContainer"]
-layout_mode = 1
+[node name="CenterContainer" type="CenterContainer" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Panel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
 [node name="MainVBox" type="VBoxContainer" parent="CenterContainer/Panel"]
 layout_mode = 2
+theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="CenterContainer/Panel/MainVBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 horizontal_alignment = 1
+text = "PARTY MANAGEMENT"
 
-[node name="HLayout" type="HBoxContainer" parent="CenterContainer/Panel/MainVBox"]
+[node name="RosterLabel" type="Label" parent="CenterContainer/Panel/MainVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "STORAGE"
+
+[node name="RosterPanel" type="PanelContainer" parent="CenterContainer/Panel/MainVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_roster")
+
+[node name="RosterScroll" type="ScrollContainer" parent="CenterContainer/Panel/MainVBox/RosterPanel"]
+custom_minimum_size = Vector2(0, 170)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="RosterGrid" type="GridContainer" parent="CenterContainer/Panel/MainVBox/RosterPanel/RosterScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 5
+
+[node name="ActiveLabel" type="Label" parent="CenterContainer/Panel/MainVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "PARTY"
+
+[node name="ActivePanel" type="PanelContainer" parent="CenterContainer/Panel/MainVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_active")
+
+[node name="ActiveGrid" type="GridContainer" parent="CenterContainer/Panel/MainVBox/ActivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 5
+
+[node name="FooterRow" type="HBoxContainer" parent="CenterContainer/Panel/MainVBox"]
 layout_mode = 2
 
-[node name="ActiveParty" type="VBoxContainer" parent="CenterContainer/Panel/MainVBox/HLayout"]
+[node name="BackButton" type="Button" parent="CenterContainer/Panel/MainVBox/FooterRow"]
+unique_name_in_owner = true
 layout_mode = 2
-
-[node name="DeadParty" type="VBoxContainer" parent="CenterContainer/Panel/MainVBox/HLayout"]
-layout_mode = 2
-
-[node name="CloseButton" type="Button" parent="CenterContainer/Panel/MainVBox"]
-layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_hover")
 text = "BACK"
+
+[node name="Spacer" type="Control" parent="CenterContainer/Panel/MainVBox/FooterRow"]
+layout_mode = 2
+size_flags_horizontal = 3

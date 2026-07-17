@@ -59,6 +59,33 @@ func add_to_friendly_party(character):
 		reserve_party.append(character)
 		print("PlayerManager: Aktivna ekipa polna (%d/%d) - figura shranjena v rezervo. Rezerva: %d" % [friendly_party.size(), max_party_size, reserve_party.size()])
 
+# ----------------- REZERVA <-> AKTIVNA EKIPA (počivališče, CampfirePartyPanel) -----------------
+
+# Prestavi figuro iz aktivne ekipe (indeks v friendly_party) nazaj v rezervo.
+# Zavrne, če bi aktivna ekipa ostala prazna - v bitko moraš iti z vsaj eno figuro.
+func move_active_to_reserve(index: int) -> bool:
+	if index < 0 or index >= friendly_party.size():
+		return false
+	if friendly_party.size() <= 1:
+		return false
+	var piece_name: String = friendly_party[index]
+	friendly_party.remove_at(index)
+	reserve_party.append(piece_name)
+	party_changed.emit()
+	return true
+
+# Prestavi figuro iz rezerve (indeks v reserve_party) v aktivno ekipo, če je prostor.
+func move_reserve_to_active(index: int) -> bool:
+	if index < 0 or index >= reserve_party.size():
+		return false
+	if friendly_party.size() >= max_party_size:
+		return false
+	var piece_name: String = reserve_party[index]
+	reserve_party.remove_at(index)
+	friendly_party.append(piece_name)
+	party_changed.emit()
+	return true
+
 # ----------------- SMRT IN OŽIVITEV (Revive) -----------------
 
 # Registrira podatke o padli figuri (Klic iz BaseCharacter.die())
