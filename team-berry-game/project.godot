@@ -25,6 +25,10 @@ UiAudio="*res://Scenes/ui_audio.tscn"
 AbilityData="*res://Scripts/Data/ability_data.gd"
 ItemData="*res://Scripts/Data/item_data.gd"
 
+[display]
+
+window/stretch/mode="canvas_items"
+
 [global_group]
 
 buttons=""
