@@ -8,6 +8,7 @@ class_name GameFlow
 
 const MAP_SCENE = preload("res://Scenes/Map/map.tscn")
 const BATTLE_SCENE = preload("res://Scenes/Map/battle.tscn")
+const CAMPFIRE_SCENE = preload("res://Scenes/Map/campfire.tscn")
 const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
 const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
 
@@ -61,6 +62,12 @@ func _initialize_game():
 # =========================================================
 
 func start_event(room_type: int):
+	if room_type == Room.RoomType.campfire:
+		# Ni bitke - preskoči resetActives() (uporablja se le za pripravo
+		# battle scene na aktivno/sovražno ekipo).
+		_change_scene_instance(CAMPFIRE_SCENE.instantiate())
+		return
+
 	PlayerManager.resetActives()
 	_change_scene_instance(BATTLE_SCENE.instantiate())
 

@@ -93,6 +93,11 @@ check_script "smoke_start_new_game" "res://tests/smoke/smoke_start_new_game.gd" 
 	"SMOKE TEST: map initialized cleanly via the real Start flow"
 echo
 
+echo "== Campfire room -> Campfire scene -> REST -> BACK -> map smoke test =="
+check_script "smoke_campfire_flow" "res://tests/smoke/smoke_campfire_flow.gd" 8 \
+	"SMOKE TEST: campfire flow completed cleanly, back on the map"
+echo
+
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
 check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 ""
 echo

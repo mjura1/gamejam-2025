@@ -47,3 +47,19 @@ func test_total_weight_matches_sum_of_room_weights():
 	for weight in gen.ROOM_WEIGHTS.values():
 		expected_sum += weight
 	assert_eq(gen.total_weight, expected_sum, "total_weight should equal the sum of the configured ROOM_WEIGHTS")
+
+func test_every_tier_forces_campfire_on_second_to_last_floor():
+	# _connect_to_boss() funnels every surviving path through FLOORS - 2 before
+	# the boss floor, so that's the one floor where a rest stop is guaranteed
+	# regardless of which path the player took.
+	for tier in range(3):
+		var gen = MapGeneratorScript.new()
+		gen.generate_map(tier)
+		var campfire_floor = gen.FLOORS - 2
+		var found_campfire := false
+		for room in gen.map_data[campfire_floor]:
+			if room == null:
+				continue
+			found_campfire = true
+			assert_eq(room.type, Room.RoomType.campfire, "Tier %d: every room on floor FLOORS - 2 should be a campfire" % tier)
+		assert_true(found_campfire, "Tier %d should have at least one room on floor FLOORS - 2" % tier)

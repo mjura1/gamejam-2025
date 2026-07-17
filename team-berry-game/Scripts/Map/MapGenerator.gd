@@ -275,6 +275,12 @@ func _assign_room_types():
 				room.type = mini_boss_type
 			elif i == recruit_floor:
 				room.type = Room.RoomType.friendly_king
+			elif i == FLOORS - 2:
+				# Tabor (campfire) je vedno na predzadnjem nadstropju: _connect_to_boss()
+				# prisilno spelje VSAKO pot skozi FLOORS - 2, preden doseže šefa,
+				# zato je to edino nadstropje, kjer je počitek pred bossom
+				# zagotovljen na vsaki poti.
+				room.type = Room.RoomType.campfire
 			else:
 				# Vsa ostala nadstropja: Utežena naključna izbira
 				room.type = _get_random_room_type()
