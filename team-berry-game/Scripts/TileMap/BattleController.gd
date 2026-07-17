@@ -271,9 +271,13 @@ func check_battle_end() -> bool:
 
 	if player_manager.enemyGone():
 		_set_state(BattleState.GAME_OVER)
+		# Zmaga prinese upgrade iteme (boss bitke več) - porabijo se na
+		# počivališču (glej CampfireUpgradePanel.gd).
 		if player_manager.is_boss_floor:
+			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_BOSS_WIN)
 			GF.call_deferred("advance_map_tier")
 		else:
+			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_WIN)
 			GF.call_deferred("return_to_map")
 		return true
 

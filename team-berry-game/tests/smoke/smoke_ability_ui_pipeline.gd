@@ -28,6 +28,10 @@ func _initialize():
 
 	player_manager = root.get_node("PlayerManager")
 	player_manager.setStarting()
+	# Figure se ne pojavijo več pre-maxane (nadgradnje zdaj živijo v
+	# PlayerManager.piece_upgrades) - ta test namerno preverja VSE stopnje
+	# vseh sposobnosti, zato tipe nadgradi na max po uradni testni bližnjici.
+	player_manager.debug_max_all_upgrades()
 	player_manager.resetActives()
 	# active_enemies/active_party track pieces by NAME STRING, not instance -
 	# this test spawns extra ad-hoc "enemy_pawn"s beyond the real roster and

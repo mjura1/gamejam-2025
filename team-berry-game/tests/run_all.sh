@@ -98,6 +98,11 @@ check_script "smoke_campfire_flow" "res://tests/smoke/smoke_campfire_flow.gd" 8 
 	"SMOKE TEST: campfire flow completed cleanly, back on the map"
 echo
 
+echo "== Campfire upgrade panel spend-flow smoke test =="
+check_script "smoke_upgrade_panel" "res://tests/smoke/smoke_upgrade_panel.gd" 8 \
+	"SMOKE TEST: upgrade panel spend flow completed cleanly"
+echo
+
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
 check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 \
 	"SMOKE TEST: battle booted through placement into PLAYER_TURN"

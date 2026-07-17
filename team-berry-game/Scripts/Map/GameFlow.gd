@@ -74,6 +74,11 @@ func start_event(room_type: int):
 		_change_scene_instance(CAMPFIRE_SCENE.instantiate())
 		return
 
+	if room_type == Room.RoomType.item:
+		# Ni bitke in ni menjave scene - nagrada je bila že dodeljena v
+		# MapController._handle_event(), igralec ostane na mapi.
+		return
+
 	PlayerManager.resetActives()
 	_change_scene_instance(BATTLE_SCENE.instantiate())
 

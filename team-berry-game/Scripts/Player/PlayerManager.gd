@@ -4,6 +4,10 @@ extends Node
 # Sproži se ob vsaki spremembi ekip (smrt figure ipd.), da se UI lahko osveži.
 signal party_changed
 
+# Sproži se ob vsaki spremembi števila itemov ALI nadgradenj figur
+# (add_upgrade_items / try_unlock_slot2 / try_level_up_ability).
+signal items_changed
+
 # Party Management
 var default_friends: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"]
 var default_enemies: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
@@ -24,9 +28,23 @@ var active_party: Array[String]
 # (smrt zaenkrat NI trajna med bitkami - trajnost pride z revive itemom).
 var dead_party: Array[String]
 
-# Item counts (samo prikaz v battle UI - item sistem pride kasneje)
+# Item counts (revive_items je še vedno samo prikaz - revive sistem pride
+# kasneje, skupaj s trajno smrtjo figur med bitkami).
 var upgrade_items: int = 0
 var revive_items: int = 0
+
+# Nagrade v upgrade itemih (glej BattleController.check_battle_end in
+# MapController._handle_event za item sobo).
+const UPGRADE_ITEMS_PER_WIN := 1
+const UPGRADE_ITEMS_PER_BOSS_WIN := 3
+const UPGRADE_ITEMS_PER_ITEM_ROOM := 2
+
+# Trajne nadgradnje PO TIPU figure (velja za vse figure istega tipa - roster
+# je seznam imen brez identitete posamezne figure, glej friendly_party).
+# strName ("pawn" ipd.) -> {"slot2_unlocked": bool, "levels": {1: int, 2: int}}
+# Figure ob registraciji na mrežo preberejo svoj vnos (glej
+# BaseCharacter._load_persistent_upgrades) - poraba itemov je SAMO tu.
+var piece_upgrades: Dictionary = {}
 
 # Koliko premikov/zajetij in koliko sposobnosti lahko igralec izvede v ENI
 # potezi, preden mora ročno pritisniti END TURN (glej BattleController.gd).
@@ -93,6 +111,65 @@ func move_reserve_to_active(index: int) -> bool:
 	friendly_party.append(piece_name)
 	party_changed.emit()
 	return true
+
+# ----------------- UPGRADE ITEMI IN NADGRADNJE FIGUR -----------------
+
+# Vrne (in po potrebi ustvari) vnos nadgradenj za dani tip figure ("pawn").
+# Vrnjen slovar je ŽIVA referenca v piece_upgrades - klicatelji naj ga berejo,
+# spreminja pa naj ga samo try_unlock_slot2/try_level_up_ability.
+func get_piece_upgrades(piece_type: String) -> Dictionary:
+	if not piece_upgrades.has(piece_type):
+		piece_upgrades[piece_type] = {
+			"slot2_unlocked": false,
+			"levels": {1: 1, 2: 1},
+		}
+	return piece_upgrades[piece_type]
+
+func add_upgrade_items(amount: int):
+	upgrade_items += amount
+	print("PlayerManager: +%d upgrade item(ov). Skupaj: %d" % [amount, upgrade_items])
+	items_changed.emit()
+
+# Odklene 2. sposobnostni slot za CEL tip figure, če je dovolj itemov.
+# cost pride iz AbilityData.get_unlock_cost(id) - klicatelj (upgrade panel)
+# pozna ability id, PlayerManager ne.
+func try_unlock_slot2(piece_type: String, cost: int) -> bool:
+	var up := get_piece_upgrades(piece_type)
+	if up["slot2_unlocked"] or upgrade_items < cost:
+		return false
+	upgrade_items -= cost
+	up["slot2_unlocked"] = true
+	items_changed.emit()
+	return true
+
+# Dvigne sposobnost danega slota za CEL tip figure za 1 nivo, če je dovolj
+# itemov. Slot 2 mora biti prej odklenjen. cost pride iz
+# AbilityData.get_level_up_cost(id).
+func try_level_up_ability(piece_type: String, slot: int, cost: int) -> bool:
+	var up := get_piece_upgrades(piece_type)
+	if slot == 2 and not up["slot2_unlocked"]:
+		return false
+	if not up["levels"].has(slot):
+		return false
+	if up["levels"][slot] >= BaseCharacter.ABILITY_LEVEL_MAX:
+		return false
+	if upgrade_items < cost:
+		return false
+	upgrade_items -= cost
+	up["levels"][slot] += 1
+	items_changed.emit()
+	return true
+
+# SAMO za teste in dev sandbox scene (test_sandbox, piece_test, smoke testi):
+# vse tipe figur postavi na max nivo z odklenjenim slotom 2, da so vse
+# stopnje vseh sposobnosti dosegljive brez klikanja po upgrade panelu.
+func debug_max_all_upgrades():
+	for piece_type in ["pawn", "knight", "rook", "bishop", "queen", "king"]:
+		piece_upgrades[piece_type] = {
+			"slot2_unlocked": true,
+			"levels": {1: BaseCharacter.ABILITY_LEVEL_MAX, 2: BaseCharacter.ABILITY_LEVEL_MAX},
+		}
+	items_changed.emit()
 
 # ----------------- SMRT IN OŽIVITEV (Revive) -----------------
 
@@ -162,6 +239,10 @@ func resetActives():
 func setStarting() -> void:
 	friendly_party = default_friends.duplicate()
 	enemy_party = default_enemies.duplicate()
+	# Nov run: nadgradnje in itemi se ne prenašajo iz prejšnjega runa.
+	piece_upgrades = {}
+	upgrade_items = 0
+	items_changed.emit()
 
 func addSnow():
 	snowCount += 2

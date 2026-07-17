@@ -18,11 +18,20 @@ func _ready():
 
 static var ICON_LOOKUP: Dictionary = {}
 
+# Campfire dobi animirano (utripajočo) ikono namesto statičnega PNG-ja -
+# glej Assets/Sprites/campfire_animated.tres (AnimatedTexture iz 2 sličic,
+# izvorno wm_campfire.gif). AnimatedTexture je Texture2D, zato ga
+# TextureRect.texture sprejme brez dodatnih sprememb.
+const CAMPFIRE_ANIMATED_TEXTURE := "res://Assets/Sprites/campfire_animated.tres"
+
 static func _init_icon_lookup():
 	if not ICON_LOOKUP.is_empty():
 		return
 	for rtype in Room.RoomTypeNames.keys():
 		var room_type_name = Room.RoomTypeNames[rtype]
+		if room_type_name == "campfire":
+			ICON_LOOKUP[rtype] = load(CAMPFIRE_ANIMATED_TEXTURE)
+			continue
 		var path = "res://Assets/Sprites/%s.png" % [room_type_name]
 		ICON_LOOKUP[rtype] = load(path)
 

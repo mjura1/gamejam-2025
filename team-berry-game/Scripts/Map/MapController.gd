@@ -326,6 +326,10 @@ func _handle_event(room_data: Room):
 		PlayerManager.add_to_enemy_party(room_name)
 	elif room_name.begins_with("friendly_"):
 		PlayerManager.add_to_friendly_party(room_name)
+	elif room_name == "item":
+		# Item soba: takojšnja nagrada, brez bitke - GF.start_event() za
+		# ta tip sobe ne zamenja scene, igralec ostane na mapi.
+		PlayerManager.add_upgrade_items(PlayerManager.UPGRADE_ITEMS_PER_ITEM_ROOM)
 	# campfire: ne dodaja v enemy_party/friendly_party, samo GF.start_event()
 	# preklopi na campfire sceno (glej GameFlow.start_event()).
 
