@@ -18,6 +18,7 @@ var grid_manager
 @onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var ability_data = get_node("/root/AbilityData")
+@onready var settings_manager = get_node("/root/SettingsManager")
 
 # ----------------- NASTAVITVE IN VREDNOSTI -----------------
 @export var selected: bool = false
@@ -136,6 +137,20 @@ func calculate_valid_targets() -> Array[Vector2i]:
 
 	return targets
 
+const MOVE_SLIDE_DURATION := 0.18
+
+# Premakne figuro na dano svetovno pozicijo - drsenje (tween), razen če je v
+# Settings vklopljen "reduced motion" (dostopnost), kjer skoči nanjo takoj.
+# Uporablja ga execute_move (premiki v bitki) in battle_ui.move_placed_piece
+# (drag&drop v placement fazi).
+func slide_to(new_global_pos: Vector2):
+	if settings_manager.reduced_motion:
+		global_position = new_global_pos
+		return
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "global_position", new_global_pos, MOVE_SLIDE_DURATION)
+
 # Premesti figuro na novo lokacijo
 func execute_move(target: Vector2i):
 	# Bishop.Traps/Rook.Reinforce: premik te figure sprosti njeno cono.
@@ -147,7 +162,7 @@ func execute_move(target: Vector2i):
 	grid_manager.vacate(grid_pos)
 	grid_pos = target
 	grid_manager.occupy(grid_pos, self)
-	global_position = grid_manager.grid_to_world(grid_pos)
+	slide_to(grid_manager.grid_to_world(grid_pos))
 	if move_sound: move_sound.play()
 	
 	# ===============================================

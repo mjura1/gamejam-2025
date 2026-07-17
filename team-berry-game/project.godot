@@ -18,6 +18,7 @@ config/icon="res://Assets/icon.svg"
 [autoload]
 
 KeybindManager="*res://Scripts/KeybindManager.gd"
+SettingsManager="*res://Scripts/SettingsManager.gd"
 GF="*res://Scripts/Map/GameFlow.gd"
 PlayerManager="*res://Scripts/Player/PlayerManager.gd"
 UiAudio="*res://Scenes/ui_audio.tscn"

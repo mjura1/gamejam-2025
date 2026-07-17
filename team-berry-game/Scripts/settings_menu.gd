@@ -10,6 +10,7 @@ signal back_pressed
 @onready var rows_container: VBoxContainer = %RowsContainer
 @onready var restore_button: Button = %RestoreButton
 @onready var back_button: Button = %BackButton
+@onready var reduced_motion_check: CheckBox = %ReducedMotionCheck
 
 const MODIFIER_KEYCODES := [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META, KEY_CAPSLOCK]
 
@@ -21,7 +22,13 @@ var _row_buttons: Dictionary = {}
 func _ready():
 	restore_button.pressed.connect(_on_restore_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+	reduced_motion_check.button_pressed = SettingsManager.reduced_motion
+	reduced_motion_check.toggled.connect(_on_reduced_motion_toggled)
 	_build_rows()
+
+
+func _on_reduced_motion_toggled(enabled: bool):
+	SettingsManager.set_reduced_motion(enabled)
 
 
 func _build_rows():

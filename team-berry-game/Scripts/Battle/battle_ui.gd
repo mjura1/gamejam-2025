@@ -239,7 +239,7 @@ func move_placed_piece(character: BaseCharacter, grid_pos: Vector2i) -> bool:
 	grid_manager.vacate(character.grid_pos)
 	character.grid_pos = grid_pos
 	grid_manager.occupy(grid_pos, character)
-	character.global_position = grid_manager.grid_to_world(grid_pos)
+	character.slide_to(grid_manager.grid_to_world(grid_pos))
 	_after_placement_change()
 	return true
 
