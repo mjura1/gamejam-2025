@@ -107,9 +107,10 @@ func _ready():
 # ===============================================
 
 # Bližnjice za tipke 1-0 (izbira roster mesta), presledek (END TURN/START),
-# S (izberi nazadnje premaknjeno figuro) in D/F (sposobnost 1/2). Vsaka
-# preprosto pokliče isto funkcijo, ki bi jo sprožil ustrezen klik z miško,
-# zato podeduje vso obstoječo logiko/omejitve (can_select, disabled gumbi ...).
+# S (izberi nazadnje premaknjeno figuro), D/F (sposobnost 1/2) in G (odpri/
+# zapri predalo z itemi). Vsaka preprosto pokliče isto funkcijo, ki bi jo
+# sprožil ustrezen klik z miško, zato podeduje vso obstoječo logiko/omejitve
+# (can_select, disabled gumbi ...).
 func _unhandled_input(event):
 	if event.is_action_pressed("end_turn") and not action_button.disabled:
 		_on_action_button_pressed()
@@ -121,6 +122,10 @@ func _unhandled_input(event):
 		return
 	if event.is_action_pressed("ability_2") and not ability2_button.disabled:
 		_on_ability_pressed(2)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("toggle_items") and item_drawer.visible:
+		_on_item_toggle_pressed()
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("select_last_moved"):

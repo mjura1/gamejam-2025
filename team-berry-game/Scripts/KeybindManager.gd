@@ -19,6 +19,7 @@ const REBINDABLE_ACTIONS: Array[String] = [
 	"select_last_moved",
 	"ability_1",
 	"ability_2",
+	"toggle_items",
 	"piece_slot_1",
 	"piece_slot_2",
 	"piece_slot_3",
