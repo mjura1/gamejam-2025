@@ -71,6 +71,9 @@ func _ready():
 	action_button.pressed.connect(_on_action_button_pressed)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
+	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
+	# sredi bitke) - značke slotov naj se takoj osvežijo.
+	KeybindManager.rebinds_changed.connect(_rebuild_rows)
 
 	_update_item_counts()
 	_clear_detail_panel()
@@ -365,6 +368,71 @@ func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
 
 
 # ===============================================
+# ZNAČKE S TIPKO ZA IZBIRO (roster/aktivna vrstica + figura na plošči)
+# ===============================================
+
+# Trenutna tipka, ki izbere roster mesto `index` (0-based, torej piece_slot_1
+# za index 0 ...) - ista bližnjica, ki jo uporablja _select_roster_slot().
+func _slot_label_text(index: int) -> String:
+	var action := "piece_slot_%d" % (index + 1)
+	if not InputMap.has_action(action):
+		return ""
+	return KeybindManager.keycode_to_label(KeybindManager.get_current_keycode(action))
+
+
+# Font je rasteriziran pri BADGE_RASTER_FONT_SIZE (bitmap glyph), nato pa ga
+# transform (glej badge.scale spodaj) pomanjša do dejanske velikosti
+# (BADGE_WORLD_FONT_HEIGHT, v "svet" enotah). Če bi rasterizirali neposredno
+# pri majhni ciljni velikosti in jo NATO povečali (kompenzacija za inv_scale),
+# bi raztegovali droben, že zamegljen bitmap - od tod pikslasto besedilo na
+# plošči. Namesto tega rasteriziramo veliko večji izvorni bitmap in ga na
+# koncu pomanjšamo za isti faktor (BADGE_RASTER_BOOST) - končna vidna
+# velikost ostane enaka, izvor pa je veliko bolj podroben (manjšanje ostrega
+# bitmapa je vizualno bistveno čistejše od raztezanja drobnega).
+const BADGE_WORLD_FONT_HEIGHT := 6.0
+const BADGE_RASTER_FONT_SIZE := 48
+const BADGE_RASTER_BOOST := BADGE_RASTER_FONT_SIZE / BADGE_WORLD_FONT_HEIGHT
+
+
+# Doda (ali osveži) majhno prosojno značko neposredno na figuro na plošči, da
+# igralec vidi katera bližnjica (1-0) pripada kateri figuri tudi med potezo,
+# ne le v roster/aktivni vrstici. Značka je otrok figure, zato se avtomatsko
+# premika/izgine z njo - ustvarimo jo samo enkrat, nato le posodabljamo besedilo.
+func _set_board_badge(character: BaseCharacter, text: String):
+	if not is_instance_valid(character):
+		return
+	var badge := character.get_node_or_null("SlotBadge") as Label
+	if badge == null:
+		badge = Label.new()
+		badge.name = "SlotBadge"
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_theme_font_size_override("font_size", BADGE_RASTER_FONT_SIZE)
+		badge.add_theme_color_override("font_color", Color(1, 1, 1, 0.65))
+		badge.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.65))
+		badge.add_theme_constant_override("shadow_offset_x", 1)
+		badge.add_theme_constant_override("shadow_offset_y", 1)
+		badge.z_index = 5
+		character.add_child(badge)
+
+		# Koren posamezne figure ima RAZLIČEN scale na figuro (glej npr.
+		# rook.tscn 0.05 proti pawn.tscn 0.08 - vsaka slika je tako
+		# normalizirana na isto vizualno velikost). Značka je otrok korena,
+		# zato bi podedovala ta scale in bila za vsako figuro drugače velika/
+		# pomaknjena - kompenziramo z obratnim scale-om, da je značka enake
+		# velikosti in na enakem mestu (v "svet" enotah) za vse figure.
+		# Dodatno delimo z BADGE_RASTER_BOOST (glej opombo zgoraj) - size je
+		# zato pomnožen z istim faktorjem navzgor, da se v lokalnem
+		# (rasterskem) prostoru sklada z večjim font_size.
+		var inv_scale := Vector2.ONE / character.scale
+		badge.scale = inv_scale / BADGE_RASTER_BOOST
+		badge.size = Vector2(10, 8) * BADGE_RASTER_BOOST
+		badge.position = Vector2(2, 2) * inv_scale
+
+	badge.text = text
+	badge.visible = text != ""
+
+
+# ===============================================
 # VRSTICI Z IKONAMI (roster + aktivne)
 # ===============================================
 
@@ -393,7 +461,9 @@ func _rebuild_rows():
 	# (ne iz otrok roster_row - tam so ob rebuildu še stari, queue_free
 	# čakajoči otroci).
 	var assignments: Array = []
-	for roster_name in player_manager.friendly_party:
+	for i in player_manager.friendly_party.size():
+		var roster_name: String = player_manager.friendly_party[i]
+		var slot_text := _slot_label_text(i)
 		var assigned: BaseCharacter = null
 		if alive_by_type.has(roster_name) and not alive_by_type[roster_name].is_empty():
 			assigned = alive_by_type[roster_name].pop_front()
@@ -401,6 +471,7 @@ func _rebuild_rows():
 
 		var icon := PieceIcon.new()
 		icon.setup(roster_name, assigned)
+		icon.set_slot_label(slot_text)
 		if assigned == null:
 			if dead_counts.get(roster_name, 0) > 0:
 				dead_counts[roster_name] -= 1
@@ -412,15 +483,20 @@ func _rebuild_rows():
 			# Že postavljena na ploščo - rahlo posivimo, da je jasno,
 			# katera figura je bila že izbrana.
 			icon.set_placed(true)
+			# Ista značka (tipka za izbiro) se prikaže tudi na sami figuri
+			# na plošči, da igralec vidi katera bližnjica pripada kateri figuri.
+			_set_board_badge(assigned, slot_text)
 		icon.icon_clicked.connect(_on_icon_clicked)
 		roster_row.add_child(icon)
 
 	# ROZA VRSTICA: aktivne figure (žive na plošči). Med placementom se polni
 	# sproti, ko igralec postavlja figure.
-	for assignment in assignments:
+	for i in assignments.size():
+		var assignment = assignments[i]
 		if is_instance_valid(assignment[1]):
 			var icon := PieceIcon.new()
 			icon.setup(assignment[0], assignment[1])
+			icon.set_slot_label(_slot_label_text(i))
 			icon.icon_clicked.connect(_on_icon_clicked)
 			active_row.add_child(icon)
 

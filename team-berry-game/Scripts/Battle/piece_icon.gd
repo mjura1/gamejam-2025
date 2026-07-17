@@ -17,6 +17,10 @@ var is_highlighted: bool = false
 # Figura je že postavljena na ploščo (vnos v roster vrstici zanjo).
 var is_placed: bool = false
 
+# Majhna prosojna značka v kotu ikone, ki prikaže tipko za izbiro tega mesta
+# (glej battle_ui.gd._slot_label_text) - ista bližnjica kot na sami figuri.
+var slot_label: Label
+
 const COLOR_NORMAL := Color(1, 1, 1)
 const COLOR_DEAD := Color(0.35, 0.35, 0.35)
 const COLOR_BENCHED := Color(0.6, 0.6, 0.6)
@@ -29,6 +33,24 @@ func _init():
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	mouse_filter = Control.MOUSE_FILTER_STOP
+
+	slot_label = Label.new()
+	slot_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot_label.add_theme_font_size_override("font_size", 11)
+	slot_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	slot_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	slot_label.add_theme_constant_override("shadow_offset_x", 1)
+	slot_label.add_theme_constant_override("shadow_offset_y", 1)
+	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	slot_label.size = Vector2(18, 14)
+	slot_label.position = Vector2(20, 25)
+	slot_label.visible = false
+	add_child(slot_label)
+
+
+func set_slot_label(text: String):
+	slot_label.text = text
+	slot_label.visible = text != ""
 
 
 func setup(p_piece_name: String, p_character: BaseCharacter):

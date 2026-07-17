@@ -5,6 +5,10 @@
 # rebindi uveljavijo prej, kot lahko karkoli drugega prebere Input/InputMap.
 extends Node
 
+# Sproži se ob vsakem rebindu/restore_defaults - battle_ui.gd ga uporabi za
+# takojšnjo osvežitev značk s tipko na roster/aktivni vrstici in figurah.
+signal rebinds_changed
+
 const SAVE_PATH := "user://keybinds.cfg"
 const SECTION := "keybinds"
 
@@ -66,6 +70,7 @@ func keycode_to_label(physical_keycode: int) -> String:
 func rebind_action(action: String, physical_keycode: int):
 	_apply(action, physical_keycode)
 	save_keybinds()
+	rebinds_changed.emit()
 
 
 func restore_defaults():
@@ -73,6 +78,7 @@ func restore_defaults():
 		if _defaults.has(action):
 			_apply(action, _defaults[action])
 	save_keybinds()
+	rebinds_changed.emit()
 
 
 func load_keybinds():
