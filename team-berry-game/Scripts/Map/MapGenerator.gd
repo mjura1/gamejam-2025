@@ -28,6 +28,10 @@ const FRIENDLY_WEIGHTS: Dictionary = {
 	Room.RoomType.friendly_king: 0
 }
 
+# Utež za item sobo (upgrade itemi brez bitke) - enaka na vseh 3 mapah,
+# primerljiva z redkejšimi prijateljskimi sobami.
+const ITEM_ROOM_WEIGHT: int = 2
+
 # --- Konfiguracija 3 zaporednih map: naraščajoča globina in nabor sovražnikov ---
 const TIER_CONFIGS: Array[Dictionary] = [
 	{ # Tier 0: uvodna mapa - samo kmeti in konji
@@ -115,6 +119,7 @@ func _configure_tier(tier: int) -> void:
 		ROOM_WEIGHTS[enemy_type] = config["enemy_pool"][enemy_type]
 	for friendly_type in FRIENDLY_WEIGHTS:
 		ROOM_WEIGHTS[friendly_type] = FRIENDLY_WEIGHTS[friendly_type]
+	ROOM_WEIGHTS[Room.RoomType.item] = ITEM_ROOM_WEIGHT
 
 	total_weight = 0
 	for weight in ROOM_WEIGHTS.values():

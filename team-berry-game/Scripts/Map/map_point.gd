@@ -26,7 +26,8 @@ enum RoomType {
 	friendly_bishop,
 	friendly_queen,
 	friendly_king,
-	campfire
+	campfire,
+	item
 }
 
 static var RoomTypeNames: Dictionary = {
@@ -42,5 +43,6 @@ static var RoomTypeNames: Dictionary = {
 	RoomType.friendly_bishop : "friendly_bishop",
 	RoomType.friendly_queen : "friendly_queen",
 	RoomType.friendly_king : "friendly_king",
-	RoomType.campfire : "campfire"
+	RoomType.campfire : "campfire",
+	RoomType.item : "item"
 }

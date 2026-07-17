@@ -61,6 +61,7 @@ var _shown_character: BaseCharacter = null
 
 func _ready():
 	player_manager.party_changed.connect(_on_party_changed)
+	player_manager.items_changed.connect(_update_item_counts)
 	map_behaviour.selection_changed.connect(_on_selection_changed)
 	map_behaviour.ability_activated.connect(_on_ability_activated)
 	battle_controller.state_changed.connect(_on_battle_state_changed)

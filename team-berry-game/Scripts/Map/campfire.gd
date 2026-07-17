@@ -19,6 +19,7 @@ var current_rest_state = RestMenuState.STATE_REST
 @onready var rest_and_back_button = $HBoxContainer/RestAndBack
 
 const PARTY_SCREEN_SCENE = preload("res://Scenes/Menu/CampfirePartyPanel.tscn")
+const UPGRADE_SCREEN_SCENE = preload("res://Scenes/Menu/CampfireUpgradePanel.tscn")
 
 # ===============================================
 # 2. GODOT FUNKCIJE
@@ -61,7 +62,12 @@ func _on_rest_and_back_pressed() -> void:
 
 # Funkcija za gumb 'UPGRADE'
 func _on_ugrade_pressed() -> void:
-	print("Odpiram meni za nadgradnje.")
+	if get_tree().root.find_child("UpgradeScreenNode", true, false):
+		return
+
+	var upgrade_screen_instance = UPGRADE_SCREEN_SCENE.instantiate()
+	upgrade_screen_instance.name = "UpgradeScreenNode"
+	get_tree().root.add_child(upgrade_screen_instance)
 
 
 # Funkcija za gumb 'PARTY'

@@ -30,19 +30,18 @@ var grid_manager
 @export var strName: String
 
 # ----------------- ABILITIES -----------------
-# Placeholder za pravi upgrade-item sistem (glej campfire.gd) - dokler ta ne
-# obstaja, je to vedno true, da so 2. sposobnosti testabilne.
-@export var ability2_unlocked: bool = true
+# Ali je 2. sposobnostni slot odklenjen. Trajno stanje živi v
+# PlayerManager.piece_upgrades (po TIPU figure) - figura ga prebere ob
+# registraciji na mrežo (glej _load_persistent_upgrades).
+@export var ability2_unlocked: bool = false
 
 # slot (1|2) -> trenutni nivo TE sposobnosti (1=base, 2=mid, ABILITY_LEVEL_MAX=upgraded).
 # Vsak slot se dviguje NEODVISNO (glej AbilityData.get_level_up_cost) - ločeno
 # od ability2_unlocked, ki samo odklene sam slot 2 (glej get_unlock_cost).
+# Tudi to je samo bitki-lokalna kopija stanja iz PlayerManager.piece_upgrades.
 const ABILITY_LEVEL_MAX := 3
 const ABILITY_TIER_KEYS := ["base", "mid", "upgraded"]
-# Placeholder (glej ability2_unlocked zgoraj): dokler pravega spend-flowa ni,
-# figure se pojavijo že na max nivoju, da so obe stopnji vsake sposobnosti
-# testabilni brez ročnega urejanja te spremenljivke.
-var ability_levels: Dictionary = {1: ABILITY_LEVEL_MAX, 2: ABILITY_LEVEL_MAX}
+var ability_levels: Dictionary = {1: 1, 2: 1}
 
 # slot (1|2) -> preostalo število uporab v tej bitki.
 var ability_uses_remaining: Dictionary = {}
@@ -81,8 +80,10 @@ func on_grid_manager_registered():
 	# 3. Registriramo figuro v slovar zasedenosti
 	grid_manager.occupy(grid_pos, self)
 
-	# 4. Napolnimo sposobnosti (velja tudi za figure, ki se pojavijo sredi
+	# 4. Preberemo trajne nadgradnje tipa (nivoji + odklep slota 2) in
+	# napolnimo sposobnosti (velja tudi za figure, ki se pojavijo sredi
 	# bitke - npr. King.Heal - in za test_sandbox figure).
+	_load_persistent_upgrades()
 	reset_ability_uses()
 
 	# Za debug:
@@ -366,6 +367,18 @@ func _ability_uses_max(slot: int) -> int:
 		2: return ability_data.get_mid_uses(id)
 		_: return ability_data.get_max_uses(id)
 
+# Prepiše ability2_unlocked/ability_levels iz trajnega stanja po tipu figure
+# (PlayerManager.piece_upgrades). Samo za igralčeve figure - sovražniki in
+# ovire sposobnosti ne uporabljajo in obdržijo privzete vrednosti.
+func _load_persistent_upgrades():
+	if is_enemy or is_obstacle:
+		return
+	if not is_instance_valid(player_manager):
+		return
+	var up: Dictionary = player_manager.get_piece_upgrades(strName)
+	ability2_unlocked = up["slot2_unlocked"]
+	ability_levels = {1: up["levels"][1], 2: up["levels"][2]}
+
 # Napolni ability_uses_remaining iz get_ability_defs(). Kliče se ob vsaki
 # (re)registraciji na mreži (placement, King.Heal spawn, test_sandbox).
 func reset_ability_uses():
@@ -394,26 +407,6 @@ func get_ability_info(slot: int) -> Dictionary:
 		"unlock_cost": ability_data.get_unlock_cost(id),
 		"level_up_cost": ability_data.get_level_up_cost(id),
 	}
-
-# Odklene 2. sposobnostni slot (glej AbilityData.get_unlock_cost). Klicatelj
-# (bodoči campfire-spend flow) je odgovoren za preverjanje/porabo itemov PRED
-# klicem - ta funkcija samo spremeni stanje figure.
-func unlock_ability_slot(slot: int) -> bool:
-	if slot != 2 or ability2_unlocked:
-		return false
-	ability2_unlocked = true
-	return true
-
-# Dvigne dani slot iz nivoja 1 na ABILITY_LEVEL_MAX (glej
-# AbilityData.get_level_up_cost). Enako kot zgoraj - poraba itemov ni tu.
-func level_up_ability(slot: int) -> bool:
-	var defs := get_ability_defs()
-	if slot < 1 or slot > defs.size():
-		return false
-	if ability_levels.get(slot, 1) >= ABILITY_LEVEL_MAX:
-		return false
-	ability_levels[slot] = ability_levels.get(slot, 1) + 1
-	return true
 
 # Sledi tarčam, ki jih mora igralec izbrati PO kliku na gumb (glej
 # map_behaviour.gd - pending_ability). Prazen seznam pomeni "ni potrebe po
