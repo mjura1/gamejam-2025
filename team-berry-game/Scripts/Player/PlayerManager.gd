@@ -23,7 +23,9 @@ var upgrade_items: int = 0
 var revive_items: int = 0
 
 
-var max_party_size = 32
+# Največ figur, ki jih igralec sploh lahko ima (vrstica "YOUR PIECES").
+# V bitko jih lahko postavi največ MAX_PLACED (glej battle_ui.gd).
+var max_party_size = 10
 var snowCount = 6
 
 # NOVO: Sledenje napredku igralca na mapi (0 do 14)

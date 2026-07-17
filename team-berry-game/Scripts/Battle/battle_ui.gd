@@ -1,12 +1,21 @@
 # res://Scripts/Battle/battle_ui.gd
-# Desni UI panel v bitki: roster, aktivne figure, itemi in podrobnosti
-# izbrane figure. Živi na CanvasLayerju, da ga Camera2D ne transformira
-# (enak pristop kot pause menu - glej GameFlow._ready()).
+# Desni UI panel v bitki: roster, aktivne figure, itemi, podrobnosti izbrane
+# figure, turn indikator in START/END TURN gumb. Vodi tudi placement fazo
+# (drag & drop figur iz rosterja v spodnje 3 vrstice plošče).
+# Živi na CanvasLayerju, da ga Camera2D ne transformira (enak pristop kot
+# pause menu - glej GameFlow._ready()).
 extends CanvasLayer
+
+# Največ figur, ki jih igralec lahko postavi v eno bitko.
+const MAX_PLACED := 5
 
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var grid_manager = get_node("../GridManager")
 @onready var map_behaviour = get_node("../Map")
+@onready var battle_controller = get_node("../BattleController")
+@onready var placement_highlighter = get_node("../PlacementHighlighter")
+# Koren battle scene - battle.gd nosi friendly_pieces slovar (ime -> scena).
+@onready var battle_root = get_node("..")
 
 @onready var roster_row: HFlowContainer = %RosterRow
 @onready var active_row: HFlowContainer = %ActiveRow
@@ -18,21 +27,256 @@ extends CanvasLayer
 @onready var ability1_uses: Label = %Ability1Uses
 @onready var ability1_desc: Label = %Ability1Desc
 @onready var ability2_locked: Label = %Ability2Locked
+@onready var turn_label: Label = %TurnLabel
+@onready var action_button: Button = %ActionButton
+@onready var board_area: Control = %BoardArea
+@onready var drag_ghost: TextureRect = %DragGhost
 
 const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
+const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
+
+var placement_active: bool = false
+
+# Stanje drag & dropa med placement fazo. drag_source_character je nastavljen,
+# ko premikamo že postavljeno figuro; sicer postavljamo novo iz rosterja.
+var dragging: bool = false
+var drag_piece_name: String = ""
+var drag_source_character: BaseCharacter = null
 
 
 func _ready():
 	player_manager.party_changed.connect(_on_party_changed)
 	map_behaviour.selection_changed.connect(_on_selection_changed)
+	battle_controller.state_changed.connect(_on_battle_state_changed)
+	board_area.gui_input.connect(_on_board_area_input)
+	action_button.pressed.connect(_on_action_button_pressed)
 
 	_update_item_counts()
 	_clear_detail_panel()
 
-	# Figure se spawnajo šele v battle.gd._ready() (starš se inicializira ZA
-	# otroki), zato prvo gradnjo vrstic odložimo za en frame.
+	# Figure (sovražniki/ovire) se spawnajo šele v battle.gd._ready() (starš
+	# se inicializira ZA otroki), zato prvo gradnjo vrstic odložimo za en frame.
 	_rebuild_rows.call_deferred()
+
+
+# ===============================================
+# STANJE BITKE (turn label + gumb + placement vklop)
+# ===============================================
+
+func _on_battle_state_changed(new_state):
+	match new_state:
+		battle_controller.BattleState.PLACEMENT:
+			placement_active = true
+			placement_highlighter.show_zone()
+			board_area.mouse_filter = Control.MOUSE_FILTER_STOP
+			_update_placement_ui()
+		battle_controller.BattleState.PLAYER_TURN:
+			if placement_active:
+				placement_active = false
+				placement_highlighter.clear_zone()
+				board_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			turn_label.text = "PLAYER TURN"
+			action_button.text = "END TURN"
+			action_button.disabled = false
+		battle_controller.BattleState.ENEMY_TURN:
+			turn_label.text = "ENEMY TURN"
+			action_button.disabled = true
+		battle_controller.BattleState.GAME_OVER:
+			turn_label.text = "BATTLE OVER"
+			action_button.disabled = true
+
+
+func _on_action_button_pressed():
+	if placement_active:
+		confirm_placement()
+	elif battle_controller.player_can_act():
+		# END TURN: zaenkrat deluje kot "pass" (premik še vedno sam konča
+		# potezo) - ob ability sistemu postane pravi zaključek več-akcijske poteze.
+		battle_controller.end_player_turn()
+
+
+# ===============================================
+# PLACEMENT FAZA
+# ===============================================
+
+func _max_placeable() -> int:
+	return mini(MAX_PLACED, player_manager.friendly_party.size())
+
+
+func _placed_characters() -> Array:
+	var placed: Array = []
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter):
+			continue
+		if character.is_enemy or character.is_obstacle:
+			continue
+		placed.append(character)
+	return placed
+
+
+func _is_free_placement_cell(grid_pos: Vector2i) -> bool:
+	return placement_highlighter.is_placement_cell(grid_pos) and not grid_manager.is_occupied(grid_pos)
+
+
+# Ali je bitka v placement fazi (vir resnice je BattleController, ne lokalni
+# placement_active - ta se nastavi šele v našem signal handlerju).
+func _in_placement_phase() -> bool:
+	return battle_controller.current_state == battle_controller.BattleState.PLACEMENT
+
+
+# Postavi novo figuro iz rosterja na polje. Vrne false, če polje ni veljavno,
+# je dosežen limit ali te figure ni več na voljo.
+func place_piece(roster_name: String, grid_pos: Vector2i) -> bool:
+	if not _in_placement_phase():
+		return false
+	if not _is_free_placement_cell(grid_pos):
+		return false
+	if _placed_characters().size() >= _max_placeable():
+		return false
+	if _count_available(roster_name) <= 0:
+		return false
+
+	var piece_scene: PackedScene = battle_root.friendly_pieces[roster_name]
+	grid_manager.spawn_character(piece_scene, grid_manager.grid_to_world(grid_pos))
+	_after_placement_change()
+	return true
+
+
+func move_placed_piece(character: BaseCharacter, grid_pos: Vector2i) -> bool:
+	if not _in_placement_phase() or not _is_free_placement_cell(grid_pos):
+		return false
+	grid_manager.vacate(character.grid_pos)
+	character.grid_pos = grid_pos
+	grid_manager.occupy(grid_pos, character)
+	character.global_position = grid_manager.grid_to_world(grid_pos)
+	_after_placement_change()
+	return true
+
+
+func remove_placed_piece(character: BaseCharacter):
+	if not _in_placement_phase():
+		return
+	grid_manager.vacate(character.grid_pos)
+	character.queue_free()
+	_after_placement_change()
+
+
+# Koliko figur tega tipa je še na klopi (v rosterju, a ne na plošči).
+func _count_available(roster_name: String) -> int:
+	var owned := 0
+	for entry in player_manager.friendly_party:
+		if entry == roster_name:
+			owned += 1
+	var placed := 0
+	for character in _placed_characters():
+		if "friendly_" + character.strName == roster_name:
+			placed += 1
+	return owned - placed
+
+
+# Potrdi postavitev: active_party postanejo postavljene figure, bitka se začne.
+func confirm_placement():
+	var placed := _placed_characters()
+	if placed.is_empty():
+		return
+
+	var placed_names: Array[String] = []
+	for character in placed:
+		placed_names.append("friendly_" + character.strName)
+	player_manager.active_party = placed_names
+
+	battle_controller.confirm_placement()
+
+
+func _after_placement_change():
+	placement_highlighter.refresh()
+	_rebuild_rows()
+	_update_placement_ui()
+
+
+func _update_placement_ui():
+	var placed_count := _placed_characters().size()
+	turn_label.text = "PLACE YOUR PIECES (%d/%d)" % [placed_count, _max_placeable()]
+	action_button.text = "START"
+	action_button.disabled = placed_count == 0
+
+
+# ===============================================
+# DRAG & DROP (samo med placement fazo)
+# ===============================================
+
+func _begin_drag(piece_name: String, source_character: BaseCharacter):
+	dragging = true
+	drag_piece_name = piece_name
+	drag_source_character = source_character
+
+	if is_instance_valid(source_character):
+		source_character.modulate.a = 0.4
+
+	drag_ghost.texture = load("res://Assets/Sprites/%s.png" % piece_name)
+	drag_ghost.position = get_viewport().get_mouse_position() - drag_ghost.size / 2
+	drag_ghost.visible = true
+
+
+# Klik na ploščo med placementom: poberi že postavljeno figuro.
+func _on_board_area_input(event):
+	if not placement_active or dragging:
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Pozicija iz eventa (ne get_global_mouse_position() - ta sledi
+		# dejanskemu OS kazalcu in se lahko razlikuje od sinteticnih eventov).
+		var grid_pos := _screen_to_grid(board_area.get_global_transform() * event.position)
+		var character = grid_manager.get_character_at(grid_pos)
+		if character is BaseCharacter and not character.is_enemy and not character.is_obstacle:
+			_begin_drag("friendly_" + character.strName, character)
+			board_area.accept_event()
+
+
+func _input(event):
+	if not dragging:
+		return
+
+	if event is InputEventMouseMotion:
+		drag_ghost.position = event.position - drag_ghost.size / 2
+
+	elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_resolve_drop(event.position)
+		get_viewport().set_input_as_handled()
+
+
+func _resolve_drop(screen_pos: Vector2):
+	dragging = false
+	drag_ghost.visible = false
+
+	var grid_pos := _screen_to_grid(screen_pos)
+
+	if is_instance_valid(drag_source_character):
+		drag_source_character.modulate.a = 1.0
+
+		if grid_pos == drag_source_character.grid_pos:
+			# Klik brez premika: samo prikaži podrobnosti figure.
+			_show_character(drag_source_character)
+		elif _is_free_placement_cell(grid_pos):
+			move_placed_piece(drag_source_character, grid_pos)
+		elif not placement_highlighter.is_placement_cell(grid_pos):
+			# Spuščeno izven cone (ali na panel): figura nazaj na klop.
+			remove_placed_piece(drag_source_character)
+		# Zasedeno polje znotraj cone: figura ostane, kjer je bila.
+
+		drag_source_character = null
+	else:
+		# Nova figura iz rosterja - place_piece sam zavrne neveljavna polja.
+		place_piece(drag_piece_name, grid_pos)
+
+	drag_piece_name = ""
+
+
+func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
+	var world_pos: Vector2 = get_viewport().get_canvas_transform().affine_inverse() * screen_pos
+	return grid_manager.world_to_grid(world_pos)
 
 
 # ===============================================
@@ -47,20 +291,19 @@ func _rebuild_rows():
 
 	# Žive zavezniške figure na plošči, razvrščene po tipu rosterja.
 	var alive_by_type: Dictionary = {}
-	for character in grid_manager.get_all_characters():
-		if not is_instance_valid(character):
-			continue
-		if not (character is BaseCharacter):
-			continue
-		if character.is_enemy or character.is_obstacle:
-			continue
+	for character in _placed_characters():
 		var roster_name: String = "friendly_" + character.strName
 		if not alive_by_type.has(roster_name):
 			alive_by_type[roster_name] = []
 		alive_by_type[roster_name].append(character)
 
+	# Število mrtvih po tipu (za razločevanje mrtev/na klopi).
+	var dead_counts: Dictionary = {}
+	for dead_name in player_manager.dead_party:
+		dead_counts[dead_name] = dead_counts.get(dead_name, 0) + 1
+
 	# RDEČA VRSTICA: celoten roster. Vsakemu vnosu poskusimo dodeliti živo
-	# figuro istega tipa - vnosi brez nje so prikazani kot mrtvi (sivi).
+	# figuro istega tipa - vnosi brez nje so mrtvi (sivi) ali na klopi.
 	# Dodelitve si zapomnimo, da roza vrstico zgradimo iz istih podatkov
 	# (ne iz otrok roster_row - tam so ob rebuildu še stari, queue_free
 	# čakajoči otroci).
@@ -73,12 +316,18 @@ func _rebuild_rows():
 
 		var icon := PieceIcon.new()
 		icon.setup(roster_name, assigned)
+		if assigned == null:
+			if dead_counts.get(roster_name, 0) > 0:
+				dead_counts[roster_name] -= 1
+				icon.set_dead(true)
+			elif not placement_active:
+				# Živa, a ni bila postavljena v to bitko.
+				icon.set_benched(true)
 		icon.icon_clicked.connect(_on_icon_clicked)
 		roster_row.add_child(icon)
 
-	# ROZA VRSTICA: aktivne figure (žive na plošči). Trenutno enaka vsebina
-	# kot roster minus mrtvi - ločena vrstica pride prav ob kasnejšem
-	# "place pieces before battle" featureju.
+	# ROZA VRSTICA: aktivne figure (žive na plošči). Med placementom se polni
+	# sproti, ko igralec postavlja figure.
 	for assignment in assignments:
 		if is_instance_valid(assignment[1]):
 			var icon := PieceIcon.new()
@@ -90,13 +339,35 @@ func _rebuild_rows():
 
 
 func _on_icon_clicked(icon: PieceIcon):
+	if placement_active:
+		if is_instance_valid(icon.character):
+			# Že postavljena: začni drag za premik/odstranitev.
+			_begin_drag(icon.piece_name, icon.character)
+		elif not icon.is_dead and _placed_characters().size() < _max_placeable():
+			# Na klopi in še je prostor: začni drag za postavitev.
+			_begin_drag(icon.piece_name, null)
+		else:
+			_show_piece_for_icon(icon)
+		return
+
 	if is_instance_valid(icon.character):
 		# Živa figura: izberi jo na plošči (enaka pot kot klik na figuro).
+		# Med sovražnikovo potezo izbira ni mogoča - pokažemo samo podrobnosti.
 		map_behaviour.select_character_via_ui(icon.character)
+		if not battle_controller.player_can_act():
+			_show_piece_for_icon(icon)
 	else:
-		# Mrtva figura: ni izbire na plošči, samo prikaz v detail panelu.
+		_show_piece_for_icon(icon)
+
+
+func _show_piece_for_icon(icon: PieceIcon):
+	if icon.is_dead:
 		_show_dead_piece(icon.piece_name)
-		_highlight_icon_only(icon)
+	elif is_instance_valid(icon.character):
+		_show_character(icon.character)
+	else:
+		_show_benched_piece(icon.piece_name)
+	_highlight_icon_only(icon)
 
 
 # ===============================================
@@ -122,6 +393,13 @@ func _show_dead_piece(piece_name: String):
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "DEAD"
 	status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
+	_show_ability_placeholders()
+
+
+func _show_benched_piece(piece_name: String):
+	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
+	status_value.text = "NOT PLACED"
+	status_value.add_theme_color_override("font_color", STATUS_BENCHED_COLOR)
 	_show_ability_placeholders()
 
 
@@ -156,7 +434,7 @@ func _highlight_selected(character):
 				)
 
 
-# Poudari samo kliknjeno (mrtvo) ikono - na plošči ni ničesar za izbrat.
+# Poudari samo kliknjeno ikono (mrtva/na klopi - na plošči ni izbire).
 func _highlight_icon_only(target: PieceIcon):
 	for row in [roster_row, active_row]:
 		for icon in row.get_children():

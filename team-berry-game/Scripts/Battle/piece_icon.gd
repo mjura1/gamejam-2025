@@ -11,10 +11,13 @@ var piece_name: String = ""
 var character: BaseCharacter = null
 
 var is_dead: bool = false
+# Figura je živa, a ni bila postavljena v to bitko (na klopi).
+var is_benched: bool = false
 var is_highlighted: bool = false
 
 const COLOR_NORMAL := Color(1, 1, 1)
 const COLOR_DEAD := Color(0.35, 0.35, 0.35)
+const COLOR_BENCHED := Color(0.6, 0.6, 0.6)
 const COLOR_HIGHLIGHTED := Color(1, 1, 0.4)
 
 
@@ -29,11 +32,16 @@ func setup(p_piece_name: String, p_character: BaseCharacter):
 	piece_name = p_piece_name
 	character = p_character
 	texture = load("res://Assets/Sprites/%s.png" % piece_name)
-	set_dead(not is_instance_valid(character))
+	_update_modulate()
 
 
 func set_dead(dead: bool):
 	is_dead = dead
+	_update_modulate()
+
+
+func set_benched(benched: bool):
+	is_benched = benched
 	_update_modulate()
 
 
@@ -47,6 +55,8 @@ func _update_modulate():
 		modulate = COLOR_DEAD
 	elif is_highlighted:
 		modulate = COLOR_HIGHLIGHTED
+	elif is_benched:
+		modulate = COLOR_BENCHED
 	else:
 		modulate = COLOR_NORMAL
 

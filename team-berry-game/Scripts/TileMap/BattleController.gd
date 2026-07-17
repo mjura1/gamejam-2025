@@ -9,9 +9,14 @@ class_name BattleController
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var move_highlighter = get_node("../MoveHighlighter")
 
+# Sproži se ob vsaki spremembi stanja bitke (za battle UI: turn label,
+# START/END TURN gumb, placement overlay).
+signal state_changed(new_state)
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
+	PLACEMENT,
 	PLAYER_TURN,
 	ENEMY_TURN,
 	TURN_END,
@@ -44,8 +49,33 @@ func initialize_battle():
 	if is_instance_valid(grid_manager):
 		grid_manager.initialize_all_fog(current_floor)
 
-	# 3. Zaženemo prvo potezo
+	# 3. Placement faza - igralec sam postavi figure v spodnje 3 vrstice.
+	# Če so zavezniki že na plošči (test_sandbox / testi s predpostavljenimi
+	# figurami), placement preskočimo in gremo naravnost v prvo potezo.
+	if _has_friendly_pieces():
+		start_player_turn()
+	else:
+		_set_state(BattleState.PLACEMENT)
+		print(">>> PLACEMENT FAZA: igralec postavlja figure <<<")
+
+# Potrdi postavitev in začne bitko. Kliče battle_ui, ko igralec pritisne
+# START (active_party mora biti pred klicem že nastavljen na postavljene).
+func confirm_placement():
+	if current_state != BattleState.PLACEMENT:
+		return
 	start_player_turn()
+
+func _has_friendly_pieces() -> bool:
+	if not is_instance_valid(grid_manager):
+		return false
+	for character in grid_manager.get_all_characters():
+		if character is BaseCharacter and not character.is_enemy and not character.is_obstacle:
+			return true
+	return false
+
+func _set_state(new_state: int):
+	current_state = new_state
+	state_changed.emit(new_state)
 
 # ----------------- TURN LOGIC -----------------
 
@@ -54,7 +84,7 @@ func player_can_act() -> bool:
 
 func start_player_turn():
 	turn_count += 1
-	current_state = BattleState.PLAYER_TURN
+	_set_state(BattleState.PLAYER_TURN)
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
 
 	# Razkrijemo figure takoj, ko se poteza začne
@@ -74,7 +104,7 @@ func end_player_turn():
 	start_enemy_turn()
 
 func start_enemy_turn():
-	current_state = BattleState.ENEMY_TURN
+	_set_state(BattleState.ENEMY_TURN)
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
 
 	# Počisti poudarke prejšnjega kroga (tudi če še niso do konca izginili),
@@ -145,7 +175,7 @@ func check_battle_end() -> bool:
 		return false
 
 	if player_manager.enemyGone():
-		current_state = BattleState.GAME_OVER
+		_set_state(BattleState.GAME_OVER)
 		if player_manager.is_boss_floor:
 			GF.call_deferred("advance_map_tier")
 		else:
@@ -153,7 +183,7 @@ func check_battle_end() -> bool:
 		return true
 
 	if player_manager.activeGone():
-		current_state = BattleState.GAME_OVER
+		_set_state(BattleState.GAME_OVER)
 		player_manager.reset_floor_number()
 		GF.call_deferred("game_over")
 		return true

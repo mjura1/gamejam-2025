@@ -99,7 +99,13 @@ check_script "smoke_campfire_flow" "res://tests/smoke/smoke_campfire_flow.gd" 8 
 echo
 
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
-check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 ""
+check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 \
+	"SMOKE TEST: battle booted through placement into PLAYER_TURN"
+echo
+
+echo "== Placement phase smoke test =="
+check_script "smoke_placement" "res://tests/smoke/smoke_placement.gd" 5 \
+	"SMOKE TEST: placement phase works end to end"
 echo
 
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="

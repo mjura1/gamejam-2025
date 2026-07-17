@@ -114,7 +114,7 @@ func get_all_characters():
 ## current_map_floor: 0 (začetek) do 14 (Boss); prikaz je omejen na MAX_FOG_ROWS_CAP vrstic.
 func initialize_all_fog(current_map_floor: int = 0):
 	const MAX_FOG_ROWS_CAP = 10 # megla nikoli ne pokrije več kot 10 vrstic
-	const CLEAN_ROWS = 2 # spodnji vrstici (spawn zaveznikov) morata ostati čisti
+	const CLEAN_ROWS = 3 # spodnje 3 vrstice (placement cona) morajo ostati čiste
 
 	if not is_instance_valid(tile_map):
 		push_error("TileMap ni nastavljen v GridManagerju. Inicializacija megle ni mogoča.")

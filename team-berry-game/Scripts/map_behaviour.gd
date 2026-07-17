@@ -62,6 +62,11 @@ func _unhandled_input(event):
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
 
+	# Med placement fazo klike na ploščo obravnava battle UI (drag & drop),
+	# ne izbirna logika bitke.
+	if is_instance_valid(battle_controller) and battle_controller.current_state == battle_controller.BattleState.PLACEMENT:
+		return
+
 	var mouse_world_pos = get_global_mouse_position()
 	var clicked_grid = grid_manager.world_to_grid(mouse_world_pos)
 	var used_rect = tile_map.get_used_rect() 
