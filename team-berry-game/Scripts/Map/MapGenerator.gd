@@ -9,7 +9,6 @@ class_name MapGenerator # Omogoča tipizacijo (npr. 'var generator: MapGenerator
 const ROOM_RESOURCE = preload("res://Scripts/Map/map_point.gd")
 
 # Logična velikost mreže (kot v Slay the Spire)
-const FLOORS: int = 15
 const MAP_WIDTH: int = 7
 const MAX_PATHS: int = 6
 const START_FLOOR: int = 0
@@ -19,14 +18,8 @@ const X_DISTANCE: int = 150
 const Y_DISTANCE: int = 100
 const PLACEMENT_RANDOMNESS: float = 5.0
 
-# --- Definiranje uteži za naključno dodeljevanje ---
-const ROOM_WEIGHTS: Dictionary = {
-	Room.RoomType.enemy_bishop: 2,
-	Room.RoomType.enemy_king: 0,
-	Room.RoomType.enemy_knight: 3,
-	Room.RoomType.enemy_rook: 4,
-	Room.RoomType.enemy_queen: 1,
-	Room.RoomType.enemy_pawn: 5,
+# --- Uteži za prijateljske sobe: enake na vseh 3 mapah, niso omejene po nivoju ---
+const FRIENDLY_WEIGHTS: Dictionary = {
 	Room.RoomType.friendly_pawn: 5,
 	Room.RoomType.friendly_knight: 2,
 	Room.RoomType.friendly_rook: 4,
@@ -35,21 +28,63 @@ const ROOM_WEIGHTS: Dictionary = {
 	Room.RoomType.friendly_king: 0
 }
 
+# --- Konfiguracija 3 zaporednih map: naraščajoča globina in nabor sovražnikov ---
+const TIER_CONFIGS: Array[Dictionary] = [
+	{ # Tier 0: uvodna mapa - samo kmeti in konji
+		"floors": 5,
+		"boss_type": Room.RoomType.enemy_knight,
+		"enemy_pool": {
+			Room.RoomType.enemy_pawn: 5,
+			Room.RoomType.enemy_knight: 3,
+		},
+	},
+	{ # Tier 1: dodana trdnjava in lovec
+		"floors": 7,
+		"boss_type": Room.RoomType.enemy_rook,
+		"enemy_pool": {
+			Room.RoomType.enemy_pawn: 5,
+			Room.RoomType.enemy_knight: 3,
+			Room.RoomType.enemy_rook: 4,
+			Room.RoomType.enemy_bishop: 2,
+		},
+	},
+	{ # Tier 2: dodana kraljica (mini-boss) in kralj (finalni boss)
+		"floors": 9,
+		"boss_type": Room.RoomType.enemy_king,
+		"mini_boss_floor_offset": 3, # FLOORS - 3
+		"mini_boss_type": Room.RoomType.enemy_queen,
+		"recruit_floor": 4, # prijateljski kralj, sredina mape
+		"enemy_pool": {
+			Room.RoomType.enemy_pawn: 5,
+			Room.RoomType.enemy_knight: 3,
+			Room.RoomType.enemy_rook: 4,
+			Room.RoomType.enemy_bishop: 2,
+			Room.RoomType.enemy_queen: 1,
+		},
+	},
+]
+
 # Glavni podatkovni objekt: Matrika virov Room
 var map_data: Array = [] # Array[Array[Room]]
 var total_weight: int = 0 # Skupna utež za uteženo naključno izbiro
+
+# --- Stanje trenutno konfiguriranega nivoja (glej _configure_tier) ---
+var FLOORS: int = 15
+var ROOM_WEIGHTS: Dictionary = {}
+var boss_type: int = Room.RoomType.enemy_king
+var mini_boss_floor: int = -1
+var mini_boss_type: int = Room.RoomType.enemy_queen
+var recruit_floor: int = -1
 
 # =========================================================
 # 2. GLAVNA FUNKCIJA GENERIRANJA
 # =========================================================
 
 ## Glavna funkcija, ki se pokliče za generiranje celotne mape
-func generate_map() -> Array:
-	# 1. Izračunamo skupno utež (samo enkrat na začetku)
-	if total_weight == 0:
-		for weight in ROOM_WEIGHTS.values():
-			total_weight += weight
-	
+func generate_map(tier: int = 0) -> Array:
+	# 1. Nastavimo globino, nabor sovražnikov in posebna nadstropja za ta nivo
+	_configure_tier(tier)
+
 	# 2. Inicializacija prazne mreže (matrike)
 	_initialize_grid()
 	
@@ -64,6 +99,26 @@ func generate_map() -> Array:
 	
 	# 6. Vrnemo generirano mapo
 	return map_data
+
+## 1.1 Nastavi globino, sovražnike in posebna nadstropja glede na TIER_CONFIGS[tier]
+func _configure_tier(tier: int) -> void:
+	var config: Dictionary = TIER_CONFIGS[clampi(tier, 0, TIER_CONFIGS.size() - 1)]
+
+	FLOORS = config["floors"]
+	boss_type = config["boss_type"]
+	mini_boss_floor = FLOORS - config["mini_boss_floor_offset"] if config.has("mini_boss_floor_offset") else -1
+	mini_boss_type = config.get("mini_boss_type", Room.RoomType.enemy_queen)
+	recruit_floor = config.get("recruit_floor", -1)
+
+	ROOM_WEIGHTS = {}
+	for enemy_type in config["enemy_pool"]:
+		ROOM_WEIGHTS[enemy_type] = config["enemy_pool"][enemy_type]
+	for friendly_type in FRIENDLY_WEIGHTS:
+		ROOM_WEIGHTS[friendly_type] = FRIENDLY_WEIGHTS[friendly_type]
+
+	total_weight = 0
+	for weight in ROOM_WEIGHTS.values():
+		total_weight += weight
 
 # =========================================================
 # 3. POMOŽNE FUNKCIJE (KORAKI ALGORITMA)
@@ -210,20 +265,19 @@ func _assign_room_types():
 			if room == null:
 				continue
 			
-			match i:
-				START_FLOOR:
-					room.type = Room.RoomType.enemy_knight
-				
-				FLOORS - 1:
-					room.type = Room.RoomType.enemy_king
-				
-				# Nadstropje 9: prijateljski kralj
-				9:
-					room.type = Room.RoomType.friendly_king
-				
+			# NOVO: FLOORS, mini_boss_floor in recruit_floor so instance spremenljivke
+			# (odvisne od nivoja), zato jih match ne more primerjati - uporabimo if/elif.
+			if i == START_FLOOR:
+				room.type = Room.RoomType.enemy_knight
+			elif i == FLOORS - 1:
+				room.type = boss_type
+			elif i == mini_boss_floor:
+				room.type = mini_boss_type
+			elif i == recruit_floor:
+				room.type = Room.RoomType.friendly_king
+			else:
 				# Vsa ostala nadstropja: Utežena naključna izbira
-				_:
-					room.type = _get_random_room_type()
+				room.type = _get_random_room_type()
 	
 	print("Tip sobe je dodeljen vsem sobam.")
 

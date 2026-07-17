@@ -16,7 +16,12 @@ var max_party_size = 32
 var snowCount = 6
 
 # NOVO: Sledenje napredku igralca na mapi (0 do 14)
-var current_map_floor: int = 0 
+var current_map_floor: int = 0
+
+# NOVO: Sledenje napredku igralca med 3 zaporednimi mapami (0, 1, 2)
+var current_map_tier: int = 0
+# NOVO: Ali je soba, ki je sprožila trenutno bitko, boss soba te mape
+var is_boss_floor: bool = false
 
 func _ready():
 	print("PlayerManager naložen. Party size: %d" % [active_party.size()])
@@ -47,6 +52,9 @@ func register_dead_character(character):
 	print(active_enemies)
 			
 func add_to_enemy_party(character):
+	# Namerno: vojska sovražnikov RASTE, ko igralec napreduje globlje v isto mapo
+	# (vsaka bitka doda k prejšnjim, ne le k default_enemies). Ponastavi se samo
+	# ob prehodu na novo mapo (glej GameFlow.advance_map_tier()) - ne ob vsaki bitki.
 	enemy_party.append(character)
 
 func resetActives():

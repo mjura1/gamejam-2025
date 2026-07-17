@@ -47,7 +47,11 @@ func _initialize_game():
 	# 1. Ustvarimo in shranimo instanco mape
 	current_map_instance = MAP_SCENE.instantiate()
 	current_map_instance.name = "MapInstance"
-	
+	# pending_tier (ne initialize_map() neposredno!) - vozlišče še ni v drevesu,
+	# zato @onready sklici (map_camera ipd.) še niso na voljo. _ready() bo
+	# initialize_map(pending_tier) poklical sam, ko bo vozlišče dodano.
+	current_map_instance.pending_tier = PlayerManager.current_map_tier
+
 	# 2. Naložimo shranjeno instanco mape kot prvo sceno
 	# (S tem preklopimo sceno iz Main Menu na Mapo)
 	_change_scene_instance(current_map_instance)
@@ -59,6 +63,30 @@ func _initialize_game():
 func start_event(room_type: int):
 	PlayerManager.resetActives()
 	_change_scene_instance(BATTLE_SCENE.instantiate())
+
+## Kliče se, ko igralec premaga boss sobo trenutne mape.
+## Napreduje na naslednjo (težjo) mapo ali, po 3. mapi, konča run.
+func advance_map_tier():
+	PlayerManager.current_map_tier += 1
+
+	if PlayerManager.current_map_tier >= 3:
+		print("GF: Igralec je premagal vse 3 mape. Vračanje na Main Menu.")
+		_end_run()
+		_change_scene_instance(MAIN_MENU_SCENE.instantiate())
+		return
+
+	if is_instance_valid(current_map_instance):
+		current_map_instance.queue_free()
+
+	current_map_instance = MAP_SCENE.instantiate()
+	current_map_instance.name = "MapInstance"
+	current_map_instance.pending_tier = PlayerManager.current_map_tier
+	PlayerManager.reset_floor_number()
+	# Vojska sovražnikov je rasla čez celotno prejšnjo mapo (glej
+	# PlayerManager.add_to_enemy_party) - nova (težja) mapa naj se začne
+	# spet z osnovno ekipo, ne s celotno vojsko iz prejšnje mape.
+	PlayerManager.enemy_party = PlayerManager.default_enemies.duplicate()
+	_change_scene_instance(current_map_instance)
 
 
 # =========================================================
@@ -109,6 +137,7 @@ func return_to_main_menu():
 # zato je get_tree() ne sprosti sam - brez tega klica pušča spomin (leak).
 func _end_run():
 	game_initialized = false
+	PlayerManager.current_map_tier = 0
 	get_tree().paused = false
 	if is_instance_valid(pause_menu_instance):
 		pause_menu_instance.hide()

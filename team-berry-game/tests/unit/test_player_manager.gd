@@ -53,3 +53,13 @@ func test_set_current_floor_equal_value_is_noop():
 	pm.current_map_floor = 4
 	pm.set_current_floor(4)
 	assert_eq(pm.current_map_floor, 4, "set_current_floor should leave current_map_floor unchanged when given the same value")
+
+func test_add_to_enemy_party_grows_as_player_goes_deeper():
+	var pm = PlayerManagerScript.new()
+	pm.setStarting()
+	var expected: Array[String] = pm.default_enemies.duplicate()
+	expected.append("enemy_knight")
+	expected.append("enemy_rook")
+	pm.add_to_enemy_party("enemy_knight")
+	pm.add_to_enemy_party("enemy_rook")
+	assert_eq(pm.enemy_party, expected, "add_to_enemy_party should accumulate across floors within the same map (on top of the run's starting roster), not reset per battle")

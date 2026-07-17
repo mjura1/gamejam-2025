@@ -39,7 +39,12 @@ check_scene() {
 	# writing the rest of $out; the resulting SIGPIPE makes pipefail report
 	# the pipeline as failed even though grep matched. A here-string has no
 	# separate writer process, so there's nothing to race.
-	errors=$(grep "^ERROR" <<< "$out" | grep -v "resources still in use at exit" || true)
+	# ^SCRIPT ERROR too: GDScript runtime faults (invalid assignment, null
+	# reference, etc.) print as "SCRIPT ERROR:", not "ERROR:" - a plain
+	# ^ERROR grep let a real crash (Nil map_camera in
+	# MapController._center_and_zoom_camera) through silently, since the
+	# script kept running past the bad line and still printed expect_str.
+	errors=$(grep -E "^(ERROR|SCRIPT ERROR)" <<< "$out" | grep -v "resources still in use at exit" || true)
 	if [ -z "$errors" ]; then
 		echo "PASS: $label"
 	else
@@ -60,7 +65,12 @@ check_script() {
 	local errors
 	# <<< (here-string) instead of `echo "$out" | grep` - see check_scene()
 	# above for why a pipe here can misreport pass as fail under `pipefail`.
-	errors=$(grep "^ERROR" <<< "$out" | grep -v "resources still in use at exit" || true)
+	# ^SCRIPT ERROR too: GDScript runtime faults (invalid assignment, null
+	# reference, etc.) print as "SCRIPT ERROR:", not "ERROR:" - a plain
+	# ^ERROR grep let a real crash (Nil map_camera in
+	# MapController._center_and_zoom_camera) through silently, since the
+	# script kept running past the bad line and still printed expect_str.
+	errors=$(grep -E "^(ERROR|SCRIPT ERROR)" <<< "$out" | grep -v "resources still in use at exit" || true)
 	if [ -n "$errors" ]; then
 		echo "FAIL: $label - unexpected errors"
 		echo "$errors" | sed 's/^/    /'
@@ -76,6 +86,11 @@ check_script() {
 echo "== Scene load smoke tests =="
 check_scene "main_menu.tscn" "res://Scenes/Menu/main_menu.tscn"
 check_scene "map.tscn" "res://Scenes/Map/map.tscn"
+echo
+
+echo "== Main menu Start -> GameFlow._initialize_game() smoke test =="
+check_script "smoke_start_new_game" "res://tests/smoke/smoke_start_new_game.gd" 5 \
+	"SMOKE TEST: map initialized cleanly via the real Start flow"
 echo
 
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="

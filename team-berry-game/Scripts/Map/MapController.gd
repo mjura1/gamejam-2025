@@ -11,10 +11,17 @@ const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 var map_data: Array = []
 var room_node_map: Dictionary = {}
 var current_room: Room = null
-var is_initialized: bool = false 
+var is_initialized: bool = false
+var generator: MapGenerator = null
+
+# NOVO: Nivo (0-2), ki naj se generira ob naslednji _ready(). GameFlow ga
+# nastavi takoj po instantiate(), PREDEN je vozlišče v drevesu - zato ne sme
+# biti @onready in initialize_map() se ne sme klicati neposredno pred tem
+# (map_camera in drugi @onready sklici tedaj še niso na voljo).
+var pending_tier: int = 0
 
 var pan_start_position: Vector2 = Vector2.ZERO
-var is_panning: bool = false 
+var is_panning: bool = false
 
 # NEW: Meje celotne mape za omejitev kamere
 var map_boundary_min: Vector2 = Vector2.ZERO
@@ -22,7 +29,7 @@ var map_boundary_max: Vector2 = Vector2.ZERO
 
 func _ready():
 	if not is_initialized:
-		initialize_map()
+		initialize_map(pending_tier)
 	else:
 		queue_redraw()
 
@@ -34,12 +41,12 @@ func _on_button_pressed():
 # METODE ZA ZAGON, VIZUALIZACIJO IN STANJE 
 # =========================================================
 
-func initialize_map():
+func initialize_map(tier: int = 0):
 	if is_initialized: return
-	
-	var generator = MapGenerator.new()
-	map_data = generator.generate_map()
-	
+
+	generator = MapGenerator.new()
+	map_data = generator.generate_map(tier)
+
 	_visualize_rooms()
 	_set_initial_state()
 	
@@ -305,6 +312,8 @@ func _on_room_selected(room_data: Room):
 func _handle_event(room_data: Room):
 	var room_name = Room.RoomTypeNames.get(room_data.type, "unknown_event")
 	print("Zagon %s..." % room_name)
+
+	PlayerManager.is_boss_floor = room_data.grid_position.x == generator.FLOORS - 1
 
 	if room_name.begins_with("enemy_"):
 		PlayerManager.add_to_enemy_party(room_name)
