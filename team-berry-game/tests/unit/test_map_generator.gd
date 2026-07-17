@@ -31,7 +31,8 @@ func test_tier_2_adds_queen_mini_boss_and_king_final_boss():
 	assert_eq(gen.boss_type, Room.RoomType.enemy_king, "Tier 2's final boss should be the king")
 	assert_eq(gen.mini_boss_floor, 6, "Tier 2's mini-boss should land on floor FLOORS - 3 (6)")
 	assert_eq(gen.mini_boss_type, Room.RoomType.enemy_queen, "Tier 2's mini-boss should be the queen")
-	assert_eq(gen.recruit_floor, 4, "Tier 2 should keep a friendly-king recruit floor at 4")
+	assert_eq(gen.recruit_floor, 3, "Tier 2's friendly-king recruit floor moved to 3 to make room for the shop at 4")
+	assert_eq(gen.shop_floor, 4, "Tier 2 should have a shop floor at 4 (the map's middle floor)")
 	assert_true(gen.ROOM_WEIGHTS.has(Room.RoomType.enemy_queen), "Tier 2 should allow queens in the random pool")
 
 func test_all_tiers_keep_friendly_rooms_available():
@@ -47,6 +48,28 @@ func test_total_weight_matches_sum_of_room_weights():
 	for weight in gen.ROOM_WEIGHTS.values():
 		expected_sum += weight
 	assert_eq(gen.total_weight, expected_sum, "total_weight should equal the sum of the configured ROOM_WEIGHTS")
+
+func test_tier_1_has_shop_floor_at_map_middle():
+	var gen = MapGeneratorScript.new()
+	gen._configure_tier(1)
+	assert_eq(gen.shop_floor, 3, "Tier 1 should have a shop floor at 3 (the map's middle floor)")
+
+func test_tier_0_has_no_shop_floor():
+	var gen = MapGeneratorScript.new()
+	gen._configure_tier(0)
+	assert_eq(gen.shop_floor, -1, "Tier 0 should not have a shop floor")
+
+func test_shop_floor_is_all_shop_rooms_on_every_generated_tier_1_and_2_map():
+	for tier in [1, 2]:
+		var gen = MapGeneratorScript.new()
+		gen.generate_map(tier)
+		var found_shop := false
+		for room in gen.map_data[gen.shop_floor]:
+			if room == null:
+				continue
+			found_shop = true
+			assert_eq(room.type, Room.RoomType.shop, "Tier %d: every non-null room on the shop floor should be type shop" % tier)
+		assert_true(found_shop, "Tier %d should have at least one shop room on the shop floor" % tier)
 
 func test_every_tier_forces_campfire_on_second_to_last_floor():
 	# _connect_to_boss() funnels every surviving path through FLOORS - 2 before
