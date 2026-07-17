@@ -5,4 +5,5 @@ real asset replaces it.
 
 | Path | Should eventually depict | How the placeholder was made |
 |---|---|---|
-| _(none yet — item-shop implementation will add `Assets/Sprites/shop.png` and `Assets/Sprites/item_extra_move.png`, see ITEM_SHOP_PLAN.md Phase 4)_ | | |
+| `team-berry-game/Assets/Sprites/shop.png` | The shop map-node icon (a merchant stall / chest, matching the other map icons' feel). | ImageMagick: 256x256, dark teal `#2b4a57` background, gold "S" letter, gold border. |
+| `team-berry-game/Assets/Sprites/item_extra_move.png` | The `extra_move` item's icon (battle drawer + shop), e.g. a winged boot or arrow burst. | ImageMagick: 256x256, purple `#5a3a80` background, gold "+1" text, gold border. |
