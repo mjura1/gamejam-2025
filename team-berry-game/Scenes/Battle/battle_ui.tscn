@@ -1,0 +1,221 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Battle/battle_ui.gd" id="1_bui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_side"]
+bg_color = Color(0.09, 0.1, 0.12, 1)
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
+bg_color = Color(0.15, 0.16, 0.19, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+
+[node name="BattleUI" type="CanvasLayer"]
+script = ExtResource("1_bui")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="BoardArea" type="Control" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 0.58
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="SidePanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchor_left = 0.58
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_side")
+
+[node name="Margin" type="MarginContainer" parent="Root/SidePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="Root/SidePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RosterLabel" type="Label" parent="Root/SidePanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "YOUR PIECES"
+
+[node name="RosterPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="RosterRow" type="HFlowContainer" parent="Root/SidePanel/Margin/VBox/RosterPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ActiveLabel" type="Label" parent="Root/SidePanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "ACTIVE"
+
+[node name="ActivePanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="ActiveRow" type="HFlowContainer" parent="Root/SidePanel/Margin/VBox/ActivePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ItemsRow" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UpgradePanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox/ItemsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="UpgradeHBox" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/ItemsRow/UpgradePanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="UpgradeLabel" type="Label" parent="Root/SidePanel/Margin/VBox/ItemsRow/UpgradePanel/UpgradeHBox"]
+layout_mode = 2
+text = "UPGRADE"
+
+[node name="UpgradeCount" type="Label" parent="Root/SidePanel/Margin/VBox/ItemsRow/UpgradePanel/UpgradeHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "x0"
+
+[node name="RevivePanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox/ItemsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="ReviveHBox" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/ItemsRow/RevivePanel"]
+layout_mode = 2
+alignment = 1
+
+[node name="ReviveLabel" type="Label" parent="Root/SidePanel/Margin/VBox/ItemsRow/RevivePanel/ReviveHBox"]
+layout_mode = 2
+text = "REVIVE"
+
+[node name="ReviveCount" type="Label" parent="Root/SidePanel/Margin/VBox/ItemsRow/RevivePanel/ReviveHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "x0"
+
+[node name="DetailPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="DetailMargin" type="MarginContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="DetailHBox" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Portrait" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+size_flags_vertical = 0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DetailVBox" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="StatusHeader" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "STATUS"
+
+[node name="StatusValue" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-"
+
+[node name="HSep1" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+layout_mode = 2
+
+[node name="Ability1Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+layout_mode = 2
+
+[node name="Ability1Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-"
+
+[node name="Ability1Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="Ability1Desc" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+autowrap_mode = 3
+
+[node name="HSep2" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+layout_mode = 2
+
+[node name="Ability2Locked" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+autowrap_mode = 3
+
+[node name="TurnLabel" type="Label" parent="Root/SidePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+text = "PLACE YOUR PIECES"
+
+[node name="ActionButton" type="Button" parent="Root/SidePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "START"
+
+[node name="DragGhost" type="TextureRect" parent="Root"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 0
+offset_right = 48.0
+offset_bottom = 48.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

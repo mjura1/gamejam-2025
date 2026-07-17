@@ -1,18 +1,40 @@
 # res://Scripts/Player/PlayerManager.gd
 extends Node
 
+# Sproži se ob vsaki spremembi ekip (smrt figure ipd.), da se UI lahko osveži.
+signal party_changed
+
 # Party Management
 var default_friends: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"]
 var default_enemies: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
 var friendly_party: Array[String]
 var enemy_party: Array[String]
 
+# Figure, ki jih je igralec nabral čez omejitev max_party_size - niso
+# izgubljene, samo čakajo. Zamenjava rezerva <-> aktivna ekipa se dogaja na
+# počivališču prek Party gumba (UI za to pride kasneje - glej
+# CampfirePartyPanel.gd).
+var reserve_party: Array[String]
+
 var active_enemies: Array[String]
 
 var active_party: Array[String]
 
+# Zavezniki, ki so padli v trenutni bitki. Ponastavi se v resetActives()
+# (smrt zaenkrat NI trajna med bitkami - trajnost pride z revive itemom).
+var dead_party: Array[String]
 
-var max_party_size = 32
+# Item counts (samo prikaz v battle UI - item sistem pride kasneje)
+var upgrade_items: int = 0
+var revive_items: int = 0
+
+
+# Največ figur v AKTIVNI ekipi (vrstica "YOUR PIECES" v bitki, glej
+# battle_ui.gd). Čez to mejo se figure še vedno nabirajo (glej
+# reserve_party) - samo v bitko jih ni mogoče postaviti, dokler jih igralec
+# ne zamenja z aktivno ekipo na počivališču. V bitko jih lahko postavi
+# največ MAX_PLACED (glej battle_ui.gd).
+var max_party_size = 10
 var snowCount = 6
 
 # NOVO: Sledenje napredku igralca na mapi (0 do 14)
@@ -29,10 +51,13 @@ func _ready():
 # ----------------- PARTY MANAGEMENT (Aktivna ekipa) -----------------
 
 func add_to_friendly_party(character):
+	print("char name ", character)
 	if friendly_party.size() < max_party_size:
-		print("char name ", character)
 		friendly_party.append(character)
-		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % friendly_party.size())
+		print("PlayerManager: Dodana figura v aktivno ekipo. Nova velikost: %d" % friendly_party.size())
+	else:
+		reserve_party.append(character)
+		print("PlayerManager: Aktivna ekipa polna (%d/%d) - figura shranjena v rezervo. Rezerva: %d" % [friendly_party.size(), max_party_size, reserve_party.size()])
 
 # ----------------- SMRT IN OŽIVITEV (Revive) -----------------
 
@@ -41,6 +66,7 @@ func register_dead_character(character):
 	for item in active_party:
 		if character == item:
 			active_party.erase(character)
+			dead_party.append(character)
 			break
 	for item in active_enemies:
 		if character == item:
@@ -50,6 +76,7 @@ func register_dead_character(character):
 	print(active_party)
 	print(enemy_party)
 	print(active_enemies)
+	party_changed.emit()
 			
 func add_to_enemy_party(character):
 	# Namerno: vojska sovražnikov RASTE, ko igralec napreduje globlje v isto mapo
@@ -60,6 +87,8 @@ func add_to_enemy_party(character):
 func resetActives():
 	active_enemies = enemy_party.duplicate()
 	active_party = friendly_party.duplicate()
+	dead_party.clear()
+	party_changed.emit()
 	
 func setStarting() -> void:
 	friendly_party = default_friends.duplicate()

@@ -7,7 +7,6 @@ const obstacle: PackedScene = preload("res://Scenes/CharacterPiecesNodes/Neutral
 
 # Enostavna deklaracija brez tipnih namigov, da se izognemo sintaktičnim napakam
 var to_spawn_enemy
-var to_spawn_ally
 
 # Friendly pieces dictionary
 const friendly_pieces := {
@@ -39,41 +38,25 @@ func _ready() -> void:
 		return
 	
 	# Logika za dodajanje figur ostane v _ready()
-	to_spawn_ally = player_manager.active_party.duplicate(true)
 	to_spawn_enemy = player_manager.active_enemies.duplicate(true)
-	
-	var map_width = 12 
-	var map_height = 12 
-	
-	# ========================================================
-	# 1. Spawn ALLY pieces (na dnu: vrstici 10 in 11)
-	# ========================================================
-	
-	var ally_spawn_rows = [map_height - 1, map_height - 2] # 11 in 10
-	var max_ally_slots = map_width * ally_spawn_rows.size()
-	if to_spawn_ally.size() > max_ally_slots:
-		push_warning("battle.gd: preveč zaveznikov za spawn (%d > %d) - odvečni so izpuščeni." % [to_spawn_ally.size(), max_ally_slots])
-		to_spawn_ally.resize(max_ally_slots)
 
-	while not to_spawn_ally.is_empty():
-		for x in range(0, map_width):
-			for y in ally_spawn_rows:
-				if to_spawn_ally.is_empty():
-					break
-					
-				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
-				if randf() < 0.8 or grid_manager.is_occupied(Vector2i(x, y)):
-					continue
-					
-				var piece_name = to_spawn_ally.pop_at(randi_range(0, to_spawn_ally.size() - 1))
-				grid_manager.spawn_character(friendly_pieces[piece_name], grid_manager.grid_to_world(Vector2(x, y)))
-				
+	var map_width = 12
+	var map_height = 12
+
+	# ========================================================
+	# 1. ALLY pieces se NE spawnajo več samodejno - igralec jih v placement
+	# fazi sam postavi v spodnje 3 vrstice (glej battle_ui.gd + PLACEMENT
+	# stanje v BattleControllerju).
+	# ========================================================
+
 	# ========================================================
 	# 2. Spawn OBSTACLES (V sredini: vrstici 2-9)
 	# ========================================================
 	
+	# map_height - 3: spodnje 3 vrstice so placement cona - tam ovire ne smejo
+	# zasedati polj za postavljanje figur.
 	for x in range(0, map_width):
-		for y in range(2, map_height - 2):
+		for y in range(2, map_height - 3):
 			var spawn_chance = randi_range(0, 12)
 			if spawn_chance == 1 and not grid_manager.is_occupied(Vector2i(x, y)):
 				grid_manager.spawn_character(obstacle, grid_manager.grid_to_world(Vector2(x, y)))
