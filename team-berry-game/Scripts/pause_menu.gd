@@ -3,36 +3,39 @@ extends Control
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	hide()
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	pass
+	pauseGame()
 
 func resume():
+	$AnimationPlayer.play_backwards("blur")
+	await $AnimationPlayer.animation_finished
+	hide()
 	get_tree().paused = false
-	$AnimationPlayer.play("blur")	
 
 func pause():
+	show()
 	get_tree().paused = true
+	$AnimationPlayer.play("blur")
 
 func pauseGame():
-	if Input.is_action_just_pressed("escape") and get_tree().paused == false:
-		pause()
-	elif Input.is_action_just_pressed("escape") and get_tree().paused == true:
-		resume()
-
+	if not GF.game_initialized:
+		return
+	if Input.is_action_just_pressed("escape"):
+		if get_tree().paused:
+			resume()
+		else:
+			pause()
 
 
 func _on_button_pressed() -> void:
-	print("Resume")
 	resume()
 
 func _on_button_2_pressed() -> void:
-	print("Main menu")
-	get_tree().change_scene_to_file("res://Scenes/main_menu.tscn")
+	GF.return_to_main_menu()
 
 func _on_button_3_pressed() -> void:
-	print("Quit game")
 	get_tree().quit()

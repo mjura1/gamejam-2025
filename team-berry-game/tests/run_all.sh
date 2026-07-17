@@ -108,6 +108,11 @@ check_script "smoke_ai_ignores_obstacles (regression)" "res://tests/smoke/smoke_
 	"SMOKE TEST: obstacle correctly ignored"
 echo
 
+echo "== Pause menu smoke test =="
+check_script "smoke_pause_menu" "res://tests/smoke/smoke_pause_menu.gd" 80 \
+	"SMOKE TEST: escape resumed - menu hidden and tree unpaused again"
+echo
+
 if [ "$OVERALL_FAIL" -ne 0 ]; then
 	echo "=== RESULT: FAIL ==="
 else
