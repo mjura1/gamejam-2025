@@ -113,6 +113,11 @@ check_script "smoke_placement" "res://tests/smoke/smoke_placement.gd" 5 \
 	"SMOKE TEST: placement phase works end to end"
 echo
 
+echo "== Placement auto-fill/remove-all smoke test =="
+check_script "smoke_placement_auto_fill" "res://tests/smoke/smoke_placement_auto_fill.gd" 5 \
+	"SMOKE TEST: placement auto-fill/remove-all works end to end"
+echo
+
 echo "== Ability activation smoke test =="
 check_script "smoke_abilities" "res://tests/smoke/smoke_abilities.gd" 4 \
 	"SMOKE TEST: ability activated cleanly and use count decremented"

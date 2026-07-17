@@ -1,5 +1,9 @@
 extends Control
 
+const SETTINGS_MENU_SCENE = preload("res://Scenes/Menu/settings_menu.tscn")
+
+var _settings_instance: Control = null
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	# Preverjanje za debug: Prepričamo se, da je GF dostopen ob zagonu
@@ -20,8 +24,21 @@ func _on_start_pressed():
 	GF.start_new_game()
 
 func _on_settings_pressed():
-	print("Settings pressed")
-	# get_tree().change_scene_to_file(path gre sem)
+	if is_instance_valid(_settings_instance):
+		return
+	_settings_instance = SETTINGS_MENU_SCENE.instantiate()
+	_settings_instance.back_pressed.connect(_on_settings_back)
+	add_child(_settings_instance)
+	$VBoxContainer.hide()
+	$Title.hide()
+
+
+func _on_settings_back():
+	if is_instance_valid(_settings_instance):
+		_settings_instance.queue_free()
+	_settings_instance = null
+	$VBoxContainer.show()
+	$Title.show()
 
 func _on_exit_pressed():
 	print("Exit pressed")

@@ -21,6 +21,11 @@ signal ability_activated(character)
 
 var selected_character: BaseCharacter = null
 
+# Nazadnje uspešno premaknjena/zajemajoča igralčeva figura (S bližnjica jo
+# ponovno izbere). Samo igralčeve poteze - AI premiki gredo naravnost skozi
+# BattleController._take_enemy_action(), ne skozi to datoteko.
+var last_moved_character: BaseCharacter = null
+
 # ===============================================
 # SPOSOBNOSTI, KI ZAHTEVAJO DODATEN KLIK (Bishop.Longshot, Knight.Reposition)
 # ===============================================
@@ -111,6 +116,12 @@ func select_character_via_ui(character):
 	_apply_selection(character)
 	tile_selector.select_tile(character.grid_pos)
 
+# Izbere nazadnje premaknjeno figuro (S bližnjica) - ista pot kot izbira
+# preko UI, torej podeduje can_select()/enemy/obstacle preverjanja.
+func select_last_moved():
+	if is_instance_valid(last_moved_character):
+		select_character_via_ui(last_moved_character)
+
 # ===============================================
 # VNOS (INPUT)
 # ===============================================
@@ -165,6 +176,7 @@ func _unhandled_input(event):
 
 				# try_move() v BaseCharacter.gd zdaj obravnava logiko capture()
 				if selected_character.try_move(clicked_grid):
+					last_moved_character = selected_character
 
 					# Uspešno zajetje (captured)
 					_clear_selection()
@@ -207,6 +219,7 @@ func _unhandled_input(event):
 	if selected_character:
 		# Poskus premika na kliknjeno polje
 		if selected_character.try_move(clicked_grid):
+			last_moved_character = selected_character
 
 			# Uspešen premik
 			_clear_selection()

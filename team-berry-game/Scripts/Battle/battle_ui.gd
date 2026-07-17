@@ -41,6 +41,10 @@ const MAX_PLACED := 5
 @onready var action_button: Button = %ActionButton
 @onready var board_area: Control = %BoardArea
 @onready var drag_ghost: TextureRect = %DragGhost
+@onready var placement_actions_row: HBoxContainer = %PlacementActionsRow
+@onready var auto_fill_button: Button = %AutoFillButton
+@onready var remove_all_button: Button = %RemoveAllButton
+@onready var tile_map = get_node("../Map/TileMapLayer")
 
 const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
@@ -69,8 +73,13 @@ func _ready():
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
+	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
+	remove_all_button.pressed.connect(_on_remove_all_pressed)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
+	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
+	# sredi bitke) - značke slotov naj se takoj osvežijo.
+	KeybindManager.rebinds_changed.connect(_rebuild_rows)
 
 	_update_item_counts()
 	_clear_detail_panel()
@@ -78,6 +87,49 @@ func _ready():
 	# Figure (sovražniki/ovire) se spawnajo šele v battle.gd._ready() (starš
 	# se inicializira ZA otroki), zato prvo gradnjo vrstic odložimo za en frame.
 	_rebuild_rows.call_deferred()
+
+
+# ===============================================
+# TIPKOVNE BLIŽNJICE
+# ===============================================
+
+# Bližnjice za tipke 1-0 (izbira roster mesta), presledek (END TURN/START),
+# S (izberi nazadnje premaknjeno figuro) in D/F (sposobnost 1/2). Vsaka
+# preprosto pokliče isto funkcijo, ki bi jo sprožil ustrezen klik z miško,
+# zato podeduje vso obstoječo logiko/omejitve (can_select, disabled gumbi ...).
+func _unhandled_input(event):
+	if event.is_action_pressed("end_turn") and not action_button.disabled:
+		_on_action_button_pressed()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ability_1") and not ability1_button.disabled:
+		_on_ability_pressed(1)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ability_2") and not ability2_button.disabled:
+		_on_ability_pressed(2)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("select_last_moved"):
+		map_behaviour.select_last_moved()
+		get_viewport().set_input_as_handled()
+		return
+	for i in range(10):
+		if event.is_action_pressed("piece_slot_%d" % (i + 1)):
+			_select_roster_slot(i)
+			get_viewport().set_input_as_handled()
+			return
+
+
+# Simulira klik na roster ikono na mestu `index` (0-based) - _rebuild_rows()
+# gradi roster_row v istem vrstnem redu kot player_manager.friendly_party, zato
+# je pozicija stabilna dokler se roster ne spremeni.
+func _select_roster_slot(index: int):
+	if index >= roster_row.get_child_count():
+		return
+	var icon := roster_row.get_child(index) as PieceIcon
+	if icon:
+		_on_icon_clicked(icon)
 
 
 # ===============================================
@@ -90,6 +142,7 @@ func _on_battle_state_changed(new_state):
 			placement_active = true
 			placement_highlighter.show_zone()
 			board_area.mouse_filter = Control.MOUSE_FILTER_STOP
+			placement_actions_row.visible = true
 			moves_label.text = ""
 			abilities_label.text = ""
 			_update_placement_ui()
@@ -98,6 +151,7 @@ func _on_battle_state_changed(new_state):
 				placement_active = false
 				placement_highlighter.clear_zone()
 				board_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				placement_actions_row.visible = false
 			turn_label.text = "PLAYER TURN"
 			action_button.text = "END TURN"
 			action_button.disabled = false
@@ -193,7 +247,7 @@ func move_placed_piece(character: BaseCharacter, grid_pos: Vector2i) -> bool:
 	grid_manager.vacate(character.grid_pos)
 	character.grid_pos = grid_pos
 	grid_manager.occupy(grid_pos, character)
-	character.global_position = grid_manager.grid_to_world(grid_pos)
+	character.slide_to(grid_manager.grid_to_world(grid_pos))
 	_after_placement_change()
 	return true
 
@@ -244,6 +298,52 @@ func _update_placement_ui():
 	turn_label.text = "PLACE YOUR PIECES (%d/%d)" % [placed_count, _max_placeable()]
 	action_button.text = "START"
 	action_button.disabled = placed_count == 0
+	auto_fill_button.disabled = placed_count >= _max_placeable() or not _has_available_piece()
+	remove_all_button.disabled = placed_count == 0
+
+
+# Ali je na klopi še vsaj ena figura, ki bi jo auto-fill lahko postavil.
+func _has_available_piece() -> bool:
+	for roster_name in player_manager.friendly_party:
+		if _count_available(roster_name) > 0:
+			return true
+	return false
+
+
+# Vsa prosta polja v placement coni, v vrstnem redu vrstica za vrstico.
+func _free_placement_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	for y in range(used_rect.position.y, used_rect.end.y):
+		for x in range(used_rect.position.x, used_rect.end.x):
+			var grid_pos := Vector2i(x, y)
+			if _is_free_placement_cell(grid_pos):
+				cells.append(grid_pos)
+	return cells
+
+
+# AUTO FILL: postavi figure s klopi na prosta polja, dokler ne doseže 5 (ali
+# zmanjka figur/prostora - kar prej nastopi).
+func _on_auto_fill_pressed():
+	if not _in_placement_phase():
+		return
+	var free_cells := _free_placement_cells()
+	for roster_name in player_manager.friendly_party:
+		if _placed_characters().size() >= _max_placeable() or free_cells.is_empty():
+			break
+		if _count_available(roster_name) <= 0:
+			continue
+		place_piece(roster_name, free_cells.pop_front())
+
+
+# REMOVE ALL: pobere vse trenutno postavljene figure nazaj na klop.
+func _on_remove_all_pressed():
+	if not _in_placement_phase():
+		return
+	for character in _placed_characters():
+		grid_manager.vacate(character.grid_pos)
+		character.queue_free()
+	_after_placement_change()
 
 
 # ===============================================
@@ -322,6 +422,71 @@ func _screen_to_grid(screen_pos: Vector2) -> Vector2i:
 
 
 # ===============================================
+# ZNAČKE S TIPKO ZA IZBIRO (roster/aktivna vrstica + figura na plošči)
+# ===============================================
+
+# Trenutna tipka, ki izbere roster mesto `index` (0-based, torej piece_slot_1
+# za index 0 ...) - ista bližnjica, ki jo uporablja _select_roster_slot().
+func _slot_label_text(index: int) -> String:
+	var action := "piece_slot_%d" % (index + 1)
+	if not InputMap.has_action(action):
+		return ""
+	return KeybindManager.keycode_to_label(KeybindManager.get_current_keycode(action))
+
+
+# Font je rasteriziran pri BADGE_RASTER_FONT_SIZE (bitmap glyph), nato pa ga
+# transform (glej badge.scale spodaj) pomanjša do dejanske velikosti
+# (BADGE_WORLD_FONT_HEIGHT, v "svet" enotah). Če bi rasterizirali neposredno
+# pri majhni ciljni velikosti in jo NATO povečali (kompenzacija za inv_scale),
+# bi raztegovali droben, že zamegljen bitmap - od tod pikslasto besedilo na
+# plošči. Namesto tega rasteriziramo veliko večji izvorni bitmap in ga na
+# koncu pomanjšamo za isti faktor (BADGE_RASTER_BOOST) - končna vidna
+# velikost ostane enaka, izvor pa je veliko bolj podroben (manjšanje ostrega
+# bitmapa je vizualno bistveno čistejše od raztezanja drobnega).
+const BADGE_WORLD_FONT_HEIGHT := 6.0
+const BADGE_RASTER_FONT_SIZE := 48
+const BADGE_RASTER_BOOST := BADGE_RASTER_FONT_SIZE / BADGE_WORLD_FONT_HEIGHT
+
+
+# Doda (ali osveži) majhno prosojno značko neposredno na figuro na plošči, da
+# igralec vidi katera bližnjica (1-0) pripada kateri figuri tudi med potezo,
+# ne le v roster/aktivni vrstici. Značka je otrok figure, zato se avtomatsko
+# premika/izgine z njo - ustvarimo jo samo enkrat, nato le posodabljamo besedilo.
+func _set_board_badge(character: BaseCharacter, text: String):
+	if not is_instance_valid(character):
+		return
+	var badge := character.get_node_or_null("SlotBadge") as Label
+	if badge == null:
+		badge = Label.new()
+		badge.name = "SlotBadge"
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_theme_font_size_override("font_size", BADGE_RASTER_FONT_SIZE)
+		badge.add_theme_color_override("font_color", Color(1, 1, 1, 0.65))
+		badge.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.65))
+		badge.add_theme_constant_override("shadow_offset_x", 1)
+		badge.add_theme_constant_override("shadow_offset_y", 1)
+		badge.z_index = 5
+		character.add_child(badge)
+
+		# Koren posamezne figure ima RAZLIČEN scale na figuro (glej npr.
+		# rook.tscn 0.05 proti pawn.tscn 0.08 - vsaka slika je tako
+		# normalizirana na isto vizualno velikost). Značka je otrok korena,
+		# zato bi podedovala ta scale in bila za vsako figuro drugače velika/
+		# pomaknjena - kompenziramo z obratnim scale-om, da je značka enake
+		# velikosti in na enakem mestu (v "svet" enotah) za vse figure.
+		# Dodatno delimo z BADGE_RASTER_BOOST (glej opombo zgoraj) - size je
+		# zato pomnožen z istim faktorjem navzgor, da se v lokalnem
+		# (rasterskem) prostoru sklada z večjim font_size.
+		var inv_scale := Vector2.ONE / character.scale
+		badge.scale = inv_scale / BADGE_RASTER_BOOST
+		badge.size = Vector2(10, 8) * BADGE_RASTER_BOOST
+		badge.position = Vector2(2, 2) * inv_scale
+
+	badge.text = text
+	badge.visible = text != ""
+
+
+# ===============================================
 # VRSTICI Z IKONAMI (roster + aktivne)
 # ===============================================
 
@@ -339,6 +504,18 @@ func _rebuild_rows():
 			alive_by_type[roster_name] = []
 		alive_by_type[roster_name].append(character)
 
+	# _placed_characters() vrsti red izhaja iz grid_managerjevega "occupied"
+	# slovarja (ključ = grid_pos) - premik figure jo vacate/occupy prestavi na
+	# konec vrstnega reda vstavljanja, čeprav gre za isto figuro. Če je istega
+	# tipa na plošči več figur, bi to zamenjalo njihove dodeljene bližnjice
+	# (glej pop_front spodaj). Sortiramo po get_instance_id() (stabilen za
+	# celo življenjsko dobo figure, se ne spremeni ob premiku) namesto po
+	# trenutnem vrstnem redu v "occupied".
+	for roster_name in alive_by_type.keys():
+		alive_by_type[roster_name].sort_custom(
+			func(a, b): return a.get_instance_id() < b.get_instance_id()
+		)
+
 	# Število mrtvih po tipu (za razločevanje mrtev/na klopi).
 	var dead_counts: Dictionary = {}
 	for dead_name in player_manager.dead_party:
@@ -350,7 +527,9 @@ func _rebuild_rows():
 	# (ne iz otrok roster_row - tam so ob rebuildu še stari, queue_free
 	# čakajoči otroci).
 	var assignments: Array = []
-	for roster_name in player_manager.friendly_party:
+	for i in player_manager.friendly_party.size():
+		var roster_name: String = player_manager.friendly_party[i]
+		var slot_text := _slot_label_text(i)
 		var assigned: BaseCharacter = null
 		if alive_by_type.has(roster_name) and not alive_by_type[roster_name].is_empty():
 			assigned = alive_by_type[roster_name].pop_front()
@@ -358,6 +537,7 @@ func _rebuild_rows():
 
 		var icon := PieceIcon.new()
 		icon.setup(roster_name, assigned)
+		icon.set_slot_label(slot_text)
 		if assigned == null:
 			if dead_counts.get(roster_name, 0) > 0:
 				dead_counts[roster_name] -= 1
@@ -365,15 +545,24 @@ func _rebuild_rows():
 			elif not placement_active:
 				# Živa, a ni bila postavljena v to bitko.
 				icon.set_benched(true)
+		else:
+			# Že postavljena na ploščo - rahlo posivimo, da je jasno,
+			# katera figura je bila že izbrana.
+			icon.set_placed(true)
+			# Ista značka (tipka za izbiro) se prikaže tudi na sami figuri
+			# na plošči, da igralec vidi katera bližnjica pripada kateri figuri.
+			_set_board_badge(assigned, slot_text)
 		icon.icon_clicked.connect(_on_icon_clicked)
 		roster_row.add_child(icon)
 
 	# ROZA VRSTICA: aktivne figure (žive na plošči). Med placementom se polni
 	# sproti, ko igralec postavlja figure.
-	for assignment in assignments:
+	for i in assignments.size():
+		var assignment = assignments[i]
 		if is_instance_valid(assignment[1]):
 			var icon := PieceIcon.new()
 			icon.setup(assignment[0], assignment[1])
+			icon.set_slot_label(_slot_label_text(i))
 			icon.icon_clicked.connect(_on_icon_clicked)
 			active_row.add_child(icon)
 
@@ -381,6 +570,12 @@ func _rebuild_rows():
 
 
 func _on_icon_clicked(icon: PieceIcon):
+	if dragging:
+		# Drag že teče (npr. druga ikona ali plošča) - prezri, dokler se ne
+		# razreši z izpustom miške (_resolve_drop). Brez tega bi nov klik med
+		# vlečenjem prepisal drag_source_character in prvo figuro pustil
+		# napol prosojno (modulate.a=0.4) za vedno.
+		return
 	if placement_active:
 		if is_instance_valid(icon.character):
 			# Že postavljena: začni drag za premik/odstranitev.
