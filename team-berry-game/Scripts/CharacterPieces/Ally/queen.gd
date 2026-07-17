@@ -21,12 +21,12 @@ func get_move_directions() -> Array[Vector2i]:
 
 const ABILITY_DEFS = [
 	{
-		"id": "exterminate", "name": "Exterminate", "needs_target": false, "ends_turn": true,
+		"id": "exterminate", "name": "Exterminate", "needs_target": false,
 		"base": {"uses": 1, "radius": 1, "desc": "Arms this queen. The next move made by any piece triggers a blast that destroys all enemies within 3x3 of her."},
 		"upgraded": {"uses": 1, "radius": 2, "desc": "Arms this queen. The next move made by any piece triggers a blast that destroys all enemies within 5x5 of her."},
 	},
 	{
-		"id": "lure", "name": "Lure", "needs_target": false, "ends_turn": true,
+		"id": "lure", "name": "Lure", "needs_target": false,
 		"base": {"uses": 1, "desc": "Every enemy is forced to move toward this queen on their next move, but cannot capture her."},
 		"upgraded": {"uses": 2, "desc": "Every enemy is forced to move toward this queen on their next move, but cannot capture her."},
 	},

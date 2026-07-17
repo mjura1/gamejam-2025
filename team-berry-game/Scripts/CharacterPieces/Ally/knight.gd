@@ -24,12 +24,12 @@ func get_move_directions() -> Array[Vector2i]:
 
 const ABILITY_DEFS = [
 	{
-		"id": "evade", "name": "Evade", "needs_target": false, "ends_turn": true,
+		"id": "evade", "name": "Evade", "needs_target": false,
 		"base": {"uses": 2, "desc": "This knight cannot be captured until your next turn."},
 		"upgraded": {"uses": 3, "desc": "This knight cannot be captured until your next turn."},
 	},
 	{
-		"id": "reposition", "name": "Reposition", "needs_target": true, "ends_turn": false,
+		"id": "reposition", "name": "Reposition", "needs_target": true,
 		"base": {"uses": 1, "desc": "Make an extra move with this knight without ending your turn."},
 		"upgraded": {"uses": 2, "desc": "Make an extra move with this knight without ending your turn."},
 	},
@@ -52,8 +52,8 @@ func _execute_ability(id: String, target) -> bool:
 			return _do_reposition(target)
 	return false
 
-# Enak premik/zajetje kot try_move(), a brez END TURN posledic - to
-# ureja map_behaviour._resolve_pending_ability glede na ends_turn=false.
+# Enak premik/zajetje kot try_move(), le da gre skozi ability sistem (porabi
+# 1 uporabo Reposition za to bitko, ne navadnega premika).
 func _do_reposition(target) -> bool:
 	var target_char = grid_manager.get_character_at(target)
 	if target_char and target_char.is_enemy != is_enemy:

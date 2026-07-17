@@ -28,6 +28,11 @@ var dead_party: Array[String]
 var upgrade_items: int = 0
 var revive_items: int = 0
 
+# Koliko akcij (premik/zajetje/sposobnost) lahko igralec izvede v ENI potezi,
+# preden mora ročno pritisniti END TURN (glej BattleController.gd). Var, ne
+# const - meta-progression (upgrade) bo to lahko kasneje povečal.
+var actions_per_turn: int = 3
+
 
 # Največ figur v AKTIVNI ekipi (vrstica "YOUR PIECES" v bitki, glej
 # battle_ui.gd). Čez to mejo se figure še vedno nabirajo (glej

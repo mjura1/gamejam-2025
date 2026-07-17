@@ -21,12 +21,12 @@ func get_move_directions() -> Array[Vector2i]:
 
 const ABILITY_DEFS = [
 	{
-		"id": "rally", "name": "Rally", "needs_target": false, "ends_turn": true,
+		"id": "rally", "name": "Rally", "needs_target": false,
 		"base": {"uses": 1, "desc": "Move every other allied piece onto a free tile adjacent to this pawn."},
 		"upgraded": {"uses": 2, "desc": "Move every other allied piece onto a free tile adjacent to this pawn."},
 	},
 	{
-		"id": "lantern_signal", "name": "Lantern Signal", "needs_target": false, "ends_turn": true,
+		"id": "lantern_signal", "name": "Lantern Signal", "needs_target": false,
 		"base": {"uses": 1, "radius": 2, "desc": "Clear the snow in a 5x5 area around every allied piece."},
 		"upgraded": {"uses": 2, "radius": 3, "desc": "Clear the snow in a 7x7 area around every allied piece."},
 	},

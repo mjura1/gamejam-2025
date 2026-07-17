@@ -18,12 +18,12 @@ func get_move_directions() -> Array[Vector2i]:
 
 const ABILITY_DEFS = [
 	{
-		"id": "lookout", "name": "Lookout", "needs_target": false, "ends_turn": true,
+		"id": "lookout", "name": "Lookout", "needs_target": false,
 		"base": {"uses": 2, "radius": 1, "desc": "Reveal the closest fog-obscured enemy and clear the snow in 3x3 around them."},
 		"upgraded": {"uses": 3, "radius": 2, "desc": "Reveal the closest fog-obscured enemy and clear the snow in 5x5 around them."},
 	},
 	{
-		"id": "reinforce", "name": "Reinforce", "needs_target": false, "ends_turn": true,
+		"id": "reinforce", "name": "Reinforce", "needs_target": false,
 		"base": {"uses": 1, "radius": 1, "desc": "Until this rook moves, no enemy can move onto any tile within 3x3 of this tile."},
 		"upgraded": {"uses": 2, "radius": 2, "desc": "Until this rook moves, no enemy can move onto any tile within 5x5 of this tile."},
 	},

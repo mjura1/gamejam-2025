@@ -25,12 +25,12 @@ func get_move_directions() -> Array[Vector2i]:
 
 const ABILITY_DEFS = [
 	{
-		"id": "cleanse", "name": "Cleanse", "needs_target": false, "ends_turn": true,
+		"id": "cleanse", "name": "Cleanse", "needs_target": false,
 		"base": {"uses": 1, "desc": "Convert every enemy within this king's line of sight into a temporary ally for the rest of this battle."},
 		"upgraded": {"uses": 2, "desc": "Convert every enemy within this king's line of sight into a temporary ally for the rest of this battle."},
 	},
 	{
-		"id": "heal", "name": "Heal", "needs_target": false, "ends_turn": true,
+		"id": "heal", "name": "Heal", "needs_target": false,
 		"base": {"uses": 2, "revive_all": false, "desc": "Revive the most recently fallen ally onto an empty tile within this king's line of sight."},
 		"upgraded": {"uses": 1, "revive_all": true, "desc": "Revive every fallen ally onto empty tiles within this king's line of sight."},
 	},

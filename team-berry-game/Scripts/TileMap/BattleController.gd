@@ -13,6 +13,10 @@ class_name BattleController
 # START/END TURN gumb, placement overlay).
 signal state_changed(new_state)
 
+# Sproži se ob vsaki spremembi actions_remaining (za battle UI prikaz nad
+# turn labelom).
+signal actions_changed(remaining: int, max_actions: int)
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -25,6 +29,11 @@ enum BattleState {
 
 var current_state: int = BattleState.INITIALIZING
 var turn_count: int = 0
+
+# Koliko akcij (premik/zajetje/sposobnost) ima igralec še na voljo v TEJ
+# potezi - glej player_manager.actions_per_turn, start_player_turn(),
+# consume_action().
+var actions_remaining: int = 0
 
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
@@ -116,13 +125,25 @@ func _set_state(new_state: int):
 
 # ----------------- TURN LOGIC -----------------
 
+# Ali igralec sme (še) izvesti akcijo (premik/zajetje/sposobnost) - poleg
+# tega, da je na vrsti, mora imeti tudi še vsaj eno akcijo na voljo v tej
+# potezi (glej actions_remaining). Konec poteze (END TURN gumb) NI vezan na
+# to - glej can_end_turn().
 func player_can_act() -> bool:
+	return current_state == BattleState.PLAYER_TURN and actions_remaining > 0
+
+# Gumb END TURN sme igralec pritisniti, dokler je na vrsti, ne glede na to,
+# koliko akcij mu je še ostalo (tudi 0) - poteza se NIKOLI ne konča sama.
+func can_end_turn() -> bool:
 	return current_state == BattleState.PLAYER_TURN
 
 func start_player_turn():
 	turn_count += 1
 	_set_state(BattleState.PLAYER_TURN)
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
+
+	actions_remaining = player_manager.actions_per_turn
+	actions_changed.emit(actions_remaining, player_manager.actions_per_turn)
 
 	# Razkrijemo figure takoj, ko se poteza začne
 	update_fog_after_turn_start()
@@ -134,6 +155,13 @@ func start_player_turn():
 	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
 	if is_instance_valid(move_highlighter):
 		move_highlighter.start_fade_out(ENEMY_MOVE_FADE_DURATION)
+
+# Porabi 1 akcijo iz igralčevega proračuna za to potezo (premik, zajetje ali
+# sposobnost - vsi so zdaj enakovredni). Poteza se NE konča samodejno, tudi
+# če pade na 0 - igralec mora sam pritisniti END TURN.
+func consume_action():
+	actions_remaining = maxi(0, actions_remaining - 1)
+	actions_changed.emit(actions_remaining, player_manager.actions_per_turn)
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")

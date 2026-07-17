@@ -17,12 +17,12 @@ func get_move_directions() -> Array[Vector2i]:
 
 const ABILITY_DEFS = [
 	{
-		"id": "longshot", "name": "Longshot", "needs_target": true, "ends_turn": true,
+		"id": "longshot", "name": "Longshot", "needs_target": true,
 		"base": {"uses": 1, "desc": "Capture one enemy piece within line of sight, without moving."},
 		"upgraded": {"uses": 2, "desc": "Capture one enemy piece within line of sight, without moving."},
 	},
 	{
-		"id": "traps", "name": "Traps", "needs_target": false, "ends_turn": true,
+		"id": "traps", "name": "Traps", "needs_target": false,
 		"base": {"uses": 1, "radius": 1, "desc": "Until this bishop moves, enemies within 3x3 of this tile cannot move at all."},
 		"upgraded": {"uses": 2, "radius": 2, "desc": "Until this bishop moves, enemies within 5x5 of this tile cannot move at all."},
 	},

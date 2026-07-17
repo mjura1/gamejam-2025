@@ -54,7 +54,6 @@ func _cancel_pending_ability():
 func _resolve_pending_ability(clicked_grid: Vector2i):
 	var character: BaseCharacter = pending_ability.character
 	var slot: int = pending_ability.slot
-	var def: Dictionary = pending_ability.def
 	var targets: Array = pending_ability.targets
 
 	if clicked_grid not in targets:
@@ -70,13 +69,11 @@ func _resolve_pending_ability(clicked_grid: Vector2i):
 	ability_activated.emit(character)
 
 	if is_instance_valid(battle_controller):
-		if def.get("ends_turn", true):
-			# end_player_turn() že sam kliče check_battle_end() na začetku.
-			battle_controller.end_player_turn()
-		else:
-			# Brez end_player_turn() (npr. Reposition) moramo konec preveriti
-			# ročno - drugače bi zajetje zadnjega sovražnika ostalo neopaženo.
-			battle_controller.check_battle_end()
+		# Sposobnost porabi 1 akcijo iz proračuna te poteze - poteza se
+		# NIKOLI ne konča sama (glej BattleController.consume_action()), zato
+		# konec bitke preverimo ročno (npr. zajetje zadnjega sovražnika).
+		battle_controller.consume_action()
+		battle_controller.check_battle_end()
 
 # ===============================================
 # POMOŽNE FUNKCIJE ZA IZBIRO
@@ -172,11 +169,13 @@ func _unhandled_input(event):
 					# Uspešno zajetje (captured)
 					_clear_selection()
 
-					# Klic BattleControllerja za konec poteze igralca
+					# Zajetje porabi 1 akcijo iz proračuna te poteze - poteza
+					# se ne konča sama (glej consume_action()).
 					if is_instance_valid(battle_controller):
-						battle_controller.end_player_turn()
+						battle_controller.consume_action()
+						battle_controller.check_battle_end()
 
-					return # Konec poteze
+					return
 				else:
 					# Neveljavno zajetje (izven dosega). Ohranimo izbiro ali deselektiramo?
 					# Odločitev: Pokažemo napako in ohranimo izbiro, če je to igralčeva poteza.
@@ -212,9 +211,11 @@ func _unhandled_input(event):
 			# Uspešen premik
 			_clear_selection()
 
-			# Klic BattleControllerja za konec poteze igralca
+			# Premik porabi 1 akcijo iz proračuna te poteze - poteza se ne
+			# konča sama (glej consume_action()).
 			if is_instance_valid(battle_controller):
-				battle_controller.end_player_turn()
+				battle_controller.consume_action()
+				battle_controller.check_battle_end()
 
 			return
 

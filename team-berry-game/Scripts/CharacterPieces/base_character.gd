@@ -302,7 +302,7 @@ func get_empty_tiles_in_los(max_view_range: int) -> Array[Vector2i]:
 # Podrazredi (Ally/pawn.gd ipd.) povozijo to in vrnejo TOČNO 2 slovarja
 # (za slot 1 in slot 2) v obliki:
 # {
-#   "id": "rally", "name": "Rally", "needs_target": false, "ends_turn": true,
+#   "id": "rally", "name": "Rally", "needs_target": false,
 #   "base":     {"uses": 1, "desc": "..."},
 #   "upgraded": {"uses": 2, "desc": "..."},
 # }

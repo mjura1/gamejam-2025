@@ -33,6 +33,7 @@ const MAX_PLACED := 5
 @onready var ability2_button: Button = %Ability2Button
 @onready var ability2_body: VBoxContainer = %Ability2Body
 @onready var ability2_locked: Label = %Ability2Locked
+@onready var actions_label: Label = %ActionsLabel
 @onready var turn_label: Label = %TurnLabel
 @onready var action_button: Button = %ActionButton
 @onready var board_area: Control = %BoardArea
@@ -60,6 +61,7 @@ func _ready():
 	map_behaviour.selection_changed.connect(_on_selection_changed)
 	map_behaviour.ability_activated.connect(_on_ability_activated)
 	battle_controller.state_changed.connect(_on_battle_state_changed)
+	battle_controller.actions_changed.connect(_on_actions_changed)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
@@ -83,6 +85,7 @@ func _on_battle_state_changed(new_state):
 			placement_active = true
 			placement_highlighter.show_zone()
 			board_area.mouse_filter = Control.MOUSE_FILTER_STOP
+			actions_label.text = ""
 			_update_placement_ui()
 		battle_controller.BattleState.PLAYER_TURN:
 			if placement_active:
@@ -92,12 +95,17 @@ func _on_battle_state_changed(new_state):
 			turn_label.text = "PLAYER TURN"
 			action_button.text = "END TURN"
 			action_button.disabled = false
+			# actions_remaining se posodobi malo kasneje v isti klicni verigi
+			# (glej BattleController.start_player_turn()) - actions_changed ga
+			# takoj zatem osveži tudi tukaj.
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
+			actions_label.text = ""
 		battle_controller.BattleState.GAME_OVER:
 			turn_label.text = "BATTLE OVER"
 			action_button.disabled = true
+			actions_label.text = ""
 
 	if is_instance_valid(_shown_character):
 		_show_abilities(_shown_character)
@@ -106,10 +114,15 @@ func _on_battle_state_changed(new_state):
 func _on_action_button_pressed():
 	if placement_active:
 		confirm_placement()
-	elif battle_controller.player_can_act():
-		# END TURN: zaenkrat deluje kot "pass" (premik še vedno sam konča
-		# potezo) - ob ability sistemu postane pravi zaključek več-akcijske poteze.
+	elif battle_controller.can_end_turn():
+		# END TURN je edini način za konec igralčeve poteze - premiki/zajetja/
+		# sposobnosti samo porabljajo actions_remaining (glej consume_action()
+		# klicatelje), zato mora biti gumb pritisljiv tudi pri 0 akcijah.
 		battle_controller.end_player_turn()
+
+
+func _on_actions_changed(remaining: int, max_actions: int):
+	actions_label.text = "ACTIONS: %d/%d" % [remaining, max_actions]
 
 
 # ===============================================
@@ -477,11 +490,10 @@ func _on_ability_pressed(slot: int):
 	if targets.is_empty():
 		var ok: bool = _shown_character.activate_ability(slot)
 		if ok:
-			var def: Dictionary = _shown_character.get_ability_defs()[slot - 1]
-			if def.get("ends_turn", true):
-				battle_controller.end_player_turn()
-			else:
-				battle_controller.check_battle_end()
+			# Sposobnost porabi 1 akcijo iz proračuna te poteze - poteza se
+			# ne konča sama (glej BattleController.consume_action()).
+			battle_controller.consume_action()
+			battle_controller.check_battle_end()
 			_show_abilities(_shown_character)
 	else:
 		map_behaviour.begin_ability_targeting(_shown_character, slot)
