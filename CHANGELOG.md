@@ -1,3 +1,25 @@
+# Winter March — item shop → develop
+
+New feature on `features/item-shop`: a shop room on map tiers 1 and 2 (the
+middle floor of each, same "every path passes through it" placement as the
+campfire floor; tier 0 has no shop). Currency is the existing upgrade-item
+count, no new currency was added.
+
+- **Buy**: one item for now, `extra_move` (single-use, +1 move this turn in
+  battle) — proves the item pipeline end to end rather than adding content.
+  All prices default to 1 (correct names, placeholder numbers to be balanced
+  later).
+- **Sell**: both owned items and party pieces (active + reserve). Selling
+  the last active piece is refused, same rule as the existing campfire
+  party panel's active/reserve swap.
+- **In battle**: items live in a slim `<`/`>` drawer between the board and
+  the side panel; drag an item onto the board to use it. Hidden during the
+  placement phase.
+- On tier 2, the friendly-king recruit floor moved from 4 to 3 so the shop
+  could take floor 4 (the map's actual middle floor for that tier).
+- Placeholder sprites only (`shop.png`, `item_extra_move.png`) — tracked in
+  `TEMP_SPRITES.md` for replacement with real art.
+
 # Winter March — cleanup/audit-fixes → develop
 
 Summary of everything that changed on the `cleanup/audit-fixes` branch

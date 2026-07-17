@@ -195,14 +195,14 @@ Selling a piece: erase from the array, `upgrade_items += ItemData.get_piece_sell
 emit BOTH `party_changed` and `items_changed`.
 
 ### Phase 1 checklist
-- [ ] `Data/items.json`, `Data/piece_prices.json`
-- [ ] `Scripts/Data/item_data.gd` + autoload entry in `project.godot`
-- [ ] `Scripts/Items/base_item.gd`, `Scripts/Items/extra_move_item.gd`
-- [ ] `BattleController.add_bonus_move()`
-- [ ] `PlayerManager`: `owned_items` + add/remove/get + 4 try_* funcs + reset in `setStarting()`
-- [ ] New unit test `tests/unit/test_items.gd`: buy/sell item math, sell-piece math, last-active-piece
+- [x] `Data/items.json`, `Data/piece_prices.json`
+- [x] `Scripts/Data/item_data.gd` + autoload entry in `project.godot`
+- [x] `Scripts/Items/base_item.gd`, `Scripts/Items/extra_move_item.gd`
+- [x] `BattleController.add_bonus_move()`
+- [x] `PlayerManager`: `owned_items` + add/remove/get + 4 try_* funcs + reset in `setStarting()`
+- [x] New unit test `tests/unit/test_items.gd`: buy/sell item math, sell-piece math, last-active-piece
       guard, remove_item on empty. (Gotcha: assign typed arrays via a locally-typed var, see §0.)
-- [ ] `godot4 --headless --import --path team-berry-game` then `./tests/run_all.sh` green.
+- [x] `godot4 --headless --import --path team-berry-game` then `./tests/run_all.sh` green.
 
 ## Phase 2 — Map integration (shop room)
 
@@ -228,10 +228,10 @@ emit BOTH `party_changed` and `items_changed`.
    picks it up automatically by name. Nothing to code.
 
 ### Phase 2 checklist
-- [ ] enum + names + generator config/var/assign branch
-- [ ] GameFlow shop branch (scene from Phase 3 must exist to preload — do Phase 3 tscn stub first
+- [x] enum + names + generator config/var/assign branch
+- [x] GameFlow shop branch (scene from Phase 3 must exist to preload — do Phase 3 tscn stub first
       or temporarily point at campfire.tscn, but don't commit that)
-- [ ] Headless check: `godot4 --headless --path team-berry-game --scene res://Scenes/Map/map.tscn --quit-after 5`
+- [x] Headless check: `godot4 --headless --path team-berry-game --scene res://Scenes/Map/map.tscn --quit-after 5`
       → zero new errors. Since map 1 has no shop, ALSO extend/add a smoke or unit test that calls
       `MapGenerator.new().generate_map(1)` and `(2)` and asserts: some room of type `shop` exists
       exactly on the configured floor, every column that's non-null on that floor is `shop`, and
@@ -268,8 +268,8 @@ doesn't move it. The shop scene replaces the whole current scene (like campfire)
 wrapper pattern applies.
 
 ### Phase 3 checklist
-- [ ] shop.tscn + shop.gd + panel scene(s), buy + sell + leave working
-- [ ] Smoke test `tests/smoke/smoke_shop.gd`: build the state by hand (see how
+- [x] shop.tscn + shop.gd + panel scene(s), buy + sell + leave working
+- [x] Smoke test `tests/smoke/smoke_shop.gd`: build the state by hand (see how
       `smoke_battle_end.gd` fakes `GF.current_map_instance`), instantiate shop scene, call the
       buy handler with 0 items (must refuse), grant 2 upgrade items, buy `extra_move` (must
       succeed: count 1, upgrade_items 1), sell it back (upgrade_items 2), sell a reserve piece,
@@ -293,7 +293,7 @@ it was generated. Then rerun the import (`godot4 --headless --import --path team
 so `.import` files exist; commit the pngs (+ generated `.import` files, as the repo already
 tracks those for other sprites — check `git status`).
 
-- [ ] both pngs + TEMP_SPRITES.md rows + import files committed
+- [x] both pngs + TEMP_SPRITES.md rows + import files committed
 
 ## Phase 5 — Battle item bar (vertical `<`/`>` drawer + drag-to-use)
 
@@ -341,9 +341,9 @@ Result with extra_move: `MOVES 0/1` → drag the item anywhere on the board → 
 (the existing `_on_moves_changed` label handler updates it, incl. the >max case like `2/1`).
 
 ### Phase 5 checklist
-- [ ] drawer scene nodes + toggle + row rebuild on items_changed
-- [ ] drag-to-use wired, placement phase excluded, item consumed exactly once
-- [ ] Smoke test `tests/smoke/smoke_item_use.gd`: load battle like `smoke_battle.gd`, place
+- [x] drawer scene nodes + toggle + row rebuild on items_changed
+- [x] drag-to-use wired, placement phase excluded, item consumed exactly once
+- [x] Smoke test `tests/smoke/smoke_item_use.gd`: load battle like `smoke_battle.gd`, place
       pieces / reach PLAYER_TURN, grant `extra_move` via PlayerManager, record `moves_remaining`,
       call the same code path the drop uses (factor the consume logic into a testable
       `battle_ui.use_item(id, grid_pos) -> bool` that `_resolve_item_drop` calls!), assert
@@ -352,12 +352,12 @@ Result with extra_move: `MOVES 0/1` → drag the item anywhere on the board → 
 
 ## Phase 6 — Wrap up
 
-- [ ] Full `./tests/run_all.sh` green; also boot the real game once headlessly:
+- [x] Full `./tests/run_all.sh` green; also boot the real game once headlessly:
       map 1 has no shop, so at minimum `--scene res://Scenes/Map/map.tscn --quit-after 5` and
       `--scene res://Scenes/Map/shop.tscn --quit-after 5` load with zero ERROR lines.
-- [ ] Update `CHANGELOG.md` (repo keeps one) with a short entry.
-- [ ] Confirm `TEMP_SPRITES.md` lists every generated asset.
-- [ ] Commits: small, per-phase, message style matches `git log` (imperative, English), each
+- [x] Update `CHANGELOG.md` (repo keeps one) with a short entry.
+- [x] Confirm `TEMP_SPRITES.md` lists every generated asset.
+- [x] Commits: small, per-phase, message style matches `git log` (imperative, English), each
       ending with the Claude co-author line already used in this repo. Do NOT merge to develop;
       leave the branch for review.
 
