@@ -365,6 +365,10 @@ func _rebuild_rows():
 			elif not placement_active:
 				# Živa, a ni bila postavljena v to bitko.
 				icon.set_benched(true)
+		else:
+			# Že postavljena na ploščo - rahlo posivimo, da je jasno,
+			# katera figura je bila že izbrana.
+			icon.set_placed(true)
 		icon.icon_clicked.connect(_on_icon_clicked)
 		roster_row.add_child(icon)
 

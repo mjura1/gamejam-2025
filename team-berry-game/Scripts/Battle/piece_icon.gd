@@ -14,11 +14,14 @@ var is_dead: bool = false
 # Figura je živa, a ni bila postavljena v to bitko (na klopi).
 var is_benched: bool = false
 var is_highlighted: bool = false
+# Figura je že postavljena na ploščo (vnos v roster vrstici zanjo).
+var is_placed: bool = false
 
 const COLOR_NORMAL := Color(1, 1, 1)
 const COLOR_DEAD := Color(0.35, 0.35, 0.35)
 const COLOR_BENCHED := Color(0.6, 0.6, 0.6)
 const COLOR_HIGHLIGHTED := Color(1, 1, 0.4)
+const COLOR_PLACED := Color(0.75, 0.75, 0.75)
 
 
 func _init():
@@ -50,6 +53,11 @@ func set_highlighted(highlighted: bool):
 	_update_modulate()
 
 
+func set_placed(placed: bool):
+	is_placed = placed
+	_update_modulate()
+
+
 func _update_modulate():
 	if is_dead:
 		modulate = COLOR_DEAD
@@ -57,6 +65,8 @@ func _update_modulate():
 		modulate = COLOR_HIGHLIGHTED
 	elif is_benched:
 		modulate = COLOR_BENCHED
+	elif is_placed:
+		modulate = COLOR_PLACED
 	else:
 		modulate = COLOR_NORMAL
 
