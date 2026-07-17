@@ -486,18 +486,27 @@ func _show_abilities(character: BaseCharacter):
 func _on_ability_pressed(slot: int):
 	if not is_instance_valid(_shown_character):
 		return
-	var targets := _shown_character.get_ability_targets(slot)
+	# Lokalna referenca: begin_ability_targeting() spodaj interno pokliče
+	# map_behaviour._clear_selection(), ki sproži selection_changed(null) in
+	# SINHRONO počisti _shown_character (glej _on_selection_changed) - torej
+	# ga po tej točki ne smemo več brati, samo character lokalno.
+	var character := _shown_character
+	var targets := character.get_ability_targets(slot)
 	if targets.is_empty():
-		var ok: bool = _shown_character.activate_ability(slot)
+		var ok: bool = character.activate_ability(slot)
 		if ok:
 			# Sposobnost porabi 1 akcijo iz proračuna te poteze - poteza se
 			# ne konča sama (glej BattleController.consume_action()).
 			battle_controller.consume_action()
 			battle_controller.check_battle_end()
-			_show_abilities(_shown_character)
+			_show_abilities(character)
 	else:
-		map_behaviour.begin_ability_targeting(_shown_character, slot)
-		_show_abilities(_shown_character)
+		map_behaviour.begin_ability_targeting(character, slot)
+		# Ponovno pokažemo detail panel za TO figuro, ker ga je klic zgoraj
+		# ravnokar počistil (glej opombo pri "character" zgoraj) - med
+		# ciljanjem naj panel še vedno kaže figuro/sposobnost, ki čaka na klik.
+		_shown_character = character
+		_show_abilities(character)
 
 
 func _on_ability_activated(character: BaseCharacter):
