@@ -65,28 +65,25 @@ func _on_ugrade_pressed() -> void:
 
 
 # Funkcija za gumb 'PARTY'
+# TODO: CampfirePartyPanel.gd kliče player_manager.dead_party / .food /
+# .revive_character(), ki na PlayerManager sploh ne obstajajo (revival
+# economy še ni implementirana) - zato je spodnji klic zanesljivo crashal.
+# Dokler ta manjkajoča stran ni zgrajena, gumb samo izpiše placeholder.
 func _on_party_pressed() -> void:
-	print("Odpiram meni za pregled in menjavo partyja.")
-	
-	# 1. Preverimo, ali smo že v tej sceni (za preprečitev večkratnega klika)
-	if get_tree().root.find_child("PartyScreenNode", true, false):
-		print("Party Screen je že odprt.")
-		return
-	
-	# 2. Inicializiramo Party Screen
-	var party_screen_instance = PARTY_SCREEN_SCENE.instantiate()
-	
-	# 3. Dodamo ga v Root, da se prikaže čez celotno Campfire sceno
-	get_tree().root.add_child(party_screen_instance)
-	
-	# 4. (NEOBVEZNO) Dodamo skripto za zapiranje
-	if is_instance_valid(party_screen_instance) and not party_screen_instance.has_method("handle_input"):
-		# To je preprost način za zapiranje menija z ESC
-		party_screen_instance.set_process_input(true)
-		party_screen_instance.connect("ready", func(): party_screen_instance.name = "PartyScreenNode")
-
-	# Izklopimo interakcijo z glavnim Campfire menijem, dokler je Party Screen odprt
-	self.mouse_filter = Control.MOUSE_FILTER_STOP
+	print("Odpiram meni za pregled in menjavo partyja. (TODO: še ne implementirano)")
+	#if get_tree().root.find_child("PartyScreenNode", true, false):
+	#	print("Party Screen je že odprt.")
+	#	return
+	#
+	#var party_screen_instance = PARTY_SCREEN_SCENE.instantiate()
+	#
+	#get_tree().root.add_child(party_screen_instance)
+	#
+	#if is_instance_valid(party_screen_instance) and not party_screen_instance.has_method("handle_input"):
+	#	party_screen_instance.set_process_input(true)
+	#	party_screen_instance.connect("ready", func(): party_screen_instance.name = "PartyScreenNode")
+	#
+	#self.mouse_filter = Control.MOUSE_FILTER_STOP
 
 # ===============================================
 # 4. POMOŽNE FUNKCIJE (Helpsers)

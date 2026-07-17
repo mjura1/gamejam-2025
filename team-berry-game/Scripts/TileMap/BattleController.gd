@@ -146,7 +146,10 @@ func check_battle_end() -> bool:
 
 	if player_manager.enemyGone():
 		current_state = BattleState.GAME_OVER
-		GF.call_deferred("return_to_map")
+		if player_manager.is_boss_floor:
+			GF.call_deferred("advance_map_tier")
+		else:
+			GF.call_deferred("return_to_map")
 		return true
 
 	if player_manager.activeGone():

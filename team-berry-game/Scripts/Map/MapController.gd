@@ -11,10 +11,17 @@ const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 var map_data: Array = []
 var room_node_map: Dictionary = {}
 var current_room: Room = null
-var is_initialized: bool = false 
+var is_initialized: bool = false
+var generator: MapGenerator = null
+
+# NOVO: Nivo (0-2), ki naj se generira ob naslednji _ready(). GameFlow ga
+# nastavi takoj po instantiate(), PREDEN je vozlišče v drevesu - zato ne sme
+# biti @onready in initialize_map() se ne sme klicati neposredno pred tem
+# (map_camera in drugi @onready sklici tedaj še niso na voljo).
+var pending_tier: int = 0
 
 var pan_start_position: Vector2 = Vector2.ZERO
-var is_panning: bool = false 
+var is_panning: bool = false
 
 # NEW: Meje celotne mape za omejitev kamere
 var map_boundary_min: Vector2 = Vector2.ZERO
@@ -22,7 +29,7 @@ var map_boundary_max: Vector2 = Vector2.ZERO
 
 func _ready():
 	if not is_initialized:
-		initialize_map()
+		initialize_map(pending_tier)
 	else:
 		queue_redraw()
 
@@ -34,12 +41,12 @@ func _on_button_pressed():
 # METODE ZA ZAGON, VIZUALIZACIJO IN STANJE 
 # =========================================================
 
-func initialize_map():
+func initialize_map(tier: int = 0):
 	if is_initialized: return
-	
-	var generator = MapGenerator.new()
-	map_data = generator.generate_map()
-	
+
+	generator = MapGenerator.new()
+	map_data = generator.generate_map(tier)
+
 	_visualize_rooms()
 	_set_initial_state()
 	
@@ -93,58 +100,65 @@ func _input(event):
 
 	if is_panning and event is InputEventMouseMotion:
 		var delta = event.relative
-		
+
 		# Izračunamo novo pozicijo kamere brez omejitev
 		var new_camera_position = map_camera.position - delta / map_camera.zoom.x
-		
-		# NEW: Omejitev kamere (Clamping)
-		# Izračunamo velikost vidnega polja (viewport), prilagojeno trenutnemu zoomu
-		var viewport_size = get_viewport_rect().size / map_camera.zoom
-		var half_viewport = viewport_size / 2.0
-		
-		# Izračunamo meje, kjer se center kamere lahko nahaja.
-		# Omejitev_MIN = meja mape + polovica vidnega polja (da se rob ne pojavi)
-		var clamp_min = map_boundary_min + half_viewport
-		# Omejitev_MAX = meja mape - polovica vidnega polja
-		var clamp_max = map_boundary_max - half_viewport
-		
-		# Varnostna funkcija za zelo majhne mape, kjer bi lahko bil MIN > MAX
-		clamp_min.x = min(clamp_min.x, clamp_max.x)
-		clamp_min.y = min(clamp_min.y, clamp_max.y)
-		
-		# Omejimo novo pozicijo kamere znotraj izračunanih meja
-		new_camera_position.x = clampf(new_camera_position.x, clamp_min.x, clamp_max.x)
-		new_camera_position.y = clampf(new_camera_position.y, clamp_min.y, clamp_max.y)
-		
-		map_camera.position = new_camera_position
+
+		map_camera.position = _clamp_camera_position(new_camera_position, map_camera.zoom)
 
 	# ================= 2. Povečava (Zoom) =================
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			map_camera.zoom /= 1.1 
-			map_camera.zoom = map_camera.zoom.max(Vector2(0.5, 0.5))
-		
+			map_camera.zoom /= 1.1
+			map_camera.zoom = map_camera.zoom.max(_min_zoom_to_fit_map())
+
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			map_camera.zoom *= 1.1
 			map_camera.zoom = map_camera.zoom.min(Vector2(2.0, 2.0))
-			
+
 		# Če je zoom spremenjen, ponovno preveri omejitve
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			# Ko spremenimo zoom, moramo ponovno izračunati in omejiti pozicijo kamere,
 			# saj so se clamp meje spremenile (zaradi half_viewport)
-			var viewport_size = get_viewport_rect().size / map_camera.zoom
-			var half_viewport = viewport_size / 2.0
-			
-			var clamp_min = map_boundary_min + half_viewport
-			var clamp_max = map_boundary_max - half_viewport
-			
-			clamp_min.x = min(clamp_min.x, clamp_max.x)
-			clamp_min.y = min(clamp_min.y, clamp_max.y)
-			
-			var current_pos = map_camera.position
-			current_pos.x = clampf(current_pos.x, clamp_min.x, clamp_max.x)
-			current_pos.y = clampf(current_pos.y, clamp_min.y, clamp_max.y)
-			map_camera.position = current_pos
+			map_camera.position = _clamp_camera_position(map_camera.position, map_camera.zoom)
+
+## Najmanjši dovoljeni zoom (največji dovoljeni zoom-out): raven, pri kateri
+## se cela mapa ravno prilega vidnemu polju. Prej je bila spodnja meja fiksna
+## (0.5) ne glede na velikost mape - pri majhnih mapah (tier 0 ima samo 5
+## nadstropij) je to dopuščalo zoom precej čez rob mape (glej _clamp_camera_position).
+func _min_zoom_to_fit_map() -> Vector2:
+	var map_size = map_boundary_max - map_boundary_min
+	if map_size.x <= 0.0 or map_size.y <= 0.0:
+		return Vector2(0.5, 0.5)
+
+	var viewport_size = get_viewport_rect().size
+	var fit_zoom = minf(viewport_size.x / map_size.x, viewport_size.y / map_size.y)
+	return Vector2(fit_zoom, fit_zoom)
+
+## Omeji pozicijo kamere znotraj meja mape (map_boundary_min/max) za dani zoom.
+## Če je vidno polje (v world enotah) na kaki osi VEČJE od same mape - npr.
+## pri majhnih mapah (tier 0 ima samo 5 nadstropij) ob največjem zoom-out
+## (0.5) - navaden clampf poda min > max. Prejšnja "varnostna" vrstica je
+## to reševala z min(clamp_min, clamp_max), kar je kamero potisnilo na rob
+## namesto na sredino mape - zato je mapa pri zoom-outu izgledala majhna in
+## odrinjena v kot namesto centrirana. Tu na taki osi namesto tega kamero
+## postavimo na sredino mape.
+func _clamp_camera_position(position: Vector2, zoom: Vector2) -> Vector2:
+	var half_viewport = (get_viewport_rect().size / zoom) / 2.0
+	var clamp_min = map_boundary_min + half_viewport
+	var clamp_max = map_boundary_max - half_viewport
+	var map_center = (map_boundary_min + map_boundary_max) / 2.0
+
+	var result = position
+	if clamp_min.x <= clamp_max.x:
+		result.x = clampf(position.x, clamp_min.x, clamp_max.x)
+	else:
+		result.x = map_center.x
+	if clamp_min.y <= clamp_max.y:
+		result.y = clampf(position.y, clamp_min.y, clamp_max.y)
+	else:
+		result.y = map_center.y
+	return result
 
 func _visualize_rooms():
 	for i in range(map_data.size()):
@@ -306,11 +320,15 @@ func _handle_event(room_data: Room):
 	var room_name = Room.RoomTypeNames.get(room_data.type, "unknown_event")
 	print("Zagon %s..." % room_name)
 
+	PlayerManager.is_boss_floor = room_data.grid_position.x == generator.FLOORS - 1
+
 	if room_name.begins_with("enemy_"):
 		PlayerManager.add_to_enemy_party(room_name)
-	else:
+	elif room_name.begins_with("friendly_"):
 		PlayerManager.add_to_friendly_party(room_name)
-	
+	# campfire: ne dodaja v enemy_party/friendly_party, samo GF.start_event()
+	# preklopi na campfire sceno (glej GameFlow.start_event()).
+
 	PlayerManager.addSnow()
 	
 	GF.start_event(room_data.type)
