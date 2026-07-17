@@ -9,16 +9,28 @@ class_name GameFlow
 const MAP_SCENE = preload("res://Scenes/Map/map.tscn")
 const BATTLE_SCENE = preload("res://Scenes/Map/battle.tscn")
 const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
+const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
 
-var game_initialized: bool = false 
+var game_initialized: bool = false
 var current_map_instance: Node = null
+var pause_menu_instance: Control = null
+var pause_menu_layer: CanvasLayer = null
 
 # =========================================================
 # 2. INICIALIZACIJA IN ZAGON IGRE (POPRVEK ZA MENU)
 # =========================================================
 
 func _ready():
-	pass
+	# CanvasLayer wrapper is required here: the map/battle scene's active
+	# Camera2D transforms the whole viewport's 2D canvas, so a Control added
+	# as a plain sibling would pan/zoom along with gameplay instead of
+	# staying screen-locked. CanvasLayer content ignores that transform -
+	# same fix already used by CampfirePartyPanel.tscn elsewhere in the project.
+	pause_menu_instance = PAUSE_MENU_SCENE.instantiate()
+	pause_menu_layer = CanvasLayer.new()
+	pause_menu_layer.name = "PauseMenuLayer"
+	pause_menu_layer.add_child(pause_menu_instance)
+	get_tree().root.call_deferred("add_child", pause_menu_layer)
 
 
 ## Ta funkcija se kliče iz Main Menu ob pritisku gumba "Start"
@@ -85,10 +97,21 @@ func game_over():
 	_change_scene_instance(MAIN_MENU_SCENE.instantiate())
 
 
+## Kliče se iz pavza menija (gumb "Main Menu"), da se izognemo isti sceni,
+## ki jo `game_over()` uporablja za lastno "izgubil si" pot.
+func return_to_main_menu():
+	print("GF: Vračanje na Main Menu (ročno, iz pavze).")
+	_end_run()
+	_change_scene_instance(MAIN_MENU_SCENE.instantiate())
+
+
 # Počisti stanje trenutnega runa. Mapa med bitkami živi IZVEN drevesa,
 # zato je get_tree() ne sprosti sam - brez tega klica pušča spomin (leak).
 func _end_run():
 	game_initialized = false
+	get_tree().paused = false
+	if is_instance_valid(pause_menu_instance):
+		pause_menu_instance.hide()
 	if is_instance_valid(current_map_instance) and not current_map_instance.is_inside_tree():
 		current_map_instance.queue_free()
 	current_map_instance = null
