@@ -113,6 +113,18 @@ theme_override_styles/focus = SubResource("StyleBoxEmpty_k0w1u")
 text = "RESUME
 "
 
+[node name="SettingsButton" type="Button" parent="VBoxContainer" groups=["buttons"]]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("StyleBoxFlat_y2c35")
+theme_override_styles/hover = SubResource("StyleBoxFlat_emv3i")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_k0w1u")
+text = "SETTINGS"
+
 [node name="Button2" type="Button" parent="VBoxContainer" groups=["buttons"]]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
@@ -164,5 +176,6 @@ libraries = {
 }
 
 [connection signal="pressed" from="VBoxContainer/Button" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/SettingsButton" to="." method="_on_settings_button_pressed"]
 [connection signal="pressed" from="VBoxContainer/Button2" to="." method="_on_button_2_pressed"]
 [connection signal="pressed" from="VBoxContainer/Button3" to="." method="_on_button_3_pressed"]

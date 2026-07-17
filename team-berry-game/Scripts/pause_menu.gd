@@ -1,5 +1,9 @@
 extends Control
 
+const SETTINGS_MENU_SCENE = preload("res://Scenes/Menu/settings_menu.tscn")
+
+var _settings_instance: Control = null
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -39,3 +43,21 @@ func _on_button_2_pressed() -> void:
 
 func _on_button_3_pressed() -> void:
 	get_tree().quit()
+
+
+func _on_settings_button_pressed() -> void:
+	if is_instance_valid(_settings_instance):
+		return
+	_settings_instance = SETTINGS_MENU_SCENE.instantiate()
+	_settings_instance.back_pressed.connect(_on_settings_back)
+	add_child(_settings_instance)
+	$VBoxContainer.hide()
+	$Label.hide()
+
+
+func _on_settings_back() -> void:
+	if is_instance_valid(_settings_instance):
+		_settings_instance.queue_free()
+	_settings_instance = null
+	$VBoxContainer.show()
+	$Label.show()

@@ -81,6 +81,49 @@ func _ready():
 
 
 # ===============================================
+# TIPKOVNE BLIŽNJICE
+# ===============================================
+
+# Bližnjice za tipke 1-0 (izbira roster mesta), presledek (END TURN/START),
+# S (izberi nazadnje premaknjeno figuro) in D/F (sposobnost 1/2). Vsaka
+# preprosto pokliče isto funkcijo, ki bi jo sprožil ustrezen klik z miško,
+# zato podeduje vso obstoječo logiko/omejitve (can_select, disabled gumbi ...).
+func _unhandled_input(event):
+	if event.is_action_pressed("end_turn") and not action_button.disabled:
+		_on_action_button_pressed()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ability_1") and not ability1_button.disabled:
+		_on_ability_pressed(1)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ability_2") and not ability2_button.disabled:
+		_on_ability_pressed(2)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("select_last_moved"):
+		map_behaviour.select_last_moved()
+		get_viewport().set_input_as_handled()
+		return
+	for i in range(10):
+		if event.is_action_pressed("piece_slot_%d" % (i + 1)):
+			_select_roster_slot(i)
+			get_viewport().set_input_as_handled()
+			return
+
+
+# Simulira klik na roster ikono na mestu `index` (0-based) - _rebuild_rows()
+# gradi roster_row v istem vrstnem redu kot player_manager.friendly_party, zato
+# je pozicija stabilna dokler se roster ne spremeni.
+func _select_roster_slot(index: int):
+	if index >= roster_row.get_child_count():
+		return
+	var icon := roster_row.get_child(index) as PieceIcon
+	if icon:
+		_on_icon_clicked(icon)
+
+
+# ===============================================
 # STANJE BITKE (turn label + gumb + placement vklop)
 # ===============================================
 
@@ -385,6 +428,12 @@ func _rebuild_rows():
 
 
 func _on_icon_clicked(icon: PieceIcon):
+	if dragging:
+		# Drag že teče (npr. druga ikona ali plošča) - prezri, dokler se ne
+		# razreši z izpustom miške (_resolve_drop). Brez tega bi nov klik med
+		# vlečenjem prepisal drag_source_character in prvo figuro pustil
+		# napol prosojno (modulate.a=0.4) za vedno.
+		return
 	if placement_active:
 		if is_instance_valid(icon.character):
 			# Že postavljena: začni drag za premik/odstranitev.
