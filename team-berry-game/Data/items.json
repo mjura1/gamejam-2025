@@ -1,0 +1,3 @@
+{
+	"extra_move": {"name": "Extra Move", "description": "One use. Gives +1 move this turn in battle.", "buy_cost": 1, "sell_value": 1}
+}

@@ -189,6 +189,12 @@ func consume_ability():
 	abilities_remaining = maxi(0, abilities_remaining - 1)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
+# Item "extra_move": dodatni premik v trenutni potezi. Namerno lahko preseže
+# moves_per_turn - UI label potem kaže npr. 2/1, kar je pravilno.
+func add_bonus_move():
+	moves_remaining += 1
+	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
+
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
 

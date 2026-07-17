@@ -23,6 +23,7 @@ GF="*res://Scripts/Map/GameFlow.gd"
 PlayerManager="*res://Scripts/Player/PlayerManager.gd"
 UiAudio="*res://Scenes/ui_audio.tscn"
 AbilityData="*res://Scripts/Data/ability_data.gd"
+ItemData="*res://Scripts/Data/item_data.gd"
 
 [global_group]
 
