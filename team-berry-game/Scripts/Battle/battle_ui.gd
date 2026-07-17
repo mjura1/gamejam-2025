@@ -41,6 +41,10 @@ const MAX_PLACED := 5
 @onready var action_button: Button = %ActionButton
 @onready var board_area: Control = %BoardArea
 @onready var drag_ghost: TextureRect = %DragGhost
+@onready var placement_actions_row: HBoxContainer = %PlacementActionsRow
+@onready var auto_fill_button: Button = %AutoFillButton
+@onready var remove_all_button: Button = %RemoveAllButton
+@onready var tile_map = get_node("../Map/TileMapLayer")
 
 const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
@@ -69,6 +73,8 @@ func _ready():
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
+	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
+	remove_all_button.pressed.connect(_on_remove_all_pressed)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
 	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
@@ -136,6 +142,7 @@ func _on_battle_state_changed(new_state):
 			placement_active = true
 			placement_highlighter.show_zone()
 			board_area.mouse_filter = Control.MOUSE_FILTER_STOP
+			placement_actions_row.visible = true
 			moves_label.text = ""
 			abilities_label.text = ""
 			_update_placement_ui()
@@ -144,6 +151,7 @@ func _on_battle_state_changed(new_state):
 				placement_active = false
 				placement_highlighter.clear_zone()
 				board_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				placement_actions_row.visible = false
 			turn_label.text = "PLAYER TURN"
 			action_button.text = "END TURN"
 			action_button.disabled = false
@@ -290,6 +298,52 @@ func _update_placement_ui():
 	turn_label.text = "PLACE YOUR PIECES (%d/%d)" % [placed_count, _max_placeable()]
 	action_button.text = "START"
 	action_button.disabled = placed_count == 0
+	auto_fill_button.disabled = placed_count >= _max_placeable() or not _has_available_piece()
+	remove_all_button.disabled = placed_count == 0
+
+
+# Ali je na klopi še vsaj ena figura, ki bi jo auto-fill lahko postavil.
+func _has_available_piece() -> bool:
+	for roster_name in player_manager.friendly_party:
+		if _count_available(roster_name) > 0:
+			return true
+	return false
+
+
+# Vsa prosta polja v placement coni, v vrstnem redu vrstica za vrstico.
+func _free_placement_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	for y in range(used_rect.position.y, used_rect.end.y):
+		for x in range(used_rect.position.x, used_rect.end.x):
+			var grid_pos := Vector2i(x, y)
+			if _is_free_placement_cell(grid_pos):
+				cells.append(grid_pos)
+	return cells
+
+
+# AUTO FILL: postavi figure s klopi na prosta polja, dokler ne doseže 5 (ali
+# zmanjka figur/prostora - kar prej nastopi).
+func _on_auto_fill_pressed():
+	if not _in_placement_phase():
+		return
+	var free_cells := _free_placement_cells()
+	for roster_name in player_manager.friendly_party:
+		if _placed_characters().size() >= _max_placeable() or free_cells.is_empty():
+			break
+		if _count_available(roster_name) <= 0:
+			continue
+		place_piece(roster_name, free_cells.pop_front())
+
+
+# REMOVE ALL: pobere vse trenutno postavljene figure nazaj na klop.
+func _on_remove_all_pressed():
+	if not _in_placement_phase():
+		return
+	for character in _placed_characters():
+		grid_manager.vacate(character.grid_pos)
+		character.queue_free()
+	_after_placement_change()
 
 
 # ===============================================
