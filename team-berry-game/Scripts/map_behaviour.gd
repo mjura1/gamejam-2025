@@ -69,10 +69,10 @@ func _resolve_pending_ability(clicked_grid: Vector2i):
 	ability_activated.emit(character)
 
 	if is_instance_valid(battle_controller):
-		# Sposobnost porabi 1 akcijo iz proračuna te poteze - poteza se
-		# NIKOLI ne konča sama (glej BattleController.consume_action()), zato
-		# konec bitke preverimo ročno (npr. zajetje zadnjega sovražnika).
-		battle_controller.consume_action()
+		# Sposobnost porabi 1 iz LOČENEGA proračuna sposobnosti (ne premikov) -
+		# poteza se NIKOLI ne konča sama (glej BattleController.consume_ability()),
+		# zato konec bitke preverimo ročno (npr. zajetje zadnjega sovražnika).
+		battle_controller.consume_ability()
 		battle_controller.check_battle_end()
 
 # ===============================================
@@ -105,7 +105,7 @@ func select_character_via_ui(character):
 		return
 	if character.is_enemy or character.is_obstacle:
 		return
-	if is_instance_valid(battle_controller) and not battle_controller.player_can_act():
+	if is_instance_valid(battle_controller) and not battle_controller.can_select():
 		return
 
 	_apply_selection(character)
@@ -169,10 +169,10 @@ func _unhandled_input(event):
 					# Uspešno zajetje (captured)
 					_clear_selection()
 
-					# Zajetje porabi 1 akcijo iz proračuna te poteze - poteza
-					# se ne konča sama (glej consume_action()).
+					# Zajetje porabi 1 iz proračuna premikov te poteze - poteza
+					# se ne konča sama (glej consume_move()).
 					if is_instance_valid(battle_controller):
-						battle_controller.consume_action()
+						battle_controller.consume_move()
 						battle_controller.check_battle_end()
 
 					return
@@ -211,10 +211,10 @@ func _unhandled_input(event):
 			# Uspešen premik
 			_clear_selection()
 
-			# Premik porabi 1 akcijo iz proračuna te poteze - poteza se ne
-			# konča sama (glej consume_action()).
+			# Premik porabi 1 iz proračuna premikov te poteze - poteza se ne
+			# konča sama (glej consume_move()).
 			if is_instance_valid(battle_controller):
-				battle_controller.consume_action()
+				battle_controller.consume_move()
 				battle_controller.check_battle_end()
 
 			return

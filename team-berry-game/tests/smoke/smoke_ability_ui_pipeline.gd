@@ -46,12 +46,28 @@ func _initialize():
 
 	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
 	battle_instance = battle_scene.instantiate()
+	# instantiate() already builds the whole node structure synchronously
+	# (only the _ready() cascade is deferred to the first frame - see the
+	# note below), so this reference is safe to grab immediately.
+	battle_controller = battle_instance.get_node("BattleController")
+	# battle.gd._ready() ends by calling battle_controller.initialize_battle(),
+	# which sets PLACEMENT or PLAYER_TURN and would otherwise race our own
+	# state/budget overrides below (observed as flaky CI failures: if
+	# initialize_battle() fires AFTER our test already spawned pieces and
+	# set high budgets, _has_friendly_pieces() sees them and calls
+	# start_player_turn(), silently resetting moves/abilities_remaining back
+	# down mid-test). Connecting here, before add_child(), guarantees this
+	# fires exactly once battle.gd's own _ready() has actually completed.
+	battle_controller.state_changed.connect(_on_battle_initialized, CONNECT_ONE_SHOT)
 	root.add_child(battle_instance)
 	current_scene = battle_instance
 
-	# add_child() during _initialize() does NOT run _ready() synchronously
-	# (see tests/framework/battle_boot.gd's note on the same quirk) - defer
-	# to the next frame so battle_instance's children are actually ready.
+func _on_battle_initialized(_new_state):
+	# initialize_battle() has now run, but other siblings (BattleUI, Map)
+	# may not have had THEIR _ready() called yet if they come later in
+	# child order during this same first-frame cascade (see
+	# tests/framework/battle_boot.gd's note on the same add_child() quirk) -
+	# defer once more so everything is guaranteed ready before _run().
 	call_deferred("_run")
 
 func _check(label: String, ok: bool):
@@ -88,13 +104,15 @@ func _press_targeted(character: BaseCharacter, slot: int, target: Vector2i, labe
 
 func _run():
 	grid_manager = battle_instance.get_node("GridManager")
-	battle_controller = battle_instance.get_node("BattleController")
 	battle_ui = battle_instance.get_node("BattleUI")
 	map_behaviour = battle_instance.get_node("Map")
 	battle_controller._set_state(battle_controller.BattleState.PLAYER_TURN)
-	# High budget so the action-economy cap (covered by a separate concern)
-	# never blocks these 12 activations from actually running.
-	battle_controller.actions_remaining = 100
+	# High budgets so the action-economy caps (covered by a separate concern)
+	# never block these 12 activations - or the handful of plain moves this
+	# test also drives (Reposition, Exterminate's own trigger move) - from
+	# actually running.
+	battle_controller.moves_remaining = 100
+	battle_controller.abilities_remaining = 100
 
 	# All test pieces live in rows 9-11 (bottom 3 rows) - battle.gd never
 	# scatters random obstacles (rows 2-8) or default enemies (rows 0-1)

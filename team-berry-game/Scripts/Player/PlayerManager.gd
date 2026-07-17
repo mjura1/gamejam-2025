@@ -28,10 +28,13 @@ var dead_party: Array[String]
 var upgrade_items: int = 0
 var revive_items: int = 0
 
-# Koliko akcij (premik/zajetje/sposobnost) lahko igralec izvede v ENI potezi,
-# preden mora ročno pritisniti END TURN (glej BattleController.gd). Var, ne
-# const - meta-progression (upgrade) bo to lahko kasneje povečal.
-var actions_per_turn: int = 3
+# Koliko premikov/zajetij in koliko sposobnosti lahko igralec izvede v ENI
+# potezi, preden mora ročno pritisniti END TURN (glej BattleController.gd).
+# Ločena proračuna - deljen proračun je dovolil premakniti 3 različne figure
+# v eni potezi, kar je bilo preveč močno. Var, ne const - meta-progression
+# (upgrade) bo to lahko kasneje povečal.
+var moves_per_turn: int = 1
+var abilities_per_turn: int = 3
 
 
 # Največ figur v AKTIVNI ekipi (vrstica "YOUR PIECES" v bitki, glej

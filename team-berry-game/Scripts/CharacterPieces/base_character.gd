@@ -167,7 +167,7 @@ func execute_move(target: Vector2i):
 
 func try_move(target: Vector2i) -> bool:
 	# Omogoči AI-ju premik brez preverjanja stanja battle_controllerja
-	if not is_enemy and not battle_controller.player_can_act():
+	if not is_enemy and not battle_controller.can_move():
 		return false
 	
 	# 1. Ali je tarča veljavna tarča za premik/zajetje?
@@ -354,7 +354,7 @@ func get_ability_targets(slot: int) -> Array[Vector2i]:
 func activate_ability(slot: int, target = null) -> bool:
 	if is_enemy:
 		return false
-	if not is_instance_valid(battle_controller) or not battle_controller.player_can_act():
+	if not is_instance_valid(battle_controller) or not battle_controller.can_use_ability():
 		return false
 	var defs := get_ability_defs()
 	if slot < 1 or slot > defs.size():
