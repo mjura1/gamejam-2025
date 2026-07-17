@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=4 uid="uid://bj15yf4y43u2b"]
+[gd_scene load_steps=14 format=4 uid="uid://bj15yf4y43u2b"]
 
 [ext_resource type="PackedScene" uid="uid://gexf8t8dh7sm" path="res://Battle/battle_controller.tscn" id="1_2wj6q"]
 [ext_resource type="Script" uid="uid://ckulnlduftc2g" path="res://Scenes/Map/battle.gd" id="1_s8jfi"]
@@ -9,6 +9,7 @@
 [ext_resource type="Texture2D" uid="uid://c576nn2md8x3f" path="res://Assets/Tilesets/floorfull_16.png" id="4_057aq"]
 [ext_resource type="Script" uid="uid://cef3faytaep6h" path="res://Scripts/TileMap/tile_selector.gd" id="5_aynew"]
 [ext_resource type="Script" uid="uid://bo8wupstu0hfb" path="res://Scripts/TileMap/move_highlighter.gd" id="9_1ft3a"]
+[ext_resource type="PackedScene" path="res://Scenes/Battle/battle_ui.tscn" id="10_bui"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_057aq"]
 texture = ExtResource("3_foqj0")
@@ -2061,9 +2062,11 @@ script = ExtResource("3_mptdr")
 script = ExtResource("5_aynew")
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(98, 96)
+position = Vector2(171, 96)
 scale = Vector2(1, 1.799)
 zoom = Vector2(3.4, 3.4)
 
 [node name="MoveHighlighter" type="Node2D" parent="."]
 script = ExtResource("9_1ft3a")
+
+[node name="BattleUI" parent="." instance=ExtResource("10_bui")]

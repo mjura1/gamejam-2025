@@ -1,6 +1,9 @@
 # res://Scripts/Player/PlayerManager.gd
 extends Node
 
+# Sproži se ob vsaki spremembi ekip (smrt figure ipd.), da se UI lahko osveži.
+signal party_changed
+
 # Party Management
 var default_friends: Array[String] = ["friendly_pawn", "friendly_pawn", "friendly_pawn"]
 var default_enemies: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
@@ -10,6 +13,14 @@ var enemy_party: Array[String]
 var active_enemies: Array[String]
 
 var active_party: Array[String]
+
+# Zavezniki, ki so padli v trenutni bitki. Ponastavi se v resetActives()
+# (smrt zaenkrat NI trajna med bitkami - trajnost pride z revive itemom).
+var dead_party: Array[String]
+
+# Item counts (samo prikaz v battle UI - item sistem pride kasneje)
+var upgrade_items: int = 0
+var revive_items: int = 0
 
 
 var max_party_size = 32
@@ -41,6 +52,7 @@ func register_dead_character(character):
 	for item in active_party:
 		if character == item:
 			active_party.erase(character)
+			dead_party.append(character)
 			break
 	for item in active_enemies:
 		if character == item:
@@ -50,6 +62,7 @@ func register_dead_character(character):
 	print(active_party)
 	print(enemy_party)
 	print(active_enemies)
+	party_changed.emit()
 			
 func add_to_enemy_party(character):
 	# Namerno: vojska sovražnikov RASTE, ko igralec napreduje globlje v isto mapo
@@ -60,6 +73,8 @@ func add_to_enemy_party(character):
 func resetActives():
 	active_enemies = enemy_party.duplicate()
 	active_party = friendly_party.duplicate()
+	dead_party.clear()
+	party_changed.emit()
 	
 func setStarting() -> void:
 	friendly_party = default_friends.duplicate()
