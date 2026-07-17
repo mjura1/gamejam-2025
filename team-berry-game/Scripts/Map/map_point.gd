@@ -27,7 +27,8 @@ enum RoomType {
 	friendly_queen,
 	friendly_king,
 	campfire,
-	item
+	item,
+	shop # DODAN NA KONEC - obstoječe sobe so serializirane kot int-i, prerazvrstitev bi jih pokvarila.
 }
 
 static var RoomTypeNames: Dictionary = {
@@ -44,5 +45,6 @@ static var RoomTypeNames: Dictionary = {
 	RoomType.friendly_queen : "friendly_queen",
 	RoomType.friendly_king : "friendly_king",
 	RoomType.campfire : "campfire",
-	RoomType.item : "item"
+	RoomType.item : "item",
+	RoomType.shop : "shop"
 }

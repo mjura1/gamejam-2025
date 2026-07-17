@@ -47,6 +47,7 @@ const TIER_CONFIGS: Array[Dictionary] = [
 	{ # Tier 1: dodana trdnjava in lovec
 		"floors": 7,
 		"boss_type": Room.RoomType.enemy_rook,
+		"shop_floor": 3, # trgovina - sredina mape, kot tabor (vsaka pot gre skozi)
 		"enemy_pool": {
 			Room.RoomType.enemy_pawn: 5,
 			Room.RoomType.enemy_knight: 3,
@@ -59,7 +60,8 @@ const TIER_CONFIGS: Array[Dictionary] = [
 		"boss_type": Room.RoomType.enemy_king,
 		"mini_boss_floor_offset": 3, # FLOORS - 3
 		"mini_boss_type": Room.RoomType.enemy_queen,
-		"recruit_floor": 4, # prijateljski kralj, sredina mape
+		"recruit_floor": 3, # prijateljski kralj - premaknjen s 4 na 3, ker trgovina zdaj zasede 4
+		"shop_floor": 4, # trgovina - sredina mape
 		"enemy_pool": {
 			Room.RoomType.enemy_pawn: 5,
 			Room.RoomType.enemy_knight: 3,
@@ -81,6 +83,7 @@ var boss_type: int = Room.RoomType.enemy_king
 var mini_boss_floor: int = -1
 var mini_boss_type: int = Room.RoomType.enemy_queen
 var recruit_floor: int = -1
+var shop_floor: int = -1
 
 # =========================================================
 # 2. GLAVNA FUNKCIJA GENERIRANJA
@@ -115,6 +118,7 @@ func _configure_tier(tier: int) -> void:
 	mini_boss_floor = FLOORS - config["mini_boss_floor_offset"] if config.has("mini_boss_floor_offset") else -1
 	mini_boss_type = config.get("mini_boss_type", Room.RoomType.enemy_queen)
 	recruit_floor = config.get("recruit_floor", -1)
+	shop_floor = config.get("shop_floor", -1)
 
 	ROOM_WEIGHTS = {}
 	for enemy_type in config["enemy_pool"]:
@@ -281,6 +285,8 @@ func _assign_room_types():
 				room.type = mini_boss_type
 			elif i == recruit_floor:
 				room.type = Room.RoomType.friendly_king
+			elif i == shop_floor:
+				room.type = Room.RoomType.shop
 			elif i == FLOORS - 2:
 				# Tabor (campfire) je vedno na predzadnjem nadstropju: _connect_to_boss()
 				# prisilno spelje VSAKO pot skozi FLOORS - 2, preden doseže šefa,

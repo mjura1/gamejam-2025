@@ -1,0 +1,8 @@
+{
+	"friendly_pawn": {"sell_value": 1},
+	"friendly_knight": {"sell_value": 1},
+	"friendly_rook": {"sell_value": 1},
+	"friendly_bishop": {"sell_value": 1},
+	"friendly_queen": {"sell_value": 1},
+	"friendly_king": {"sell_value": 1}
+}

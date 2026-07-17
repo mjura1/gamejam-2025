@@ -103,6 +103,16 @@ check_script "smoke_upgrade_panel" "res://tests/smoke/smoke_upgrade_panel.gd" 8 
 	"SMOKE TEST: upgrade panel spend flow completed cleanly"
 echo
 
+echo "== Shop room -> Shop scene -> LEAVE -> map smoke test =="
+check_script "smoke_shop_map_flow" "res://tests/smoke/smoke_shop_map_flow.gd" 8 \
+	"SMOKE TEST: shop map flow completed cleanly, back on the map"
+echo
+
+echo "== Shop buy/sell panel smoke test =="
+check_script "smoke_shop" "res://tests/smoke/smoke_shop.gd" 8 \
+	"SMOKE TEST: shop buy/sell flow completed cleanly"
+echo
+
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
 check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 \
 	"SMOKE TEST: battle booted through placement into PLAYER_TURN"
@@ -116,6 +126,11 @@ echo
 echo "== Placement auto-fill/remove-all smoke test =="
 check_script "smoke_placement_auto_fill" "res://tests/smoke/smoke_placement_auto_fill.gd" 5 \
 	"SMOKE TEST: placement auto-fill/remove-all works end to end"
+echo
+
+echo "== Item use smoke test (battle_ui.use_item / extra_move) =="
+check_script "smoke_item_use" "res://tests/smoke/smoke_item_use.gd" 4 \
+	"SMOKE TEST: extra_move item used cleanly, moves incremented, inventory decremented"
 echo
 
 echo "== Ability activation smoke test =="

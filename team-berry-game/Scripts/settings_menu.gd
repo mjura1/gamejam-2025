@@ -66,6 +66,8 @@ func _action_label(action: String) -> String:
 			return "Ability 1"
 		"ability_2":
 			return "Ability 2"
+		"toggle_items":
+			return "Toggle Items"
 		_:
 			if action.begins_with("piece_slot_"):
 				return "Piece Slot %s" % action.trim_prefix("piece_slot_")

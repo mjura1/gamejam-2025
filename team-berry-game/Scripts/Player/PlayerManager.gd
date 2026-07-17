@@ -33,6 +33,10 @@ var dead_party: Array[String]
 var upgrade_items: int = 0
 var revive_items: int = 0
 
+# Inventar shop itemov: item id ("extra_move") -> količina. Ne prenaša se
+# med runi (glej reset v setStarting()) - enako pravilo kot upgrade_items.
+var owned_items: Dictionary = {}
+
 # Nagrade v upgrade itemih (glej BattleController.check_battle_end in
 # MapController._handle_event za item sobo).
 const UPGRADE_ITEMS_PER_WIN := 1
@@ -242,10 +246,71 @@ func setStarting() -> void:
 	# Nov run: nadgradnje in itemi se ne prenašajo iz prejšnjega runa.
 	piece_upgrades = {}
 	upgrade_items = 0
+	owned_items = {}
 	items_changed.emit()
 
 func addSnow():
 	snowCount += 2
+
+# ----------------- SHOP: ITEM INVENTAR IN NAKUP/PRODAJA -----------------
+
+func add_item(id: String, amount: int = 1):
+	owned_items[id] = owned_items.get(id, 0) + amount
+	items_changed.emit()
+
+# Vrne false, če itema ni na voljo. Odšteje 1 in počisti ključ pri 0.
+func remove_item(id: String) -> bool:
+	if owned_items.get(id, 0) <= 0:
+		return false
+	owned_items[id] -= 1
+	if owned_items[id] <= 0:
+		owned_items.erase(id)
+	items_changed.emit()
+	return true
+
+func get_item_count(id: String) -> int:
+	return owned_items.get(id, 0)
+
+# Kupi 1x item po ceni iz ItemData. Zavrne, če ni dovolj upgrade_items.
+func try_buy_item(id: String) -> bool:
+	var cost: int = ItemData.get_buy_cost(id)
+	if upgrade_items < cost:
+		return false
+	upgrade_items -= cost
+	add_item(id, 1)
+	return true
+
+# Proda 1x item iz inventarja nazaj za upgrade_items po ItemData ceni.
+func try_sell_item(id: String) -> bool:
+	if not remove_item(id):
+		return false
+	upgrade_items += ItemData.get_sell_value(id)
+	items_changed.emit()
+	return true
+
+# Proda figuro iz aktivne ekipe. Zavrne, če bi aktivna ekipa ostala prazna
+# (ista zaščita kot move_active_to_reserve).
+func try_sell_active_piece(index: int) -> bool:
+	if index < 0 or index >= friendly_party.size():
+		return false
+	if friendly_party.size() <= 1:
+		return false
+	var roster_name: String = friendly_party[index]
+	friendly_party.remove_at(index)
+	upgrade_items += ItemData.get_piece_sell_value(roster_name)
+	party_changed.emit()
+	items_changed.emit()
+	return true
+
+func try_sell_reserve_piece(index: int) -> bool:
+	if index < 0 or index >= reserve_party.size():
+		return false
+	var roster_name: String = reserve_party[index]
+	reserve_party.remove_at(index)
+	upgrade_items += ItemData.get_piece_sell_value(roster_name)
+	party_changed.emit()
+	items_changed.emit()
+	return true
 
 # Funkcija za posodobitev trenutnega nadstropja (kliče se, ko igralec premaga sobo)
 # Posodobi napredek igralca. new_floor je INDEKS NADSTROPJA sobe (grid_position.x).
