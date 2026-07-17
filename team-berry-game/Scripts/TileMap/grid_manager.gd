@@ -27,11 +27,14 @@ var occupied := {}
 # ===============================================
 # ABILITY CONE (Bishop.Traps / Rook.Reinforce)
 # ===============================================
-# id -> {"type": "freeze"/"deny_entry", "center": Vector2i, "radius": int, "owner_is_enemy": bool}
+# id -> {"type": "freeze"/"deny_entry", "center": Vector2i, "radius": int, "owner_is_enemy": bool, "shape_offsets": Array[Vector2i]}
 var zones: Dictionary = {}
 var _next_zone_id := 0
 
-func add_zone(type: String, center: Vector2i, radius: int, owner_is_enemy: bool) -> int:
+# shape_offsets (relativno na center, glej plus_extended_offsets spodaj):
+# če ni prazen, NADOMESTI navadni radius-kvadrat test v _in_zone (glej spodaj) -
+# omogoča ne-kvadratne cone (npr. "plus" oblika) brez spreminjanja klicateljev.
+func add_zone(type: String, center: Vector2i, radius: int, owner_is_enemy: bool, shape_offsets: Array[Vector2i] = []) -> int:
 	var id := _next_zone_id
 	_next_zone_id += 1
 	zones[id] = {
@@ -39,6 +42,7 @@ func add_zone(type: String, center: Vector2i, radius: int, owner_is_enemy: bool)
 		"center": center,
 		"radius": radius,
 		"owner_is_enemy": owner_is_enemy,
+		"shape_offsets": shape_offsets,
 	}
 	return id
 
@@ -61,6 +65,9 @@ func is_entry_denied(pos: Vector2i, mover_is_enemy: bool) -> bool:
 
 func _in_zone(pos: Vector2i, zone: Dictionary) -> bool:
 	var d: Vector2i = pos - zone.center
+	var shape_offsets: Array = zone.get("shape_offsets", [])
+	if not shape_offsets.is_empty():
+		return d in shape_offsets
 	return absi(d.x) <= zone.radius and absi(d.y) <= zone.radius
 
 # Kvadratno območje radiusa "radius" okoli center (vključno s center samim).
@@ -70,6 +77,15 @@ static func square_radius_tiles(center: Vector2i, radius: int) -> Array[Vector2i
 		for y in range(-radius, radius + 1):
 			tiles.append(center + Vector2i(x, y))
 	return tiles
+
+# Vmesna oblika med radius=1 (3x3) in radius=2 (5x5) kvadratom: osnovni 3x3
+# plus 4 "roke" na razdalji 2 v vsako od 4 glavnih smeri ("+" oblika). Odmiki
+# so relativni na (0,0) - klicatelj jih premakne na svoj center sam.
+static func plus_extended_offsets() -> Array[Vector2i]:
+	var offsets: Array[Vector2i] = square_radius_tiles(Vector2i.ZERO, 1)
+	for dir in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		offsets.append(dir)
+	return offsets
 
 # ----------------- INITIALIZATION -----------------
 

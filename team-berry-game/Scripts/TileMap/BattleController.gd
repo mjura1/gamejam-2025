@@ -43,9 +43,10 @@ var abilities_remaining: int = 0
 
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
-# {} kadar ni naborožena, sicer {"center": Vector2i, "radius": int, "owner": BaseCharacter}.
+# {} kadar ni naborožena, sicer {"tiles": Array[Vector2i], "owner": BaseCharacter, "owner_is_enemy": bool}.
 # "owner" se uporablja SAMO za razorožitev ob smrti kraljice (glej
-# base_character.gd.die()) - sprožilec sam uporablja center/radius snapshot,
+# base_character.gd.die()) - sprožilec sam uporablja "tiles" snapshot (že
+# izračunan iz center+oblika ob aktivaciji, glej queen.gd._do_exterminate),
 # ne žive reference, da eksplozija ostane na mestu tudi, če se kraljica
 # kasneje premakne.
 var exterminate_armed: Dictionary = {}
@@ -65,15 +66,14 @@ func _clear_expired_evade():
 func trigger_exterminate_if_armed():
 	if exterminate_armed.is_empty():
 		return
-	var center: Vector2i = exterminate_armed.get("center")
-	var radius: int = exterminate_armed.get("radius")
+	var tiles: Array = exterminate_armed.get("tiles", [])
 	var owner_is_enemy: bool = exterminate_armed.get("owner_is_enemy", false)
 	exterminate_armed = {}
 
 	if not is_instance_valid(grid_manager):
 		return
 
-	for pos in GridManager.square_radius_tiles(center, radius):
+	for pos in tiles:
 		var target = grid_manager.get_character_at(pos)
 		if target and target is BaseCharacter and target.is_enemy != owner_is_enemy and not target.is_obstacle:
 			target.die()

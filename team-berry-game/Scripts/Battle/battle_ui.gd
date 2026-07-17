@@ -24,10 +24,12 @@ const MAX_PLACED := 5
 @onready var portrait: TextureRect = %Portrait
 @onready var status_value: Label = %StatusValue
 @onready var ability1_name: Label = %Ability1Name
+@onready var ability1_level: Label = %Ability1Level
 @onready var ability1_uses: Label = %Ability1Uses
 @onready var ability1_desc: Label = %Ability1Desc
 @onready var ability1_button: Button = %Ability1Button
 @onready var ability2_name: Label = %Ability2Name
+@onready var ability2_level: Label = %Ability2Level
 @onready var ability2_uses: Label = %Ability2Uses
 @onready var ability2_desc: Label = %Ability2Desc
 @onready var ability2_button: Button = %Ability2Button
@@ -455,12 +457,21 @@ func _clear_detail_panel():
 
 func _clear_ability_rows():
 	ability1_name.text = "-"
+	ability1_level.text = ""
 	ability1_uses.text = ""
 	ability1_desc.text = ""
 	ability1_button.disabled = true
 	ability2_body.visible = false
 	ability2_locked.visible = true
 	ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
+
+
+# "LV n" ali "LV MAX", ko je figura na najvišji stopnji (glej
+# BaseCharacter.get_ability_info - level/level_max).
+func _level_text(info: Dictionary) -> String:
+	var level: int = info.get("level", 1)
+	var level_max: int = info.get("level_max", 1)
+	return "LV MAX" if level >= level_max else "LV %d" % level
 
 
 # Napolni obe vrstici sposobnosti iz character.get_ability_info(slot) in
@@ -475,22 +486,27 @@ func _show_abilities(character: BaseCharacter):
 
 	var info1 := character.get_ability_info(1)
 	ability1_name.text = info1.get("name", "-")
+	ability1_level.text = _level_text(info1)
 	ability1_uses.text = "%d/%d" % [info1.get("uses_remaining", 0), info1.get("uses_max", 0)]
 	ability1_desc.text = info1.get("desc", "")
 	ability1_button.disabled = not (can_use_now and info1.get("uses_remaining", 0) > 0)
 
-	if character.has_ability_upgrade:
+	if character.ability2_unlocked:
 		var info2 := character.get_ability_info(2)
 		ability2_body.visible = true
 		ability2_locked.visible = false
 		ability2_name.text = info2.get("name", "-")
+		ability2_level.text = _level_text(info2)
 		ability2_uses.text = "%d/%d" % [info2.get("uses_remaining", 0), info2.get("uses_max", 0)]
 		ability2_desc.text = info2.get("desc", "")
 		ability2_button.disabled = not (can_use_now and info2.get("uses_remaining", 0) > 0)
 	else:
 		ability2_body.visible = false
 		ability2_locked.visible = true
-		ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
+		var unlock_cost: int = character.get_ability_info(2).get("unlock_cost", 1)
+		ability2_locked.text = "Use %d upgrade item%s at a rest to unlock the second ability." % [
+			unlock_cost, "" if unlock_cost == 1 else "s"
+		]
 
 
 func _on_ability_pressed(slot: int):

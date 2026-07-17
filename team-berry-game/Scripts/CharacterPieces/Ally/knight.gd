@@ -25,13 +25,15 @@ func get_move_directions() -> Array[Vector2i]:
 const ABILITY_DEFS = [
 	{
 		"id": "evade", "name": "Evade", "needs_target": false,
-		"base": {"uses": 2, "desc": "This knight cannot be captured until your next turn."},
-		"upgraded": {"uses": 3, "desc": "This knight cannot be captured until your next turn."},
+		"base": {"desc": "This knight cannot be captured until your next turn."},
+		"mid": {"desc": "This knight cannot be captured until your next turn."},
+		"upgraded": {"desc": "This knight cannot be captured until your next turn."},
 	},
 	{
 		"id": "reposition", "name": "Reposition", "needs_target": true,
-		"base": {"uses": 1, "desc": "Make an extra move with this knight without ending your turn."},
-		"upgraded": {"uses": 2, "desc": "Make an extra move with this knight without ending your turn."},
+		"base": {"desc": "Make an extra move with this knight without ending your turn."},
+		"mid": {"desc": "Make an extra move with this knight without ending your turn."},
+		"upgraded": {"desc": "Make an extra move with this knight without ending your turn."},
 	},
 ]
 

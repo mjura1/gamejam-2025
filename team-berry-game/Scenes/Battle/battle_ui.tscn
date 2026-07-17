@@ -175,6 +175,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "-"
 
+[node name="Ability1Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+
 [node name="Ability1Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -209,6 +215,12 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "-"
+
+[node name="Ability2Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Body/Ability2Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
 
 [node name="Ability2Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Body/Ability2Header"]
 unique_name_in_owner = true
