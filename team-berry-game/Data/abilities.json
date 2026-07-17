@@ -1,0 +1,14 @@
+{
+	"rally": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
+	"lantern_signal": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1},
+	"evade": {"base_uses": 2, "mid_uses": 3, "max_uses": 4, "level_up_cost": 2},
+	"reposition": {"base_uses": 1, "mid_uses": 2, "max_uses": 3, "level_up_cost": 2, "unlock_cost": 1},
+	"longshot": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
+	"traps": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1},
+	"lookout": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
+	"reinforce": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1},
+	"exterminate": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
+	"lure": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1},
+	"cleanse": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
+	"heal": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1}
+}

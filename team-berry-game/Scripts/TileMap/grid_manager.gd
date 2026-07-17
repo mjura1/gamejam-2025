@@ -19,10 +19,73 @@ var fog_nodes: Dictionary = {}
 var cell_size: Vector2 = Vector2(16, 16)
 
 # Stores objects by their grid location
-var occupied := {} 
+var occupied := {}
 
 # KRITIČNO: Deklaracija TileMap vozlišča za Godot 4.
 @export var tile_map: Node = null
+
+# ===============================================
+# ABILITY CONE (Bishop.Traps / Rook.Reinforce)
+# ===============================================
+# id -> {"type": "freeze"/"deny_entry", "center": Vector2i, "radius": int, "owner_is_enemy": bool, "shape_offsets": Array[Vector2i]}
+var zones: Dictionary = {}
+var _next_zone_id := 0
+
+# shape_offsets (relativno na center, glej plus_extended_offsets spodaj):
+# če ni prazen, NADOMESTI navadni radius-kvadrat test v _in_zone (glej spodaj) -
+# omogoča ne-kvadratne cone (npr. "plus" oblika) brez spreminjanja klicateljev.
+func add_zone(type: String, center: Vector2i, radius: int, owner_is_enemy: bool, shape_offsets: Array[Vector2i] = []) -> int:
+	var id := _next_zone_id
+	_next_zone_id += 1
+	zones[id] = {
+		"type": type,
+		"center": center,
+		"radius": radius,
+		"owner_is_enemy": owner_is_enemy,
+		"shape_offsets": shape_offsets,
+	}
+	return id
+
+func remove_zone(id: int):
+	zones.erase(id)
+
+# Ali je pos znotraj sovražnikove "freeze" cone glede na mover_is_enemy?
+func is_frozen(pos: Vector2i, mover_is_enemy: bool) -> bool:
+	for zone in zones.values():
+		if zone.type == "freeze" and zone.owner_is_enemy != mover_is_enemy and _in_zone(pos, zone):
+			return true
+	return false
+
+# Ali je pos znotraj sovražnikove "deny_entry" cone glede na mover_is_enemy?
+func is_entry_denied(pos: Vector2i, mover_is_enemy: bool) -> bool:
+	for zone in zones.values():
+		if zone.type == "deny_entry" and zone.owner_is_enemy != mover_is_enemy and _in_zone(pos, zone):
+			return true
+	return false
+
+func _in_zone(pos: Vector2i, zone: Dictionary) -> bool:
+	var d: Vector2i = pos - zone.center
+	var shape_offsets: Array = zone.get("shape_offsets", [])
+	if not shape_offsets.is_empty():
+		return d in shape_offsets
+	return absi(d.x) <= zone.radius and absi(d.y) <= zone.radius
+
+# Kvadratno območje radiusa "radius" okoli center (vključno s center samim).
+static func square_radius_tiles(center: Vector2i, radius: int) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	for x in range(-radius, radius + 1):
+		for y in range(-radius, radius + 1):
+			tiles.append(center + Vector2i(x, y))
+	return tiles
+
+# Vmesna oblika med radius=1 (3x3) in radius=2 (5x5) kvadratom: osnovni 3x3
+# plus 4 "roke" na razdalji 2 v vsako od 4 glavnih smeri ("+" oblika). Odmiki
+# so relativni na (0,0) - klicatelj jih premakne na svoj center sam.
+static func plus_extended_offsets() -> Array[Vector2i]:
+	var offsets: Array[Vector2i] = square_radius_tiles(Vector2i.ZERO, 1)
+	for dir in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		offsets.append(dir)
+	return offsets
 
 # ----------------- INITIALIZATION -----------------
 

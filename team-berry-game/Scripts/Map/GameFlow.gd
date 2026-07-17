@@ -30,6 +30,12 @@ func _ready():
 	pause_menu_instance = PAUSE_MENU_SCENE.instantiate()
 	pause_menu_layer = CanvasLayer.new()
 	pause_menu_layer.name = "PauseMenuLayer"
+	# CanvasLayers draw in ascending "layer" order (ties break by tree add
+	# order). PauseMenuLayer is created once here at boot, before any
+	# gameplay CanvasLayer (e.g. BattleUI) exists - without an explicit
+	# layer it defaults to 1, same as those, so it lost the tie and rendered
+	# underneath them. Force it above anything gameplay adds later.
+	pause_menu_layer.layer = 10
 	pause_menu_layer.add_child(pause_menu_instance)
 	get_tree().root.call_deferred("add_child", pause_menu_layer)
 

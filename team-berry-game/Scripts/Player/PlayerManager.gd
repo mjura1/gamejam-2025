@@ -28,6 +28,14 @@ var dead_party: Array[String]
 var upgrade_items: int = 0
 var revive_items: int = 0
 
+# Koliko premikov/zajetij in koliko sposobnosti lahko igralec izvede v ENI
+# potezi, preden mora ročno pritisniti END TURN (glej BattleController.gd).
+# Ločena proračuna - deljen proračun je dovolil premakniti 3 različne figure
+# v eni potezi, kar je bilo preveč močno. Var, ne const - meta-progression
+# (upgrade) bo to lahko kasneje povečal.
+var moves_per_turn: int = 1
+var abilities_per_turn: int = 3
+
 
 # Največ figur v AKTIVNI ekipi (vrstica "YOUR PIECES" v bitki, glej
 # battle_ui.gd). Čez to mejo se figure še vedno nabirajo (glej
@@ -105,6 +113,40 @@ func register_dead_character(character):
 	print(active_enemies)
 	party_changed.emit()
 			
+# ----------------- SPOSOBNOSTI: King.Heal / King.Cleanse -----------------
+
+# King.Heal: prestavi ime iz dead_party nazaj v active_party (figura se je
+# ravnokar znova pojavila na plošči - glej King._do_heal()).
+func revive_character(character_name: String) -> bool:
+	var idx = dead_party.find(character_name)
+	if idx == -1:
+		return false
+	dead_party.remove_at(idx)
+	active_party.append(character_name)
+	party_changed.emit()
+	return true
+
+# King.Cleanse: sovražnik zamenja stran za preostanek TE bitke. enemy_name je
+# oblike "enemy_<strName>", ally_name "friendly_<strName>" - ne dotika se
+# trajnega rosterja (friendly_party/enemy_party).
+func convert_enemy_to_ally(enemy_name: String, ally_name: String) -> bool:
+	var idx = active_enemies.find(enemy_name)
+	if idx == -1:
+		return false
+	active_enemies.remove_at(idx)
+	active_party.append(ally_name)
+	party_changed.emit()
+	return true
+
+# King.Cleanse spremljava: ko obrnjena figura umre, jo samo odstranimo iz
+# active_party - NE gre skozi register_dead_character(), ker ne ustreza
+# nobenemu vnosu v trajnem friendly_party rosterju.
+func remove_converted_ally(character_name: String):
+	var idx = active_party.find(character_name)
+	if idx != -1:
+		active_party.remove_at(idx)
+	party_changed.emit()
+
 func add_to_enemy_party(character):
 	# Namerno: vojska sovražnikov RASTE, ko igralec napreduje globlje v isto mapo
 	# (vsaka bitka doda k prejšnjim, ne le k default_enemies). Ponastavi se samo

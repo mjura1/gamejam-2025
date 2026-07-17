@@ -24,9 +24,19 @@ const MAX_PLACED := 5
 @onready var portrait: TextureRect = %Portrait
 @onready var status_value: Label = %StatusValue
 @onready var ability1_name: Label = %Ability1Name
+@onready var ability1_level: Label = %Ability1Level
 @onready var ability1_uses: Label = %Ability1Uses
 @onready var ability1_desc: Label = %Ability1Desc
+@onready var ability1_button: Button = %Ability1Button
+@onready var ability2_name: Label = %Ability2Name
+@onready var ability2_level: Label = %Ability2Level
+@onready var ability2_uses: Label = %Ability2Uses
+@onready var ability2_desc: Label = %Ability2Desc
+@onready var ability2_button: Button = %Ability2Button
+@onready var ability2_body: VBoxContainer = %Ability2Body
 @onready var ability2_locked: Label = %Ability2Locked
+@onready var moves_label: Label = %MovesLabel
+@onready var abilities_label: Label = %AbilitiesLabel
 @onready var turn_label: Label = %TurnLabel
 @onready var action_button: Button = %ActionButton
 @onready var board_area: Control = %BoardArea
@@ -44,13 +54,22 @@ var dragging: bool = false
 var drag_piece_name: String = ""
 var drag_source_character: BaseCharacter = null
 
+# Figura, ki je trenutno prikazana v detail panelu (null, če gre za mrtvo/
+# klopno figuro brez žive instance - takrat gumbi ostanejo onemogočeni).
+var _shown_character: BaseCharacter = null
+
 
 func _ready():
 	player_manager.party_changed.connect(_on_party_changed)
 	map_behaviour.selection_changed.connect(_on_selection_changed)
+	map_behaviour.ability_activated.connect(_on_ability_activated)
 	battle_controller.state_changed.connect(_on_battle_state_changed)
+	battle_controller.moves_changed.connect(_on_moves_changed)
+	battle_controller.abilities_changed.connect(_on_abilities_changed)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
+	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
+	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
 
 	_update_item_counts()
 	_clear_detail_panel()
@@ -70,6 +89,8 @@ func _on_battle_state_changed(new_state):
 			placement_active = true
 			placement_highlighter.show_zone()
 			board_area.mouse_filter = Control.MOUSE_FILTER_STOP
+			moves_label.text = ""
+			abilities_label.text = ""
 			_update_placement_ui()
 		battle_controller.BattleState.PLAYER_TURN:
 			if placement_active:
@@ -79,21 +100,41 @@ func _on_battle_state_changed(new_state):
 			turn_label.text = "PLAYER TURN"
 			action_button.text = "END TURN"
 			action_button.disabled = false
+			# moves_remaining/abilities_remaining se posodobita malo kasneje v
+			# isti klicni verigi (glej BattleController.start_player_turn()) -
+			# moves_changed/abilities_changed ju takoj zatem osvežita tudi tukaj.
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
+			moves_label.text = ""
+			abilities_label.text = ""
 		battle_controller.BattleState.GAME_OVER:
 			turn_label.text = "BATTLE OVER"
 			action_button.disabled = true
+			moves_label.text = ""
+			abilities_label.text = ""
+
+	if is_instance_valid(_shown_character):
+		_show_abilities(_shown_character)
 
 
 func _on_action_button_pressed():
 	if placement_active:
 		confirm_placement()
-	elif battle_controller.player_can_act():
-		# END TURN: zaenkrat deluje kot "pass" (premik še vedno sam konča
-		# potezo) - ob ability sistemu postane pravi zaključek več-akcijske poteze.
+	elif battle_controller.can_end_turn():
+		# END TURN je edini način za konec igralčeve poteze - premiki in
+		# sposobnosti samo porabljajo svoja LOČENA proračuna (glej
+		# consume_move()/consume_ability() klicatelje), zato mora biti gumb
+		# pritisljiv tudi pri 0 premikih/sposobnostih.
 		battle_controller.end_player_turn()
+
+
+func _on_moves_changed(remaining: int, max_moves: int):
+	moves_label.text = "MOVES: %d/%d" % [remaining, max_moves]
+
+
+func _on_abilities_changed(remaining: int, max_abilities: int):
+	abilities_label.text = "ABILITIES: %d/%d" % [remaining, max_abilities]
 
 
 # ===============================================
@@ -354,7 +395,7 @@ func _on_icon_clicked(icon: PieceIcon):
 		# Živa figura: izberi jo na plošči (enaka pot kot klik na figuro).
 		# Med sovražnikovo potezo izbira ni mogoča - pokažemo samo podrobnosti.
 		map_behaviour.select_character_via_ui(icon.character)
-		if not battle_controller.player_can_act():
+		if not battle_controller.can_select():
 			_show_piece_for_icon(icon)
 	else:
 		_show_piece_for_icon(icon)
@@ -386,39 +427,118 @@ func _show_character(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/friendly_%s.png" % character.strName)
 	status_value.text = "ALIVE"
 	status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)
-	_show_ability_placeholders()
+	_shown_character = character
+	_show_abilities(character)
 
 
 func _show_dead_piece(piece_name: String):
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "DEAD"
 	status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
-	_show_ability_placeholders()
+	_shown_character = null
+	_clear_ability_rows()
 
 
 func _show_benched_piece(piece_name: String):
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "NOT PLACED"
 	status_value.add_theme_color_override("font_color", STATUS_BENCHED_COLOR)
-	_show_ability_placeholders()
+	_shown_character = null
+	_clear_ability_rows()
 
 
 func _clear_detail_panel():
 	portrait.texture = null
 	status_value.text = "-"
 	status_value.remove_theme_color_override("font_color")
+	_shown_character = null
+	_clear_ability_rows()
+
+
+func _clear_ability_rows():
 	ability1_name.text = "-"
+	ability1_level.text = ""
 	ability1_uses.text = ""
 	ability1_desc.text = ""
-	ability2_locked.text = ""
-
-
-func _show_ability_placeholders():
-	# Ability sistem še ne obstaja - prikažemo predvideno obliko panela.
-	ability1_name.text = "???"
-	ability1_uses.text = "0"
-	ability1_desc.text = "Abilities coming soon."
+	ability1_button.disabled = true
+	ability2_body.visible = false
+	ability2_locked.visible = true
 	ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
+
+
+# "LV n" ali "LV MAX", ko je figura na najvišji stopnji (glej
+# BaseCharacter.get_ability_info - level/level_max).
+func _level_text(info: Dictionary) -> String:
+	var level: int = info.get("level", 1)
+	var level_max: int = info.get("level_max", 1)
+	return "LV MAX" if level >= level_max else "LV %d" % level
+
+
+# Napolni obe vrstici sposobnosti iz character.get_ability_info(slot) in
+# nastavi gumbe glede na to, ali jih igralec sme trenutno uporabiti.
+func _show_abilities(character: BaseCharacter):
+	var can_use_now: bool = (
+		not character.is_enemy
+		and not character.is_obstacle
+		and battle_controller.can_use_ability()
+		and map_behaviour.pending_ability.is_empty()
+	)
+
+	var info1 := character.get_ability_info(1)
+	ability1_name.text = info1.get("name", "-")
+	ability1_level.text = _level_text(info1)
+	ability1_uses.text = "%d/%d" % [info1.get("uses_remaining", 0), info1.get("uses_max", 0)]
+	ability1_desc.text = info1.get("desc", "")
+	ability1_button.disabled = not (can_use_now and info1.get("uses_remaining", 0) > 0)
+
+	if character.ability2_unlocked:
+		var info2 := character.get_ability_info(2)
+		ability2_body.visible = true
+		ability2_locked.visible = false
+		ability2_name.text = info2.get("name", "-")
+		ability2_level.text = _level_text(info2)
+		ability2_uses.text = "%d/%d" % [info2.get("uses_remaining", 0), info2.get("uses_max", 0)]
+		ability2_desc.text = info2.get("desc", "")
+		ability2_button.disabled = not (can_use_now and info2.get("uses_remaining", 0) > 0)
+	else:
+		ability2_body.visible = false
+		ability2_locked.visible = true
+		var unlock_cost: int = character.get_ability_info(2).get("unlock_cost", 1)
+		ability2_locked.text = "Use %d upgrade item%s at a rest to unlock the second ability." % [
+			unlock_cost, "" if unlock_cost == 1 else "s"
+		]
+
+
+func _on_ability_pressed(slot: int):
+	if not is_instance_valid(_shown_character):
+		return
+	# Lokalna referenca: begin_ability_targeting() spodaj interno pokliče
+	# map_behaviour._clear_selection(), ki sproži selection_changed(null) in
+	# SINHRONO počisti _shown_character (glej _on_selection_changed) - torej
+	# ga po tej točki ne smemo več brati, samo character lokalno.
+	var character := _shown_character
+	var targets := character.get_ability_targets(slot)
+	if targets.is_empty():
+		var ok: bool = character.activate_ability(slot)
+		if ok:
+			# Sposobnost porabi 1 iz LOČENEGA proračuna sposobnosti (ne
+			# premikov) - poteza se ne konča sama (glej
+			# BattleController.consume_ability()).
+			battle_controller.consume_ability()
+			battle_controller.check_battle_end()
+			_show_abilities(character)
+	else:
+		map_behaviour.begin_ability_targeting(character, slot)
+		# Ponovno pokažemo detail panel za TO figuro, ker ga je klic zgoraj
+		# ravnokar počistil (glej opombo pri "character" zgoraj) - med
+		# ciljanjem naj panel še vedno kaže figuro/sposobnost, ki čaka na klik.
+		_shown_character = character
+		_show_abilities(character)
+
+
+func _on_ability_activated(character: BaseCharacter):
+	if character == _shown_character:
+		_show_abilities(character)
 
 
 # ===============================================

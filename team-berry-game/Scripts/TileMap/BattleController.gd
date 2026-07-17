@@ -13,6 +13,12 @@ class_name BattleController
 # START/END TURN gumb, placement overlay).
 signal state_changed(new_state)
 
+# Sproži se ob vsaki spremembi moves_remaining/abilities_remaining (za
+# battle UI prikaz nad turn labelom). Ločena proračuna - glej opombo pri
+# moves_remaining spodaj za razlog.
+signal moves_changed(remaining: int, max_moves: int)
+signal abilities_changed(remaining: int, max_abilities: int)
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -25,6 +31,52 @@ enum BattleState {
 
 var current_state: int = BattleState.INITIALIZING
 var turn_count: int = 0
+
+# Premiki/zajetja in sposobnosti imajo LOČENA proračuna v tej potezi - en
+# skupen proračun (glej git history) je pustil igralcu premakniti 3 različne
+# figure v eni potezi, kar je bilo preveč močno. Premiki ostanejo omejeni na
+# player_manager.moves_per_turn (privzeto 1, kot pred ability sistemom),
+# sposobnosti pa na player_manager.abilities_per_turn (privzeto 3) - glej
+# start_player_turn(), consume_move(), consume_ability().
+var moves_remaining: int = 0
+var abilities_remaining: int = 0
+
+# ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
+
+# {} kadar ni naborožena, sicer {"tiles": Array[Vector2i], "owner": BaseCharacter, "owner_is_enemy": bool}.
+# "owner" se uporablja SAMO za razorožitev ob smrti kraljice (glej
+# base_character.gd.die()) - sprožilec sam uporablja "tiles" snapshot (že
+# izračunan iz center+oblika ob aktivaciji, glej queen.gd._do_exterminate),
+# ne žive reference, da eksplozija ostane na mestu tudi, če se kraljica
+# kasneje premakne.
+var exterminate_armed: Dictionary = {}
+
+# Sovražniki, ki jih je Queen.Lure zvabila - na naslednji premik gredo proti
+# lure_source namesto po normalni AI logiki (glej base_character.gd._lured_move).
+var lured_enemies: Array[BaseCharacter] = []
+var lure_source: BaseCharacter = null
+
+func _clear_expired_evade():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if character is BaseCharacter and not character.is_enemy:
+			character.is_capture_immune = false
+
+func trigger_exterminate_if_armed():
+	if exterminate_armed.is_empty():
+		return
+	var tiles: Array = exterminate_armed.get("tiles", [])
+	var owner_is_enemy: bool = exterminate_armed.get("owner_is_enemy", false)
+	exterminate_armed = {}
+
+	if not is_instance_valid(grid_manager):
+		return
+
+	for pos in tiles:
+		var target = grid_manager.get_character_at(pos)
+		if target and target is BaseCharacter and target.is_enemy != owner_is_enemy and not target.is_obstacle:
+			target.die()
 
 const ENEMY_MOVE_DELAY := 0.3 # premor med posameznimi sovražnikovimi potezami
 const ENEMY_MOVE_FADE_DURATION := 5.0 # kako dolgo počasi izginjajo poudarki potez
@@ -79,7 +131,29 @@ func _set_state(new_state: int):
 
 # ----------------- TURN LOGIC -----------------
 
-func player_can_act() -> bool:
+# Ali igralec sme (še) premakniti/zajeti figuro - poleg tega, da je na
+# vrsti, mora imeti tudi še vsaj 1 premik na voljo v tej potezi (ločeno od
+# sposobnosti, glej moves_remaining). Konec poteze (END TURN gumb) NI vezan
+# na to - glej can_end_turn().
+func can_move() -> bool:
+	return current_state == BattleState.PLAYER_TURN and moves_remaining > 0
+
+# Ali igralec sme (še) aktivirati sposobnost - ločeno proračun od premikov,
+# glej abilities_remaining.
+func can_use_ability() -> bool:
+	return current_state == BattleState.PLAYER_TURN and abilities_remaining > 0
+
+# Ali igralec sme izbrati (kliknjeno/kliknjeno ikono) svojo figuro - samo
+# vezano na to, da je na vrsti, NE na preostale premike/sposobnosti, da si
+# lahko ogleda/uporabi karkoli mu je še na voljo tudi, če je npr. že porabil
+# vse premike.
+func can_select() -> bool:
+	return current_state == BattleState.PLAYER_TURN
+
+# Gumb END TURN sme igralec pritisniti, dokler je na vrsti, ne glede na to,
+# koliko premikov/sposobnosti mu je še ostalo (tudi 0) - poteza se NIKOLI ne
+# konča sama.
+func can_end_turn() -> bool:
 	return current_state == BattleState.PLAYER_TURN
 
 func start_player_turn():
@@ -87,12 +161,33 @@ func start_player_turn():
 	_set_state(BattleState.PLAYER_TURN)
 	print(">>> ZAČETEK POTEZE IGRALCA (Turn %d)" % turn_count)
 
+	moves_remaining = player_manager.moves_per_turn
+	abilities_remaining = player_manager.abilities_per_turn
+	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
+	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
+
 	# Razkrijemo figure takoj, ko se poteza začne
 	update_fog_after_turn_start()
+
+	# Knight.Evade: imuniteta velja "za eno potezo" - torej natanko čez
+	# sovražnikovo potezo, ki se je pravkar iztekla.
+	_clear_expired_evade()
 
 	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
 	if is_instance_valid(move_highlighter):
 		move_highlighter.start_fade_out(ENEMY_MOVE_FADE_DURATION)
+
+# Porabi 1 premik/zajetje iz proračuna te poteze. Poteza se NE konča
+# samodejno, tudi če pade na 0 - igralec mora sam pritisniti END TURN.
+func consume_move():
+	moves_remaining = maxi(0, moves_remaining - 1)
+	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
+
+# Porabi 1 sposobnost iz proračuna te poteze (ločeno od premikov - glej
+# opombo pri moves_remaining).
+func consume_ability():
+	abilities_remaining = maxi(0, abilities_remaining - 1)
+	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
