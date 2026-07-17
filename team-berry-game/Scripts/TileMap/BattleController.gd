@@ -26,6 +26,43 @@ enum BattleState {
 var current_state: int = BattleState.INITIALIZING
 var turn_count: int = 0
 
+# ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
+
+# {} kadar ni naborožena, sicer {"center": Vector2i, "radius": int, "owner": BaseCharacter}.
+# "owner" se uporablja SAMO za razorožitev ob smrti kraljice (glej
+# base_character.gd.die()) - sprožilec sam uporablja center/radius snapshot,
+# ne žive reference, da eksplozija ostane na mestu tudi, če se kraljica
+# kasneje premakne.
+var exterminate_armed: Dictionary = {}
+
+# Sovražniki, ki jih je Queen.Lure zvabila - na naslednji premik gredo proti
+# lure_source namesto po normalni AI logiki (glej base_character.gd._lured_move).
+var lured_enemies: Array[BaseCharacter] = []
+var lure_source: BaseCharacter = null
+
+func _clear_expired_evade():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if character is BaseCharacter and not character.is_enemy:
+			character.is_capture_immune = false
+
+func trigger_exterminate_if_armed():
+	if exterminate_armed.is_empty():
+		return
+	var center: Vector2i = exterminate_armed.get("center")
+	var radius: int = exterminate_armed.get("radius")
+	var owner_is_enemy: bool = exterminate_armed.get("owner_is_enemy", false)
+	exterminate_armed = {}
+
+	if not is_instance_valid(grid_manager):
+		return
+
+	for pos in GridManager.square_radius_tiles(center, radius):
+		var target = grid_manager.get_character_at(pos)
+		if target and target is BaseCharacter and target.is_enemy != owner_is_enemy and not target.is_obstacle:
+			target.die()
+
 const ENEMY_MOVE_DELAY := 0.3 # premor med posameznimi sovražnikovimi potezami
 const ENEMY_MOVE_FADE_DURATION := 5.0 # kako dolgo počasi izginjajo poudarki potez
 
@@ -89,6 +126,10 @@ func start_player_turn():
 
 	# Razkrijemo figure takoj, ko se poteza začne
 	update_fog_after_turn_start()
+
+	# Knight.Evade: imuniteta velja "za eno potezo" - torej natanko čez
+	# sovražnikovo potezo, ki se je pravkar iztekla.
+	_clear_expired_evade()
 
 	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
 	if is_instance_valid(move_highlighter):

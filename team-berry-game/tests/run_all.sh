@@ -108,6 +108,11 @@ check_script "smoke_placement" "res://tests/smoke/smoke_placement.gd" 5 \
 	"SMOKE TEST: placement phase works end to end"
 echo
 
+echo "== Ability activation smoke test =="
+check_script "smoke_abilities" "res://tests/smoke/smoke_abilities.gd" 4 \
+	"SMOKE TEST: ability activated cleanly and use count decremented"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"

@@ -187,8 +187,42 @@ theme_override_font_sizes/font_size = 11
 text = ""
 autowrap_mode = 3
 
+[node name="Ability1Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Use Ability"
+
 [node name="HSep2" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 layout_mode = 2
+
+[node name="Ability2Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Ability2Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-"
+
+[node name="Ability2Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="Ability2Desc" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+autowrap_mode = 3
+
+[node name="Ability2Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Use Ability"
 
 [node name="Ability2Locked" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 unique_name_in_owner = true

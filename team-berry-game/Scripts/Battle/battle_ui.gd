@@ -26,6 +26,12 @@ const MAX_PLACED := 5
 @onready var ability1_name: Label = %Ability1Name
 @onready var ability1_uses: Label = %Ability1Uses
 @onready var ability1_desc: Label = %Ability1Desc
+@onready var ability1_button: Button = %Ability1Button
+@onready var ability2_name: Label = %Ability2Name
+@onready var ability2_uses: Label = %Ability2Uses
+@onready var ability2_desc: Label = %Ability2Desc
+@onready var ability2_button: Button = %Ability2Button
+@onready var ability2_header: HBoxContainer = %Ability2Header
 @onready var ability2_locked: Label = %Ability2Locked
 @onready var turn_label: Label = %TurnLabel
 @onready var action_button: Button = %ActionButton
@@ -44,13 +50,20 @@ var dragging: bool = false
 var drag_piece_name: String = ""
 var drag_source_character: BaseCharacter = null
 
+# Figura, ki je trenutno prikazana v detail panelu (null, če gre za mrtvo/
+# klopno figuro brez žive instance - takrat gumbi ostanejo onemogočeni).
+var _shown_character: BaseCharacter = null
+
 
 func _ready():
 	player_manager.party_changed.connect(_on_party_changed)
 	map_behaviour.selection_changed.connect(_on_selection_changed)
+	map_behaviour.ability_activated.connect(_on_ability_activated)
 	battle_controller.state_changed.connect(_on_battle_state_changed)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
+	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
+	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
 
 	_update_item_counts()
 	_clear_detail_panel()
@@ -85,6 +98,9 @@ func _on_battle_state_changed(new_state):
 		battle_controller.BattleState.GAME_OVER:
 			turn_label.text = "BATTLE OVER"
 			action_button.disabled = true
+
+	if is_instance_valid(_shown_character):
+		_show_abilities(_shown_character)
 
 
 func _on_action_button_pressed():
@@ -386,39 +402,95 @@ func _show_character(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/friendly_%s.png" % character.strName)
 	status_value.text = "ALIVE"
 	status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)
-	_show_ability_placeholders()
+	_shown_character = character
+	_show_abilities(character)
 
 
 func _show_dead_piece(piece_name: String):
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "DEAD"
 	status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
-	_show_ability_placeholders()
+	_shown_character = null
+	_clear_ability_rows()
 
 
 func _show_benched_piece(piece_name: String):
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "NOT PLACED"
 	status_value.add_theme_color_override("font_color", STATUS_BENCHED_COLOR)
-	_show_ability_placeholders()
+	_shown_character = null
+	_clear_ability_rows()
 
 
 func _clear_detail_panel():
 	portrait.texture = null
 	status_value.text = "-"
 	status_value.remove_theme_color_override("font_color")
+	_shown_character = null
+	_clear_ability_rows()
+
+
+func _clear_ability_rows():
 	ability1_name.text = "-"
 	ability1_uses.text = ""
 	ability1_desc.text = ""
-	ability2_locked.text = ""
-
-
-func _show_ability_placeholders():
-	# Ability sistem še ne obstaja - prikažemo predvideno obliko panela.
-	ability1_name.text = "???"
-	ability1_uses.text = "0"
-	ability1_desc.text = "Abilities coming soon."
+	ability1_button.disabled = true
+	ability2_header.visible = false
+	ability2_locked.visible = true
 	ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
+
+
+# Napolni obe vrstici sposobnosti iz character.get_ability_info(slot) in
+# nastavi gumbe glede na to, ali jih igralec sme trenutno uporabiti.
+func _show_abilities(character: BaseCharacter):
+	var can_use_now: bool = (
+		not character.is_enemy
+		and not character.is_obstacle
+		and battle_controller.player_can_act()
+		and map_behaviour.pending_ability.is_empty()
+	)
+
+	var info1 := character.get_ability_info(1)
+	ability1_name.text = info1.get("name", "-")
+	ability1_uses.text = "%d/%d" % [info1.get("uses_remaining", 0), info1.get("uses_max", 0)]
+	ability1_desc.text = info1.get("desc", "")
+	ability1_button.disabled = not (can_use_now and info1.get("uses_remaining", 0) > 0)
+
+	if character.has_ability_upgrade:
+		var info2 := character.get_ability_info(2)
+		ability2_header.visible = true
+		ability2_locked.visible = false
+		ability2_name.text = info2.get("name", "-")
+		ability2_uses.text = "%d/%d" % [info2.get("uses_remaining", 0), info2.get("uses_max", 0)]
+		ability2_desc.text = info2.get("desc", "")
+		ability2_button.disabled = not (can_use_now and info2.get("uses_remaining", 0) > 0)
+	else:
+		ability2_header.visible = false
+		ability2_locked.visible = true
+		ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
+
+
+func _on_ability_pressed(slot: int):
+	if not is_instance_valid(_shown_character):
+		return
+	var targets := _shown_character.get_ability_targets(slot)
+	if targets.is_empty():
+		var ok: bool = _shown_character.activate_ability(slot)
+		if ok:
+			var def: Dictionary = _shown_character.get_ability_defs()[slot - 1]
+			if def.get("ends_turn", true):
+				battle_controller.end_player_turn()
+			else:
+				battle_controller.check_battle_end()
+			_show_abilities(_shown_character)
+	else:
+		map_behaviour.begin_ability_targeting(_shown_character, slot)
+		_show_abilities(_shown_character)
+
+
+func _on_ability_activated(character: BaseCharacter):
+	if character == _shown_character:
+		_show_abilities(character)
 
 
 # ===============================================

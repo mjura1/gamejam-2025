@@ -4,6 +4,10 @@ extends Node2D
 # Sproži se ob vsaki spremembi izbire (character ali null), da battle UI
 # lahko posodobi prikaz izbrane figure.
 signal selection_changed(character)
+# Sproži se, ko se sposobnost dejansko izvede (glej begin_ability_targeting) -
+# battle_ui.gd ga uporabi za osvežitev panela (npr. po Reposition, ki ne
+# sproži selection_changed sam po sebi).
+signal ability_activated(character)
 
 # ===============================================
 # REFERENCE
@@ -16,6 +20,63 @@ signal selection_changed(character)
 @onready var battle_controller = get_node("../BattleController") # Dodana @onready referenca
 
 var selected_character: BaseCharacter = null
+
+# ===============================================
+# SPOSOBNOSTI, KI ZAHTEVAJO DODATEN KLIK (Bishop.Longshot, Knight.Reposition)
+# ===============================================
+# {} kadar ni v teku, sicer {"character": BaseCharacter, "slot": int,
+# "def": Dictionary, "targets": Array[Vector2i]}. Naslednji klik na plošči
+# se razreši glede na to, namesto po navadni izbirno/premik logiki spodaj.
+var pending_ability: Dictionary = {}
+
+func begin_ability_targeting(character: BaseCharacter, slot: int):
+	if not is_instance_valid(character):
+		return
+	var targets := character.get_ability_targets(slot)
+	if targets.is_empty():
+		return
+
+	# Ciljanje sposobnosti izključuje navadno izbiro/premik dokler ne razrešimo.
+	_clear_selection()
+
+	pending_ability = {
+		"character": character,
+		"slot": slot,
+		"def": character.get_ability_defs()[slot - 1],
+		"targets": targets,
+	}
+	move_highlighter.show_ability_targets(targets)
+
+func _cancel_pending_ability():
+	pending_ability = {}
+	move_highlighter.clear_ability_targets()
+
+func _resolve_pending_ability(clicked_grid: Vector2i):
+	var character: BaseCharacter = pending_ability.character
+	var slot: int = pending_ability.slot
+	var def: Dictionary = pending_ability.def
+	var targets: Array = pending_ability.targets
+
+	if clicked_grid not in targets:
+		# Klik izven veljavnih tarč: brezplačen preklic, brez porabljene uporabe.
+		_cancel_pending_ability()
+		return
+
+	_cancel_pending_ability()
+	var ok: bool = character.activate_ability(slot, clicked_grid)
+	if not ok:
+		return
+
+	ability_activated.emit(character)
+
+	if is_instance_valid(battle_controller):
+		if def.get("ends_turn", true):
+			# end_player_turn() že sam kliče check_battle_end() na začetku.
+			battle_controller.end_player_turn()
+		else:
+			# Brez end_player_turn() (npr. Reposition) moramo konec preveriti
+			# ročno - drugače bi zajetje zadnjega sovražnika ostalo neopaženo.
+			battle_controller.check_battle_end()
 
 # ===============================================
 # POMOŽNE FUNKCIJE ZA IZBIRO
@@ -69,8 +130,14 @@ func _unhandled_input(event):
 
 	var mouse_world_pos = get_global_mouse_position()
 	var clicked_grid = grid_manager.world_to_grid(mouse_world_pos)
-	var used_rect = tile_map.get_used_rect() 
-	
+	var used_rect = tile_map.get_used_rect()
+
+	# Sposobnost čaka na klik tarče (Longshot/Reposition) - ta klik razreši
+	# NJO namesto navadne izbire/premika, ne glede na kar je bilo izbrano prej.
+	if not pending_ability.is_empty():
+		_resolve_pending_ability(clicked_grid)
+		return
+
 	# 2. ZAVRNITEV KLIKA ZUNAJ MEJA MAPE
 	if not grid_manager.is_inside_boundary(clicked_grid, used_rect):
 		# Če je bila figura izbrana, jo deselektujemo in počistimo poudarek

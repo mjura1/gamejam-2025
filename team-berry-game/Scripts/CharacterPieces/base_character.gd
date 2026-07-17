@@ -28,6 +28,26 @@ var grid_manager
 @export var panic_randomness: float = 0.5 # 0 = calm, 1 = total chaos
 @export var strName: String
 
+# ----------------- ABILITIES -----------------
+# Placeholder za pravi upgrade-item sistem (glej campfire.gd) - dokler ta ne
+# obstaja, je to vedno true, da so 2. sposobnosti testabilne.
+@export var has_ability_upgrade: bool = true
+
+# slot (1|2) -> preostalo število uporab v tej bitki.
+var ability_uses_remaining: Dictionary = {}
+
+# ID cone (glej GridManager.zones), ki jo trenutno drži ta figura (Traps/
+# Reinforce) - -1, če nobene. Cona se počisti, ko se figura naslednjič
+# premakne ali umre.
+var owned_zone_id: int = -1
+
+# Knight: Evade - dokler je true, te figure ni mogoče zajeti.
+var is_capture_immune: bool = false
+
+# King: Cleanse - obrnjen sovražnik. Ostane oznaka, da die() ne poroča
+# napačnega vnosa v trajni roster/dead_party (glej register_dead_character).
+var is_converted_ally: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -49,7 +69,11 @@ func on_grid_manager_registered():
 	
 	# 3. Registriramo figuro v slovar zasedenosti
 	grid_manager.occupy(grid_pos, self)
-	
+
+	# 4. Napolnimo sposobnosti (velja tudi za figure, ki se pojavijo sredi
+	# bitke - npr. King.Heal - in za test_sandbox figure).
+	reset_ability_uses()
+
 	# Za debug:
 	print("%s: Uspešno registriran in inicializiran na mreži %s." % [self.name, str(grid_pos)])
 		
@@ -63,6 +87,11 @@ func get_move_directions() -> Array[Vector2i]:
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
 
+	# Bishop.Traps: dokler je ta figura ujeta v sovražnikovo cono, se ne more
+	# premakniti nikamor.
+	if is_instance_valid(grid_manager) and grid_manager.is_frozen(grid_pos, is_enemy):
+		return targets
+
 	for dir in get_move_directions():
 		for step in range(1, move_range + 1):
 			var target_pos := grid_pos + dir * step
@@ -74,21 +103,34 @@ func calculate_valid_targets() -> Array[Vector2i]:
 			# 2. Preverjanje zasedenosti
 			if grid_manager.is_occupied(target_pos):
 				var target_char = grid_manager.get_character_at(target_pos)
-					
+
 				# PREVERJANJE: Ali je tarča sovražnik?
 				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
-					targets.append(target_pos)
-				
+					# Knight.Evade: imunska figura ne more biti zajeta z
+					# navadnim premikom/zajetjem.
+					if target_char.is_capture_immune:
+						break
+					# Rook.Reinforce: polje je znotraj sovražnikove cone - ni
+					# dovoljeno niti zajetje na to polje.
+					if not grid_manager.is_entry_denied(target_pos, is_enemy):
+						targets.append(target_pos)
+
 				# Gibanje se vedno ustavi ob prvi zasedeni celici
 				break
 
-			# 3. Polje je prazno
-			targets.append(target_pos)
+			# 3. Polje je prazno - Rook.Reinforce ga lahko izloči kot cilj.
+			if not grid_manager.is_entry_denied(target_pos, is_enemy):
+				targets.append(target_pos)
 
 	return targets
 
 # Premesti figuro na novo lokacijo
 func execute_move(target: Vector2i):
+	# Bishop.Traps/Rook.Reinforce: premik te figure sprosti njeno cono.
+	if owned_zone_id != -1 and is_instance_valid(grid_manager):
+		grid_manager.remove_zone(owned_zone_id)
+		owned_zone_id = -1
+
 	# 1. Posodobitev mreže in pozicije
 	grid_manager.vacate(grid_pos)
 	grid_pos = target
@@ -112,8 +154,17 @@ func execute_move(target: Vector2i):
 				
 		# Naročimo GridManagerju, da odstrani meglo na teh poljih
 		grid_manager.reveal_area(positions_to_reveal)
-	
-	
+
+	# Queen.Lure: ta figura je s premikom "ubogala" vabo - status se sprosti.
+	if is_instance_valid(battle_controller) and self in battle_controller.lured_enemies:
+		battle_controller.lured_enemies.erase(self)
+
+	# Queen.Exterminate: kakršenkoli premik/zajetje (zaveznika ALI sovražnika)
+	# med naboritvijo sproži eksplozijo okoli kraljičine pozicije.
+	if is_instance_valid(battle_controller) and not battle_controller.exterminate_armed.is_empty():
+		battle_controller.trigger_exterminate_if_armed()
+
+
 func try_move(target: Vector2i) -> bool:
 	# Omogoči AI-ju premik brez preverjanja stanja battle_controllerja
 	if not is_enemy and not battle_controller.player_can_act():
@@ -152,11 +203,25 @@ func try_move(target: Vector2i) -> bool:
 func die():
 	print("Figura %s je bila uničena in odstranjena." % name)
 
+	# Bishop.Traps/Rook.Reinforce: smrt lastnika sprosti njeno cono.
+	if owned_zone_id != -1 and is_instance_valid(grid_manager):
+		grid_manager.remove_zone(owned_zone_id)
+		owned_zone_id = -1
+
+	# Queen.Exterminate: če umre naboritev prav zaradi te figure, se
+	# eksplozija ne sproži post-mortem - raje razorožimo.
+	if is_instance_valid(battle_controller) and battle_controller.exterminate_armed.get("owner") == self:
+		battle_controller.exterminate_armed = {}
+
 	# Osvobodi polje na mreži
 	if is_instance_valid(grid_manager):
 		grid_manager.vacate(grid_pos)
 
-	if is_enemy:
+	if is_converted_ally:
+		# King.Cleanse: obrnjena figura ni del trajnega rosterja - samo
+		# odstranimo jo iz aktivne ekipe za to bitko, brez dead_party vnosa.
+		player_manager.remove_converted_ally("friendly_" + strName)
+	elif is_enemy:
 		player_manager.register_dead_character("enemy_" + strName)
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
@@ -181,6 +246,19 @@ func capture(target: BaseCharacter):
 
 # ----------------- AI LOGIKA (POPRAVLJENA) -----------------
 func can_see_player(max_view_range: int) -> BaseCharacter:
+	var seen := find_visible_enemies(max_view_range)
+	return seen[0] if not seen.is_empty() else null
+
+# ----------------- SPOSOBNOSTI: SKUPNE POGLED/GEOMETRIJA POMOŽNE FUNKCIJE -----------------
+
+# Sprehodi se po vseh smereh gibanja te figure (glej get_move_directions) in
+# zbere PRVEGA nasprotnika, ki ga vsaka smer zadene (blokira jo prva figura
+# ali ovira na poti - enako kot can_see_player, le da zbira iz VSEH smeri
+# namesto da se ustavi pri prvi najdeni). Uporabljajo ga Bishop.Longshot in
+# King.Cleanse.
+func find_visible_enemies(max_view_range: int) -> Array[BaseCharacter]:
+	var found: Array[BaseCharacter] = []
+
 	for dir in get_move_directions():
 		for step in range(1, max_view_range + 1):
 			var check_pos = grid_pos + dir * step
@@ -191,20 +269,147 @@ func can_see_player(max_view_range: int) -> BaseCharacter:
 			if grid_manager.is_occupied(check_pos):
 				var seen_char = grid_manager.get_character_at(check_pos)
 
-				# Sees player
 				if seen_char and seen_char.is_enemy != is_enemy and not seen_char.is_obstacle:
-					return seen_char
+					found.append(seen_char)
 
-				# Vision blocked by any piece (or obstacle)
+				# Pogled blokira katerakoli figura (ali ovira)
 				break
 
-	return null
+	return found
+
+# Enak sprehod kot find_visible_enemies, a zbira PRAZNA polja (za King.Heal -
+# kam lahko postavimo oživljene figure). Vsaka smer se ustavi pri prvi
+# zasedeni celici, da ne razkrije mest "za" blokado.
+func get_empty_tiles_in_los(max_view_range: int) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+
+	for dir in get_move_directions():
+		for step in range(1, max_view_range + 1):
+			var check_pos = grid_pos + dir * step
+
+			if not grid_manager.is_inside_boundary(check_pos, tile_map.get_used_rect()):
+				break
+
+			if grid_manager.is_occupied(check_pos):
+				break
+
+			found.append(check_pos)
+
+	return found
+
+# ----------------- SPOSOBNOSTI: DISPATCH -----------------
+
+# Podrazredi (Ally/pawn.gd ipd.) povozijo to in vrnejo TOČNO 2 slovarja
+# (za slot 1 in slot 2) v obliki:
+# {
+#   "id": "rally", "name": "Rally", "needs_target": false, "ends_turn": true,
+#   "base":     {"uses": 1, "desc": "..."},
+#   "upgraded": {"uses": 2, "desc": "..."},
+# }
+# Dodatni "znanci" ability-specifičnih vrednosti (radius ipd.) gredo v
+# base/upgraded slovarja in jih _execute_ability prebere sam.
+func get_ability_defs() -> Array:
+	return []
+
+# Vrne base ali upgraded pod-slovar za dani slot, glede na has_ability_upgrade.
+func _tier_data(slot: int) -> Dictionary:
+	var defs := get_ability_defs()
+	if slot < 1 or slot > defs.size():
+		return {}
+	var def: Dictionary = defs[slot - 1]
+	return def.get("upgraded" if has_ability_upgrade else "base", {})
+
+# Napolni ability_uses_remaining iz get_ability_defs(). Kliče se ob vsaki
+# (re)registraciji na mreži (placement, King.Heal spawn, test_sandbox).
+func reset_ability_uses():
+	ability_uses_remaining.clear()
+	var defs := get_ability_defs()
+	for i in range(defs.size()):
+		var slot := i + 1
+		ability_uses_remaining[slot] = _tier_data(slot).get("uses", 0)
+
+# Podatki za battle_ui prikaz (ime/opis/preostale uporabe/zaklenjeno).
+func get_ability_info(slot: int) -> Dictionary:
+	var defs := get_ability_defs()
+	if slot < 1 or slot > defs.size():
+		return {}
+	var def: Dictionary = defs[slot - 1]
+	var tier := _tier_data(slot)
+	return {
+		"name": def.get("name", "-"),
+		"desc": tier.get("desc", ""),
+		"uses_remaining": ability_uses_remaining.get(slot, 0),
+		"uses_max": tier.get("uses", 0),
+		"locked": slot == 2 and not has_ability_upgrade,
+	}
+
+# Sledi tarčam, ki jih mora igralec izbrati PO kliku na gumb (glej
+# map_behaviour.gd - pending_ability). Prazen seznam pomeni "ni potrebe po
+# dodatnem kliku, sposobnost se izvede takoj".
+func get_ability_targets(slot: int) -> Array[Vector2i]:
+	return []
+
+# Glavni vstop iz UI (battle_ui.gd) / map_behaviour.gd (za ciljane
+# sposobnosti). target je Vector2i za ciljane sposobnosti, sicer null.
+func activate_ability(slot: int, target = null) -> bool:
+	if is_enemy:
+		return false
+	if not is_instance_valid(battle_controller) or not battle_controller.player_can_act():
+		return false
+	var defs := get_ability_defs()
+	if slot < 1 or slot > defs.size():
+		return false
+	if slot == 2 and not has_ability_upgrade:
+		return false
+	if ability_uses_remaining.get(slot, 0) <= 0:
+		return false
+
+	var def: Dictionary = defs[slot - 1]
+	var ok: bool = _execute_ability(def.get("id", ""), target)
+	if ok:
+		ability_uses_remaining[slot] = ability_uses_remaining.get(slot, 0) - 1
+	return ok
+
+# Podrazredi povozijo to z "match id:" blokom za svoji 2 sposobnosti. Vrne
+# true, če se je sposobnost dejansko izvedla (in naj se torej porabi 1 uporaba).
+func _execute_ability(_id: String, _target) -> bool:
+	return false
+
+# Queen.Lure: premakni se na polje najbliže kraljici, izmed veljavnih tarč,
+# a nikoli na kraljičino lastno polje (ne sme je zajeti, dokler je zvabljena).
+func _lured_move() -> Dictionary:
+	var queen: BaseCharacter = battle_controller.lure_source
+	if not is_instance_valid(queen):
+		return {}
+
+	var candidates: Array[Vector2i] = []
+	for pos in calculate_valid_targets():
+		if pos != queen.grid_pos:
+			candidates.append(pos)
+	if candidates.is_empty():
+		return {}
+
+	var best_move: Vector2i = candidates[0]
+	var best_score := INF
+	for pos in candidates:
+		var score = pos.distance_to(queen.grid_pos)
+		if score < best_score:
+			best_score = score
+			best_move = pos
+
+	var move_type := "CAPTURE" if grid_manager.get_character_at(best_move) else "MOVE"
+	return {"move_type": move_type, "target_pos": best_move}
 
 func calculate_best_move() -> Dictionary:
 	# Logika samo za sovražnike
 	if not is_enemy:
 		return {}
-		
+
+	# Queen.Lure: ta figura je zvabljena - povozimo normalno AI logiko in se
+	# premaknemo proti kraljici (a je ne moremo zajeti).
+	if is_instance_valid(battle_controller) and self in battle_controller.lured_enemies:
+		return _lured_move()
+
 	# -------------------------------
 	# 1. LINE-OF-SIGHT SPOTTING
 	# -------------------------------
