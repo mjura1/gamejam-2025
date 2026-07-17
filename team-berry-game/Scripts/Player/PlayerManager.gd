@@ -10,6 +10,12 @@ var default_enemies: Array[String] = ["enemy_pawn", "enemy_pawn", "enemy_pawn"]
 var friendly_party: Array[String]
 var enemy_party: Array[String]
 
+# Figure, ki jih je igralec nabral čez omejitev max_party_size - niso
+# izgubljene, samo čakajo. Zamenjava rezerva <-> aktivna ekipa se dogaja na
+# počivališču prek Party gumba (UI za to pride kasneje - glej
+# CampfirePartyPanel.gd).
+var reserve_party: Array[String]
+
 var active_enemies: Array[String]
 
 var active_party: Array[String]
@@ -23,8 +29,11 @@ var upgrade_items: int = 0
 var revive_items: int = 0
 
 
-# Največ figur, ki jih igralec sploh lahko ima (vrstica "YOUR PIECES").
-# V bitko jih lahko postavi največ MAX_PLACED (glej battle_ui.gd).
+# Največ figur v AKTIVNI ekipi (vrstica "YOUR PIECES" v bitki, glej
+# battle_ui.gd). Čez to mejo se figure še vedno nabirajo (glej
+# reserve_party) - samo v bitko jih ni mogoče postaviti, dokler jih igralec
+# ne zamenja z aktivno ekipo na počivališču. V bitko jih lahko postavi
+# največ MAX_PLACED (glej battle_ui.gd).
 var max_party_size = 10
 var snowCount = 6
 
@@ -42,10 +51,13 @@ func _ready():
 # ----------------- PARTY MANAGEMENT (Aktivna ekipa) -----------------
 
 func add_to_friendly_party(character):
+	print("char name ", character)
 	if friendly_party.size() < max_party_size:
-		print("char name ", character)
 		friendly_party.append(character)
-		print("PlayerManager: Dodana figura. Nova velikost ekipe: %d" % friendly_party.size())
+		print("PlayerManager: Dodana figura v aktivno ekipo. Nova velikost: %d" % friendly_party.size())
+	else:
+		reserve_party.append(character)
+		print("PlayerManager: Aktivna ekipa polna (%d/%d) - figura shranjena v rezervo. Rezerva: %d" % [friendly_party.size(), max_party_size, reserve_party.size()])
 
 # ----------------- SMRT IN OŽIVITEV (Revive) -----------------
 

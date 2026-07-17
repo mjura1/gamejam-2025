@@ -63,3 +63,20 @@ func test_add_to_enemy_party_grows_as_player_goes_deeper():
 	pm.add_to_enemy_party("enemy_knight")
 	pm.add_to_enemy_party("enemy_rook")
 	assert_eq(pm.enemy_party, expected, "add_to_enemy_party should accumulate across floors within the same map (on top of the run's starting roster), not reset per battle")
+
+func test_add_to_friendly_party_fills_active_roster_first():
+	var pm = PlayerManagerScript.new()
+	pm.max_party_size = 2
+	pm.add_to_friendly_party("friendly_pawn")
+	pm.add_to_friendly_party("friendly_rook")
+	assert_eq(pm.friendly_party, ["friendly_pawn", "friendly_rook"], "add_to_friendly_party should fill the active roster up to max_party_size")
+	assert_eq(pm.reserve_party, [], "reserve_party should stay empty while the active roster has room")
+
+func test_add_to_friendly_party_overflows_into_reserve_instead_of_dropping():
+	var pm = PlayerManagerScript.new()
+	pm.max_party_size = 2
+	pm.add_to_friendly_party("friendly_pawn")
+	pm.add_to_friendly_party("friendly_rook")
+	pm.add_to_friendly_party("friendly_bishop")
+	assert_eq(pm.friendly_party, ["friendly_pawn", "friendly_rook"], "a full active roster should not grow past max_party_size")
+	assert_eq(pm.reserve_party, ["friendly_bishop"], "a piece collected once the active roster is full should be kept in reserve_party, not lost")
