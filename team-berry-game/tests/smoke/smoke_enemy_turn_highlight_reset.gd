@@ -13,20 +13,7 @@ var checked := false
 
 func _initialize():
 	print(">>> SMOKE TEST: leftover highlight reset at start of enemy turn <<<")
-	var player_manager = root.get_node("PlayerManager")
-	player_manager.setStarting()
-	player_manager.resetActives()
-
-	var gf = root.get_node("GF")
-	var map_scene: PackedScene = load("res://Scenes/Map/map.tscn")
-	gf.current_map_instance = map_scene.instantiate()
-	gf.current_map_instance.name = "MapInstance"
-	gf.game_initialized = true
-
-	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
-	var battle_instance = battle_scene.instantiate()
-	root.add_child(battle_instance)
-	current_scene = battle_instance
+	BattleBoot.boot(self)
 
 func _process(_delta: float) -> bool:
 	if checked:

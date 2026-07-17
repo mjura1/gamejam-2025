@@ -1,5 +1,6 @@
 # res://Scripts/TileMap/move_highlighter.gd
 extends Node2D
+class_name MoveHighlighter
 
 # Referenci na GridManager in velikost celice
 @onready var grid_manager = get_node("../GridManager")
@@ -10,6 +11,7 @@ var valid_moves: Array[Vector2i] = []
 
 const MOVE_COLOR = Color(0.1, 0.9, 0.1, 0.6) # Svetla Zelena
 const CAPTURE_COLOR = Color(0.9, 0.1, 0.1, 0.6) # Svetla Rdeča
+const PATH_COLOR = Color(0.5, 0.5, 0.5, 0.4) # Siva - pot/L-figura viteza
 
 # ===============================================
 # VIZUALIZACIJA SOVRAŽNIKOVIH POTEZ (NOVO)
@@ -17,14 +19,16 @@ const CAPTURE_COLOR = Color(0.9, 0.1, 0.1, 0.6) # Svetla Rdeča
 # Vsaka poteza sovražnika med potezo dodano v ta seznam (kopiči se, ne
 # briše med posameznimi sovražniki), da igralec ob koncu poteze vidi
 # CELOTNO dogajanje naenkrat. Ob začetku igralčeve poteze vse skupaj
-# počasi izgine (glej start_fade_out).
+# počasi izgine (glej start_fade_out). Risanje samih poudarkov je v ločenem
+# _flash_layer otroku (glej spodaj), da njegov queue_redraw() vsako sličico
+# med pojemanjem ne sproži tudi ponovnega risanja valid_moves.
 var enemy_move_flashes: Array[Dictionary] = []
-const PATH_COLOR = Color(0.5, 0.5, 0.5, 0.4) # Siva - pot/L-figura viteza
 
 var is_fading: bool = false
-var fade_alpha: float = 1.0
 var fade_duration: float = 5.0
 var fade_elapsed: float = 0.0
+
+var _flash_layer: EnemyMoveFlashLayer
 
 func _ready():
 	if is_instance_valid(grid_manager):
@@ -32,16 +36,27 @@ func _ready():
 	else:
 		push_error("MoveHighlighter: GridManager ni najden na poti ../GridManager.")
 
+	_flash_layer = EnemyMoveFlashLayer.new()
+	_flash_layer.highlighter = self
+	add_child(_flash_layer)
+
 func _process(delta: float) -> void:
 	if not is_fading:
 		return
 
 	fade_elapsed += delta
-	fade_alpha = clampf(1.0 - (fade_elapsed / fade_duration), 0.0, 1.0)
-	queue_redraw()
+	_flash_layer.queue_redraw()
 
 	if fade_elapsed >= fade_duration:
 		clear_enemy_moves()
+
+# Trenutna prosojnost poudarkov glede na potek pojemanja - izračunano
+# sproti namesto shranjeno kot ločeno stanje, da se ne more razsinhronizirati
+# z fade_elapsed/fade_duration.
+func current_fade_alpha() -> float:
+	if not is_fading:
+		return 1.0
+	return clampf(1.0 - (fade_elapsed / fade_duration), 0.0, 1.0)
 
 func show_moves(moves: Array[Vector2i]):
  #"""Sprejme seznam veljavnih pozicij in sproži ponovno risanje."""
@@ -61,7 +76,7 @@ func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_ca
 		"path": path,
 		"is_capture": is_capture,
 	})
-	queue_redraw()
+	_flash_layer.queue_redraw()
 
 # Sproži počasno pojemanje vseh kopičenih potez - kliče se ob začetku
 # igralčeve poteze (glej BattleController.start_player_turn()).
@@ -75,64 +90,16 @@ func start_fade_out(duration: float = 5.0) -> void:
 func clear_enemy_moves() -> void:
 	enemy_move_flashes.clear()
 	is_fading = false
-	fade_alpha = 1.0
-	queue_redraw()
+	_flash_layer.queue_redraw()
+
+func _draw_cell(grid_pos: Vector2i, color: Color, filled: bool = true, width: float = -1.0) -> void:
+	draw_rect(Rect2(Vector2(grid_pos) * cell_size, cell_size), color, filled, width)
 
 func _draw():
 	if not is_instance_valid(grid_manager):
 		return
 
-	if not valid_moves.is_empty():
-		for grid_pos in valid_moves:
-			var top_left = Vector2(grid_pos) * cell_size
-
-			# 1. Privzeta barva: Zelena (premik)
-			var draw_color = MOVE_COLOR
-
-			# 2. Preverjanje za ZAJETJE
-			var target_char = grid_manager.get_character_at(grid_pos)
-
-			# Če je na polju figura:
-			if target_char:
-				draw_color = CAPTURE_COLOR # Rdeča
-
-			# Risanje polnila (fill)
-			draw_rect(
-				Rect2(top_left, cell_size),
-				draw_color,
-				true
-			)
-
-	if enemy_move_flashes.is_empty():
-		return
-
-	var alpha_mult = fade_alpha if is_fading else 1.0
-
-	for flash in enemy_move_flashes:
-		# Pot / L-figura (siva)
-		for path_pos in flash["path"]:
-			var path_color = PATH_COLOR
-			path_color.a *= alpha_mult
-			draw_rect(
-				Rect2(Vector2(path_pos) * cell_size, cell_size),
-				path_color,
-				true
-			)
-
-		# Ciljno polje (zelena = premik, rdeča = zajetje)
-		var dest_color = CAPTURE_COLOR if flash["is_capture"] else MOVE_COLOR
-		dest_color.a *= alpha_mult
-		draw_rect(
-			Rect2(Vector2(flash["to"]) * cell_size, cell_size),
-			dest_color,
-			true
-		)
-
-		# Izvorno polje (bel obris)
-		var origin_color = Color(1, 1, 1, 0.9 * alpha_mult)
-		draw_rect(
-			Rect2(Vector2(flash["from"]) * cell_size, cell_size),
-			origin_color,
-			false,
-			2.0
-		)
+	for grid_pos in valid_moves:
+		# Privzeta barva: Zelena (premik), Rdeča če je polje zasedeno (zajetje)
+		var draw_color = CAPTURE_COLOR if grid_manager.get_character_at(grid_pos) else MOVE_COLOR
+		_draw_cell(grid_pos, draw_color)

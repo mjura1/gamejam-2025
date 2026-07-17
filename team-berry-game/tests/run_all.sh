@@ -23,21 +23,23 @@ else
 fi
 echo
 
-# --- Known, not-yet-fixed engine errors ------------------------------------
-# These are audit findings with a planned fix later in FIX_TODO.md.
-# When you land the matching task, delete its line here so run_all.sh starts
-# hard-failing on any regression instead of silently tolerating it.
-# Currently empty - all known audit findings that used to hit the battle
-# smoke test (C2, M3/House) are fixed. Add lines back here if a new,
-# understood-but-not-yet-fixed finding starts showing up in this test.
-KNOWN_BATTLE_ERROR_PATTERNS=()
+# If a new understood-but-not-yet-fixed error starts showing up in a smoke
+# test, allowlist it with check_script's expect_str/errors mechanism (or add
+# a dedicated allowlist here) rather than letting run_all.sh silently pass -
+# see git history for the KNOWN_BATTLE_ERROR_PATTERNS mechanism this replaced,
+# which became permanent dead weight once every known finding got fixed.
 
 check_scene() {
-	local label="$1" scene_path="$2"
+	local label="$1" scene_path="$2" quit_after="${3:-2}"
 	local out
-	out=$("$GODOT" --headless --path . --scene "$scene_path" --quit-after 2 2>&1)
+	out=$("$GODOT" --headless --path . --scene "$scene_path" --quit-after "$quit_after" 2>&1)
 	local errors
-	errors=$(echo "$out" | grep "^ERROR" | grep -v "resources still in use at exit" || true)
+	# <<< (here-string) instead of `echo "$out" | grep` - with `pipefail` set,
+	# a pipe here races grep's early-exit (on match) against echo still
+	# writing the rest of $out; the resulting SIGPIPE makes pipefail report
+	# the pipeline as failed even though grep matched. A here-string has no
+	# separate writer process, so there's nothing to race.
+	errors=$(grep "^ERROR" <<< "$out" | grep -v "resources still in use at exit" || true)
 	if [ -z "$errors" ]; then
 		echo "PASS: $label"
 	else
@@ -56,12 +58,14 @@ check_script() {
 	local out
 	out=$("$GODOT" --headless --path . --script "$script_path" --quit-after "$quit_after" 2>&1)
 	local errors
-	errors=$(echo "$out" | grep "^ERROR" | grep -v "resources still in use at exit" || true)
+	# <<< (here-string) instead of `echo "$out" | grep` - see check_scene()
+	# above for why a pipe here can misreport pass as fail under `pipefail`.
+	errors=$(grep "^ERROR" <<< "$out" | grep -v "resources still in use at exit" || true)
 	if [ -n "$errors" ]; then
 		echo "FAIL: $label - unexpected errors"
 		echo "$errors" | sed 's/^/    /'
 		OVERALL_FAIL=1
-	elif [ -n "$expect_str" ] && ! echo "$out" | grep -qF "$expect_str"; then
+	elif [ -n "$expect_str" ] && ! grep -qF "$expect_str" <<< "$out"; then
 		echo "FAIL: $label - expected confirmation not found: \"$expect_str\""
 		OVERALL_FAIL=1
 	else
@@ -75,24 +79,7 @@ check_scene "map.tscn" "res://Scenes/Map/map.tscn"
 echo
 
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
-BATTLE_OUT=$("$GODOT" --headless --path . --script res://tests/smoke/smoke_battle.gd --quit-after 4 2>&1)
-# "resources still in use at exit" is a harmless engine-shutdown artifact
-# (confirmed unrelated to game logic), not a real finding - excluded up
-# front so it never counts toward "known outstanding" or fails the build.
-BATTLE_ERRORS=$(echo "$BATTLE_OUT" | grep "^ERROR" | grep -v "resources still in use at exit" || true)
-UNKNOWN_ERRORS="$BATTLE_ERRORS"
-for pattern in "${KNOWN_BATTLE_ERROR_PATTERNS[@]}"; do
-	UNKNOWN_ERRORS=$(echo "$UNKNOWN_ERRORS" | grep -vE "$pattern" || true)
-done
-
-KNOWN_COUNT=$(( $(echo "$BATTLE_ERRORS" | grep -c "^ERROR" || true) - $(echo "$UNKNOWN_ERRORS" | grep -c "^ERROR" || true) ))
-if [ -n "$(echo "$UNKNOWN_ERRORS" | tr -d '[:space:]')" ]; then
-	echo "FAIL: smoke_battle - unexpected errors found"
-	echo "$UNKNOWN_ERRORS" | sed 's/^/    /'
-	OVERALL_FAIL=1
-else
-	echo "PASS: smoke_battle ($KNOWN_COUNT known outstanding error lines tolerated - see KNOWN_BATTLE_ERROR_PATTERNS)"
-fi
+check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 ""
 echo
 
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
@@ -103,9 +90,9 @@ check_script "smoke_battle_loss (LOSS path, map-leak check)" "res://tests/smoke/
 echo
 
 echo "== Enemy turn pacing / move visualizer smoke test =="
-check_script "smoke_enemy_turn_pacing" "res://tests/smoke/smoke_enemy_turn_pacing.gd" 200 \
+check_script "smoke_enemy_turn_pacing" "res://tests/smoke/smoke_enemy_turn_pacing.gd" 130 \
 	"SMOKE TEST: enemy turn completed after"
-check_script "smoke_enemy_turn_stale_reference (regression)" "res://tests/smoke/smoke_enemy_turn_stale_reference.gd" 250 \
+check_script "smoke_enemy_turn_stale_reference (regression)" "res://tests/smoke/smoke_enemy_turn_stale_reference.gd" 150 \
 	"SMOKE TEST: enemy turn completed without crashing"
 check_script "smoke_enemy_turn_highlight_reset (regression)" "res://tests/smoke/smoke_enemy_turn_highlight_reset.gd" 15 \
 	"SMOKE TEST: leftover flash correctly cleared when new enemy turn started"
@@ -114,6 +101,11 @@ echo
 echo "== test_sandbox.tscn smoke test =="
 check_script "smoke_test_sandbox (regression)" "res://tests/smoke/smoke_test_sandbox.gd" 5 \
 	"SMOKE TEST: all"
+echo
+
+echo "== AI obstacle-filter smoke test =="
+check_script "smoke_ai_ignores_obstacles (regression)" "res://tests/smoke/smoke_ai_ignores_obstacles.gd" 10 \
+	"SMOKE TEST: obstacle correctly ignored"
 echo
 
 if [ "$OVERALL_FAIL" -ne 0 ]; then

@@ -18,22 +18,8 @@ var checked_result := false
 
 func _initialize():
 	print(">>> SMOKE TEST: battle-end LOSS path (C8/T5.2) <<<")
-	var player_manager = root.get_node("PlayerManager")
-	player_manager.setStarting()
-	player_manager.resetActives()
-
-	# Same replication of GF._initialize_game()'s setup as smoke_battle_end.gd.
-	var gf = root.get_node("GF")
-	var map_scene: PackedScene = load("res://Scenes/Map/map.tscn")
-	gf.current_map_instance = map_scene.instantiate()
-	gf.current_map_instance.name = "MapInstance"
-	gf.game_initialized = true
-	old_map_instance = gf.current_map_instance
-
-	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
-	var battle_instance = battle_scene.instantiate()
-	root.add_child(battle_instance)
-	current_scene = battle_instance
+	BattleBoot.boot(self)
+	old_map_instance = root.get_node("GF").current_map_instance
 
 func _process(_delta: float) -> bool:
 	var battle_instance = root.get_node_or_null("Battle")

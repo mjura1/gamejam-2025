@@ -99,29 +99,37 @@ func start_enemy_turn():
 		if not character.is_enemy:
 			continue
 
-		var action = character.calculate_best_move()
-		if action.is_empty():
-			continue
-
-		var from_pos: Vector2i = character.grid_pos
-		var is_capture: bool = action.get("move_type", "") == "CAPTURE"
-
-		# try_move sam ponovno preveri veljavnost tarče in izvede premik ALI zajetje
-		var moved: bool = character.try_move(action["target_pos"])
-
-		if moved:
-			if is_instance_valid(move_highlighter):
-				var path_tiles = _compute_path_tiles(from_pos, action["target_pos"])
-				move_highlighter.flash_enemy_move(from_pos, action["target_pos"], path_tiles, is_capture)
-
-			# Kratek premor, da je poteza vidna, preden se premakne naslednji sovražnik
-			await get_tree().create_timer(ENEMY_MOVE_DELAY).timeout
+		await _take_enemy_action(character)
 
 		# Če je ta akcija končala bitko, takoj prekinemo potezo
 		if check_battle_end():
 			return
 
 	end_enemy_turn()
+
+# Izračuna najboljšo potezo za eno sovražnikovo figuro in jo izvede.
+# Če je premik uspel, poskrbi za vizualizacijo + premor pred naslednjo potezo.
+func _take_enemy_action(character: BaseCharacter) -> void:
+	var action = character.calculate_best_move()
+	if action.is_empty():
+		return
+
+	var from_pos: Vector2i = character.grid_pos
+	var is_capture: bool = action.get("move_type", "") == "CAPTURE"
+
+	# try_move sam ponovno preveri veljavnost tarče in izvede premik ALI zajetje
+	var moved: bool = character.try_move(action["target_pos"])
+	if moved:
+		await _flash_move_and_pause(from_pos, action["target_pos"], is_capture)
+
+# Prikaže vizualizacijo ene sovražnikove poteze (izvorno/ciljno polje + pot)
+# in počaka kratek premor, preden se izvede naslednja poteza.
+func _flash_move_and_pause(from_pos: Vector2i, to_pos: Vector2i, is_capture: bool) -> void:
+	if is_instance_valid(move_highlighter):
+		var path_tiles = _compute_path_tiles(from_pos, to_pos)
+		move_highlighter.flash_enemy_move(from_pos, to_pos, path_tiles, is_capture)
+
+	await get_tree().create_timer(ENEMY_MOVE_DELAY).timeout
 
 
 func end_enemy_turn():
@@ -167,9 +175,7 @@ func _compute_path_tiles(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 			path.append(from + Vector2i(0, delta.y))
 		return path
 
-	var step_x = 0 if delta.x == 0 else (1 if delta.x > 0 else -1)
-	var step_y = 0 if delta.y == 0 else (1 if delta.y > 0 else -1)
-	var step = Vector2i(step_x, step_y)
+	var step = delta.sign()
 
 	var current = from + step
 	while current != to:
@@ -189,6 +195,8 @@ func update_fog_after_turn_start():
 
 	# Zberemo pozicije vseh ŽIVIH zavezniških figur na mreži
 	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
 		if not (character is BaseCharacter):
 			continue
 		if character.is_enemy or character.is_obstacle:

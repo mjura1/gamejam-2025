@@ -260,10 +260,13 @@ func calculate_best_move() -> Dictionary:
 	var min_distance := INF
 
 	for nearby_char in grid_manager.get_all_characters():
-		if nearby_char.is_enemy == is_enemy:
+		if not is_instance_valid(nearby_char):
 			continue
 
 		if not nearby_char is BaseCharacter:
+			continue
+
+		if nearby_char.is_enemy == is_enemy or nearby_char.is_obstacle:
 			continue
 
 		var dist = grid_pos.distance_to(nearby_char.grid_pos)

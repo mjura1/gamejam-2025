@@ -26,20 +26,7 @@ var reported := false
 
 func _initialize():
 	print(">>> SMOKE TEST: stale-reference capture during enemy turn <<<")
-	var player_manager = root.get_node("PlayerManager")
-	player_manager.setStarting()
-	player_manager.resetActives()
-
-	var gf = root.get_node("GF")
-	var map_scene: PackedScene = load("res://Scenes/Map/map.tscn")
-	gf.current_map_instance = map_scene.instantiate()
-	gf.current_map_instance.name = "MapInstance"
-	gf.game_initialized = true
-
-	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
-	var battle_instance = battle_scene.instantiate()
-	root.add_child(battle_instance)
-	current_scene = battle_instance
+	BattleBoot.boot(self)
 
 func _process(_delta: float) -> bool:
 	if reported:
@@ -76,14 +63,33 @@ func _process(_delta: float) -> bool:
 		# iteration order, so doing enemy-then-ally guarantees the enemy is
 		# snapshotted BEFORE the ally, exactly like a real battle where the
 		# player already moved a piece earlier in the fight.
-		var enemy_new_pos = Vector2i(6, 6)
+		# Try a few candidate tiles near center / adjacent, since spawn
+		# positions (allies, enemies, and randomly-placed Houses) vary run
+		# to run and could already occupy the first candidate.
 		grid_manager.vacate(enemy.grid_pos)
+		var enemy_new_pos := Vector2i(-1, -1)
+		for candidate in [Vector2i(6, 6), Vector2i(5, 6), Vector2i(7, 6), Vector2i(6, 5), Vector2i(6, 7)]:
+			if not grid_manager.is_occupied(candidate):
+				enemy_new_pos = candidate
+				break
+		if enemy_new_pos == Vector2i(-1, -1):
+			print(">>> SMOKE TEST: no free tile near center this run, retry needed <<<")
+			return false
 		enemy.grid_pos = enemy_new_pos
 		grid_manager.occupy(enemy_new_pos, enemy)
 		enemy.global_position = grid_manager.grid_to_world(enemy_new_pos)
 
-		var ally_new_pos = enemy_new_pos + Vector2i(1, 0)
 		grid_manager.vacate(ally.grid_pos)
+		var ally_new_pos := Vector2i(-1, -1)
+		for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+				Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]:
+			var candidate = enemy_new_pos + offset
+			if not grid_manager.is_occupied(candidate):
+				ally_new_pos = candidate
+				break
+		if ally_new_pos == Vector2i(-1, -1):
+			print(">>> SMOKE TEST: no free tile adjacent to enemy this run, retry needed <<<")
+			return false
 		ally.grid_pos = ally_new_pos
 		grid_manager.occupy(ally_new_pos, ally)
 		ally.global_position = grid_manager.grid_to_world(ally_new_pos)

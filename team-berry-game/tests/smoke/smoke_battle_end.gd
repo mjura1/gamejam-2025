@@ -16,26 +16,11 @@ var checked_result := false
 
 func _initialize():
 	print(">>> SMOKE TEST: battle-end WIN path (C7/T5.1) <<<")
-	var player_manager = root.get_node("PlayerManager")
-	player_manager.setStarting()
-	player_manager.resetActives()
-
 	# return_to_map() needs GF.current_map_instance set (normally done by
-	# GF._initialize_game() on Start) - replicate that here so the deferred
-	# scene-transition path we're testing has somewhere valid to return to.
-	var gf = root.get_node("GF")
-	var map_scene: PackedScene = load("res://Scenes/Map/map.tscn")
-	gf.current_map_instance = map_scene.instantiate()
-	gf.current_map_instance.name = "MapInstance"
-	gf.game_initialized = true
-
-	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
-	var battle_instance = battle_scene.instantiate()
-	root.add_child(battle_instance)
-	# _change_scene_instance() only removes/frees the OLD scene when it matches
-	# get_tree().current_scene - the real game flow always sets this via the
-	# previous transition, so replicate it or the removal silently no-ops.
-	current_scene = battle_instance
+	# GF._initialize_game() on Start) - BattleBoot replicates that here so the
+	# deferred scene-transition path we're testing has somewhere valid to
+	# return to.
+	BattleBoot.boot(self)
 
 func _process(_delta: float) -> bool:
 	var battle_instance = root.get_node_or_null("Battle")
