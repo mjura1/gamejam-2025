@@ -31,7 +31,7 @@ const MAX_PLACED := 5
 @onready var ability2_uses: Label = %Ability2Uses
 @onready var ability2_desc: Label = %Ability2Desc
 @onready var ability2_button: Button = %Ability2Button
-@onready var ability2_header: HBoxContainer = %Ability2Header
+@onready var ability2_body: VBoxContainer = %Ability2Body
 @onready var ability2_locked: Label = %Ability2Locked
 @onready var turn_label: Label = %TurnLabel
 @onready var action_button: Button = %ActionButton
@@ -435,7 +435,7 @@ func _clear_ability_rows():
 	ability1_uses.text = ""
 	ability1_desc.text = ""
 	ability1_button.disabled = true
-	ability2_header.visible = false
+	ability2_body.visible = false
 	ability2_locked.visible = true
 	ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
 
@@ -458,14 +458,14 @@ func _show_abilities(character: BaseCharacter):
 
 	if character.has_ability_upgrade:
 		var info2 := character.get_ability_info(2)
-		ability2_header.visible = true
+		ability2_body.visible = true
 		ability2_locked.visible = false
 		ability2_name.text = info2.get("name", "-")
 		ability2_uses.text = "%d/%d" % [info2.get("uses_remaining", 0), info2.get("uses_max", 0)]
 		ability2_desc.text = info2.get("desc", "")
 		ability2_button.disabled = not (can_use_now and info2.get("uses_remaining", 0) > 0)
 	else:
-		ability2_header.visible = false
+		ability2_body.visible = false
 		ability2_locked.visible = true
 		ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
 
