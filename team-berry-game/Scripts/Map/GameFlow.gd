@@ -12,6 +12,7 @@ const CAMPFIRE_SCENE = preload("res://Scenes/Map/campfire.tscn")
 const SHOP_SCENE = preload("res://Scenes/Map/shop.tscn")
 const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
 const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
+const TUTORIAL_HUB_SCENE = preload("res://Scenes/Menu/tutorial_hub_menu.tscn")
 
 var game_initialized: bool = false
 var current_map_instance: Node = null
@@ -93,7 +94,7 @@ func start_event(room_type: int):
 func advance_map_tier():
 	PlayerManager.current_map_tier += 1
 
-	if PlayerManager.current_map_tier >= 3:
+	if PlayerManager.current_map_tier >= 3 and PlayerManager.game_mode != "infinite":
 		print("GF: Igralec je premagal vse 3 mape. Vračanje na Main Menu.")
 		_end_run()
 		_change_scene_instance(MAIN_MENU_SCENE.instantiate())
@@ -179,3 +180,21 @@ func _end_run():
 	if is_instance_valid(current_map_instance) and not current_map_instance.is_inside_tree():
 		current_map_instance.queue_free()
 	current_map_instance = null
+
+
+# =========================================================
+# 6. TUTORIAL (hub + stopnje)
+# =========================================================
+# Hub in stopnje so PRAVE scene (ne overlayi kot settings/mode select) -
+# stopnja je battle-like scena, po njej pa se mora hub zgraditi na novo.
+# Nič od tega se ne dotika run stanja (game_initialized ostane false),
+# zato hub-ov BACK varno uporabi return_to_main_menu() zgoraj.
+
+func start_tutorial_hub():
+	_change_scene_instance(TUTORIAL_HUB_SCENE.instantiate())
+
+func start_tutorial_stage(stage_scene: PackedScene):
+	_change_scene_instance(stage_scene.instantiate())
+
+func return_to_tutorial_hub():
+	_change_scene_instance(TUTORIAL_HUB_SCENE.instantiate())

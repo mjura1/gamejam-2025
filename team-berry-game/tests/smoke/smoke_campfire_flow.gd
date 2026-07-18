@@ -5,8 +5,11 @@ extends SceneTree
 # gets type == campfire) - they never instantiate campfire.tscn, so they
 # can't catch a broken @onready node path inside campfire.gd (the same
 # class of bug smoke_start_new_game.gd was added to catch for map_camera).
+# "Start" is now two presses since the Mode Select screen landed: PLAY opens
+# the overlay, CLASSIC on it starts the game (see smoke_start_new_game.gd).
 # Run with: godot4 --headless --path . --script res://tests/smoke/smoke_campfire_flow.gd --quit-after 8
 
+var opened := false
 var started := false
 var clicked_campfire := false
 var rested := false
@@ -20,10 +23,18 @@ func _initialize():
 	current_scene = instance
 
 func _process(_delta: float) -> bool:
+	if not opened:
+		if current_scene != null and current_scene.has_method("_on_play_pressed"):
+			current_scene._on_play_pressed()
+			opened = true
+		return false
+
 	if not started:
-		if current_scene != null and current_scene.has_method("_on_start_pressed"):
-			current_scene._on_start_pressed()
-			started = true
+		var overlay = current_scene._mode_select_instance
+		if not is_instance_valid(overlay):
+			return false # keep waiting; --quit-after fails the test if it never shows
+		overlay._on_classic_pressed()
+		started = true
 		return false
 
 	var gf = root.get_node("GF")
