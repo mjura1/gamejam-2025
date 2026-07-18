@@ -79,6 +79,7 @@ func _ready():
 	player_manager.items_changed.connect(_update_item_counts)
 	map_behaviour.selection_changed.connect(_on_selection_changed)
 	map_behaviour.ability_activated.connect(_on_ability_activated)
+	map_behaviour.enemy_inspected.connect(_show_enemy)
 	battle_controller.state_changed.connect(_on_battle_state_changed)
 	battle_controller.moves_changed.connect(_on_moves_changed)
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
@@ -200,7 +201,10 @@ func _on_battle_state_changed(new_state):
 			moves_label.text = ""
 			abilities_label.text = ""
 
-	if is_instance_valid(_shown_character):
+	# Sovražnik nima pravih sposobnosti (glej _show_enemy - prva vrstica tam
+	# kaže prekletstvo, ne sposobnost) - ne prepišimo tega z generičnim
+	# "-"/onemogočenim gumbom ob vsaki spremembi stanja bitke.
+	if is_instance_valid(_shown_character) and not _shown_character.is_enemy:
 		_show_abilities(_shown_character)
 
 
@@ -711,6 +715,27 @@ func _show_character(character: BaseCharacter):
 		status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)
 	_shown_character = character
 	_show_abilities(character)
+
+
+# Inšpekcija sovražnika (map_behaviour.enemy_inspected - klik na sovražnika,
+# ko ni izbrana nobena zavezniška figura). Display-only: portret + status
+# ("CURSED: <ime>" v barvi prekletstva, ali navaden "ENEMY") - PRVA vrstica
+# sposobnosti se namesto ability podatkov uporabi za ime/opis prekletstva
+# (enemy figure nimajo pravih sposobnosti, get_ability_defs() je prazen).
+func _show_enemy(character: BaseCharacter):
+	if not is_instance_valid(character):
+		return
+	portrait.texture = load("res://Assets/Sprites/enemy_%s.png" % character.strName)
+	_shown_character = character
+	_clear_ability_rows()
+	if character.curse:
+		status_value.text = character.curse.status_text()
+		status_value.add_theme_color_override("font_color", character.curse.color())
+		ability1_name.text = character.curse.display_name()
+		ability1_desc.text = character.curse.description()
+	else:
+		status_value.text = "ENEMY"
+		status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
 
 
 func _show_dead_piece(piece_name: String):

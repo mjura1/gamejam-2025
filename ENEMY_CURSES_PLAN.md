@@ -385,11 +385,20 @@ safe to call synchronously within one `_process()` tick — only the `frenzy`/`s
    loads via `friendly_wolf.png` in `_show_character` (path already `friendly_%s`).
 
 ### Phase 3 checklist
-- [ ] red preview array/color/show/clear in highlighter, cleared on every selection change
-- [ ] enemy_inspected signal + battle_ui `_show_enemy` (curse text + color, portrait)
-- [ ] Smoke: call the inspection path directly with a cursed + an uncursed enemy; assert
+- [x] red preview array/color/show/clear in highlighter, cleared on every selection change
+- [x] enemy_inspected signal + battle_ui `_show_enemy` (curse text + color, portrait)
+- [x] Smoke: call the inspection path directly with a cursed + an uncursed enemy; assert
       preview tiles non-empty and `status_value.text` contains "CURSED"; print
       `SMOKE_INSPECT_OK`; add to run_all.sh.
+
+**Deviation:** `_on_battle_state_changed`'s existing `if is_instance_valid(_shown_character):
+_show_abilities(_shown_character)` refresh (fires on every battle-state transition) would
+otherwise overwrite the curse name/description we just wrote into `ability1_name`/`ability1_desc`
+for an inspected enemy the next time the state changed while that panel was showing (enemies
+have no real abilities, so `_show_abilities` on one just blanks the rows to "-"/disabled).
+Guarded it with `and not _shown_character.is_enemy` - zero behavior change for the existing
+ally-inspection path (already `is_enemy == false` there), only skips the stomp for the new
+enemy-inspection path.
 
 ## Phase 4 — Difficulty selector
 

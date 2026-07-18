@@ -219,6 +219,11 @@ check_script "smoke_curses" "res://tests/smoke/smoke_curses.gd" 400 \
 	"SMOKE_CURSES_OK"
 echo
 
+echo "== Enemy inspection smoke test (red preview + status panel) =="
+check_script "smoke_inspect" "res://tests/smoke/smoke_inspect.gd" 4 \
+	"SMOKE_INSPECT_OK"
+echo
+
 echo "== Pause menu smoke test =="
 check_script "smoke_pause_menu" "res://tests/smoke/smoke_pause_menu.gd" 80 \
 	"SMOKE TEST: escape resumed - menu hidden and tree unpaused again"

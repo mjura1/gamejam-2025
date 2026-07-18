@@ -8,6 +8,12 @@ signal selection_changed(character)
 # battle_ui.gd ga uporabi za osvežitev panela (npr. po Reposition, ki ne
 # sproži selection_changed sam po sebi).
 signal ability_activated(character)
+# Sproži se, ko igralec klikne sovražnika, KO NI izbrana nobena zavezniška
+# figura (glej _unhandled_input spodaj) - display-only inšpekcija, NE izbira
+# (selected_character ostane nespremenjen). battle_ui.gd poveže to na
+# podrobnostni panel (status/prekletstvo), move_highlighter na rdeč predogled
+# dosega.
+signal enemy_inspected(character)
 
 # ===============================================
 # REFERENCE
@@ -87,6 +93,10 @@ func _resolve_pending_ability(clicked_grid: Vector2i):
 
 # Izbere figuro in pokaže njene veljavne poteze.
 func _apply_selection(character: BaseCharacter):
+	# Izbira zaveznika vedno prekine morebitno tekočo sovražnikovo inšpekcijo
+	# (glej _inspect_enemy spodaj) - oboje se nikoli ne prikazuje hkrati.
+	move_highlighter.clear_enemy_preview()
+
 	if selected_character:
 		selected_character.selected = false
 	selected_character = character
@@ -126,8 +136,18 @@ func _clear_selection():
 		selected_character.selected = false
 		selected_character = null
 	move_highlighter.clear_moves()
+	move_highlighter.clear_enemy_preview()
 	tile_selector.clear_selection()
 	selection_changed.emit(null)
+
+# Inšpekcija sovražnika (klik na sovražnika, KO NI izbrana nobena zavezniška
+# figura - glej _unhandled_input LOGIKA 1.D spodaj). Display-only: NE
+# nastavi selected_character, zato vsi premik/zajemi tokovi ostanejo
+# nespremenjeni. Ponovni klik na isto ali drugo sovražnikovo figuro samo
+# osveži predogled (kliče se znova od tam).
+func _inspect_enemy(character: BaseCharacter):
+	move_highlighter.show_enemy_preview(character.calculate_valid_targets())
+	enemy_inspected.emit(character)
 
 # Izbira figure preko UI (klik na ikono v battle UI panelu).
 func select_character_via_ui(character):
@@ -176,6 +196,9 @@ func _unhandled_input(event):
 		# Če je bila figura izbrana, jo deselektujemo in počistimo poudarek
 		if selected_character:
 			_clear_selection()
+		# Klik zunaj plošče vedno počisti morebitno sovražnikovo inšpekcijo,
+		# tudi če ni bila izbrana nobena zavezniška figura.
+		move_highlighter.clear_enemy_preview()
 		return
 
 	# Pokaži indikator klika (TileSelector)
@@ -243,7 +266,9 @@ func _unhandled_input(event):
 				_apply_selection(clicked_character)
 				return
 			else:
-				# Klik na sovražnika, ko ni izbrana nobena figura: ne naredimo nič
+				# Klik na sovražnika, ko ni izbrana nobena figura: inšpekcija
+				# (prikaz dosega + statusa/prekletstva - glej _inspect_enemy zgoraj).
+				_inspect_enemy(clicked_character)
 				return
 	
 	# ===================================================
@@ -268,3 +293,8 @@ func _unhandled_input(event):
 
 		# Če premik ni bil uspešen (klikal je na prazno polje, ki ni veljavna tarča):
 		_clear_selection()
+		return
+
+	# Klik na prazno polje, ko ni bila izbrana nobena figura: počisti
+	# morebitno sovražnikovo inšpekcijo (glej _inspect_enemy zgoraj).
+	move_highlighter.clear_enemy_preview()
