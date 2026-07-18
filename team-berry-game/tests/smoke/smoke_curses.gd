@@ -160,7 +160,7 @@ func _process(_delta: float) -> bool:
 			stage = Stage.SETUP_SNOWFALL
 
 		Stage.SETUP_SNOWFALL:
-			grid_manager.clear_all_fog()
+			grid_manager.clear_all_curse_fog()
 			enemy.curse = curse_data.create_curse("snowfall")
 			_teleport(enemy, Vector2i(used_rect.position.x, used_rect.position.y))
 
@@ -173,10 +173,10 @@ func _process(_delta: float) -> bool:
 					and battle_controller.turn_count > turn_count_before):
 				return false # enemy turn still in progress
 
-			_check("fog_nodes is non-empty after a snowfall-cursed enemy moved",
-				not grid_manager.fog_nodes.is_empty())
+			_check("curse_fog_nodes is non-empty after a snowfall-cursed enemy moved",
+				not grid_manager.curse_fog_nodes.is_empty())
 			_check("snowfall covered the enemy's own landing tile",
-				grid_manager.fog_nodes.has(enemy.grid_pos))
+				grid_manager.curse_fog_nodes.has(enemy.grid_pos))
 			stage = Stage.STUNNING_GAZE
 
 		Stage.STUNNING_GAZE:

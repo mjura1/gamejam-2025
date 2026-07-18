@@ -1,18 +1,19 @@
-# res://Scripts/Curses/snowfall_curse.gd
-# Prekletstvo "snowfall": nosilec po vsakem premiku znova pokrije "+"
-# območje (radius iz JSON) okoli sebe s SVOJO, razpadajočo meglo (glej
-# GridManager.cover_area_curse/tick_curse_fog_decay) - ločeno od ambientne
-# megle, ki je rezervirana za kraljevo bitko.
+# res://Scripts/Curses/blizzard_curse.gd
+# Prekletstvo "blizzard": kraljeva lastna, MOČNEJŠA različica "snowfall" -
+# nosilec po vsakem premiku znova pokrije 3x3 območje (namesto "+") s SVOJO
+# meglo, ki razpada POČASNEJE (glej Data/curses.json decay_ticks_per_stage).
+# Izločena iz splošnega naključnega nabora (weight: 0 v JSON) - dodeli se
+# neposredno kralju, glej battle.gd._apply_curses.
 extends BaseCurse
 
 func _init():
-	id = "snowfall"
+	id = "blizzard"
 
 func on_action_taken(owner, _bc) -> void:
 	if not is_instance_valid(owner) or not is_instance_valid(owner.grid_manager):
 		return
 	var radius: int = CurseData.get_param(id, "radius", 1)
-	var tiles: Array[Vector2i] = GridManager.plus_radius_tiles(owner.grid_pos, radius)
+	var tiles: Array[Vector2i] = GridManager.square_radius_tiles(owner.grid_pos, radius)
 
 	# Filtriramo na mejo plošče - grid_manager.cover_area_curse sam ne preverja
 	# meje (klicatelj mora).

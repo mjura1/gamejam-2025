@@ -132,8 +132,12 @@ func initialize_battle():
 		# Uporabimo current_map_floor, ki smo ga dodali v PlayerManager.gd
 		current_floor = player_manager.current_map_floor
 
-	# 2. Pokrijemo mapo z dinamično meglo (snežno odejo)
+	# 2. Pokrijemo mapo z dinamično meglo (snežno odejo) - vsaka bitka, raste
+	# z nadstropjem, ponastavi se z current_map_floor na začetku vsakega tierja.
+	# Ločena prekletstvena "snowfall" megla (glej grid_manager.cover_area_curse)
+	# je zdaj rezervirana za kralja - glej battle.gd._apply_curses.
 	if is_instance_valid(grid_manager):
+		grid_manager.clear_all_curse_fog()
 		grid_manager.initialize_all_fog(current_floor)
 
 	# 3. Placement faza - igralec sam postavi figure v spodnje 3 vrstice.
@@ -528,3 +532,7 @@ func update_fog_after_turn_start():
 					reveal_positions.append(new_pos)
 
 	grid_manager.reveal_area(reveal_positions)
+
+	# Prekletstvena "snowfall" megla razpada 1 fazo na rundo - vezano na začetek
+	# igralčeve poteze, torej po vsaki polni rundi (glej GridManager.tick_curse_fog_decay).
+	grid_manager.tick_curse_fog_decay()

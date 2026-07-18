@@ -4,7 +4,7 @@ extends TestCase
 # Glej ENEMY_CURSES_PLAN.md Phase 1.
 
 func test_create_curse_returns_correct_variant_with_data_from_json():
-	for id in ["snowfall", "frenzy", "stunning_gaze"]:
+	for id in ["snowfall", "frenzy", "stunning_gaze", "blizzard"]:
 		var curse: BaseCurse = CurseData.create_curse(id)
 		assert_true(curse != null, "create_curse(%s) should not be null" % id)
 		assert_eq(curse.id, id, "curse.id should match requested id")

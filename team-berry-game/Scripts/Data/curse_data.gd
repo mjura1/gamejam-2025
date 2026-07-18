@@ -16,6 +16,7 @@ const CURSE_SCRIPTS: Dictionary = {
 	"snowfall": preload("res://Scripts/Curses/snowfall_curse.gd"),
 	"frenzy": preload("res://Scripts/Curses/frenzy_curse.gd"),
 	"stunning_gaze": preload("res://Scripts/Curses/stunning_gaze_curse.gd"),
+	"blizzard": preload("res://Scripts/Curses/blizzard_curse.gd"),
 }
 
 var _config: Dictionary = {}

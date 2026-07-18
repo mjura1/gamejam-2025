@@ -5,8 +5,9 @@
 		"difficulty_chance_mult": {"easy": 0.5, "normal": 1.0, "hard": 1.5}
 	},
 	"curses": {
-		"snowfall":      {"name": "Snowfall", "description": "Covers a 3x3 area in snow after it moves.", "weight": 40, "excluded_pieces": [], "radius": 1, "color": [0.55, 0.75, 1.0]},
+		"snowfall":      {"name": "Snowfall", "description": "Covers a + area in decaying snow after it moves.", "weight": 40, "excluded_pieces": [], "radius": 1, "decay_ticks_per_stage": 1, "color": [0.55, 0.75, 1.0]},
 		"frenzy":        {"name": "Frenzy", "description": "Acts twice every enemy turn.", "weight": 30, "excluded_pieces": ["queen"], "extra_actions": 1, "color": [1.0, 0.45, 0.3]},
-		"stunning_gaze": {"name": "Stunning Gaze", "description": "After it moves, stuns the closest ally in its sight for 1 turn.", "weight": 30, "excluded_pieces": [], "duration": 1, "cooldown": 2, "color": [0.8, 0.5, 1.0]}
+		"stunning_gaze": {"name": "Stunning Gaze", "description": "After it moves, stuns the closest ally in its sight for 1 turn.", "weight": 30, "excluded_pieces": [], "duration": 1, "cooldown": 2, "color": [0.8, 0.5, 1.0]},
+		"blizzard":      {"name": "Blizzard", "description": "Covers a 3x3 area in slow-decaying snow after it moves. The enemy king's own curse.", "weight": 0, "excluded_pieces": [], "radius": 1, "decay_ticks_per_stage": 2, "color": [0.35, 0.55, 0.85]}
 	}
 }

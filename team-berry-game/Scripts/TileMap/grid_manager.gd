@@ -319,3 +319,103 @@ func reveal_area(positions_to_reveal):
 func cover_area(positions_to_cover) -> void:
 	for pos in positions_to_cover:
 		_spawn_fog_tile(pos)
+
+# Kvadratna oblika s "+" (križ) rokami dolžine radius - center + polja
+# neposredno gor/dol/levo/desno vsak korak do radiusa (BREZ diagonal), za
+# razliko od square_radius_tiles zgoraj. radius=1 => klasičen 5-poljski križ.
+static func plus_radius_tiles(center: Vector2i, radius: int) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = [center]
+	for r in range(1, radius + 1):
+		tiles.append(center + Vector2i(r, 0))
+		tiles.append(center + Vector2i(-r, 0))
+		tiles.append(center + Vector2i(0, r))
+		tiles.append(center + Vector2i(0, -r))
+	return tiles
+
+# ===============================================
+# PREKLETSTVENA MEGLA ("snowfall" curse) - LOČEN sistem od ambientne megle
+# zgoraj (ki je zdaj rezervirana za kralja, glej BattleController.initialize_battle).
+# Ta megla RAZPADA sama (glej tick_curse_fog_decay) namesto da bi jo
+# razkrivala bližina zaveznikov - polja, ki že imajo prekletstveno meglo, se
+# ob ponovnem pokritju NE osvežijo (glej cover_area_curse), da premikanje po
+# istih poljih ne drži megle v neskončnost.
+# ===============================================
+
+const CURSE_FOG_ALPHAS: Array[float] = [0.95, 0.75, 0.5, 0.25]
+const CURSE_FOG_COLOR := Color(0.55, 0.75, 1.0) # rahlo modrikasta - vizualno ločena od sive ambientne megle
+
+# grid_pos -> Node2D (fog_tile_scene instanca)
+var curse_fog_nodes: Dictionary = {}
+# grid_pos -> int (indeks v CURSE_FOG_ALPHAS - trenutna faza razpada)
+var curse_fog_stage: Dictionary = {}
+# grid_pos -> int (koliko tick_curse_fog_decay() klicev preteče med fazami -
+# npr. kraljev "blizzard" razpada počasneje kot navadni "snowfall", glej
+# Data/curses.json decay_ticks_per_stage)
+var curse_fog_ticks_per_stage: Dictionary = {}
+# grid_pos -> int (koliko tickov je minilo od zadnje spremembe faze na tem polju)
+var curse_fog_tick_progress: Dictionary = {}
+
+# Prekletstvo "snowfall"/"blizzard": pokrije polja s SVOJO (razpadajočo)
+# meglo. Polje, ki že ima prekletstveno meglo, PRESKOČIMO - ne resetiramo
+# faze razpada. ticks_per_stage: koliko rund traja ena faza (1 = privzeto
+# tempo, več = počasnejši razpad). color: naj se vizualno loči med viri
+# (npr. kraljev "blizzard" od navadnega "snowfall").
+func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color = CURSE_FOG_COLOR) -> void:
+	for pos in positions_to_cover:
+		if curse_fog_nodes.has(pos):
+			continue
+		var fog_node = FOG_TILE_SCENE.instantiate()
+		fog_node.position = grid_to_world(pos)
+		var color_rect = fog_node.get_node_or_null("ColorRect")
+		if is_instance_valid(color_rect):
+			color_rect.color = color
+		fog_node.modulate.a = CURSE_FOG_ALPHAS[0]
+		get_parent().call_deferred("add_child", fog_node)
+		curse_fog_nodes[pos] = fog_node
+		curse_fog_stage[pos] = 0
+		curse_fog_ticks_per_stage[pos] = maxi(1, ticks_per_stage)
+		curse_fog_tick_progress[pos] = 0
+
+# Pokliče se enkrat na rundo (glej BattleController.update_fog_after_turn_start) -
+# vsako prekletstveno polje napreduje 1 tick proti svoji naslednji fazi
+# (CURSE_FOG_ALPHAS); ko doseže svoj curse_fog_ticks_per_stage prag, se stopi
+# za 1 fazo, ob zadnji fazi pa se namesto tega odstrani.
+func tick_curse_fog_decay() -> void:
+	for pos in curse_fog_nodes.keys():
+		var progress: int = curse_fog_tick_progress.get(pos, 0) + 1
+		var needed: int = curse_fog_ticks_per_stage.get(pos, 1)
+		if progress < needed:
+			curse_fog_tick_progress[pos] = progress
+			continue
+		curse_fog_tick_progress[pos] = 0
+
+		var stage: int = curse_fog_stage.get(pos, 0)
+		if stage >= CURSE_FOG_ALPHAS.size() - 1:
+			_remove_curse_fog_tile(pos)
+			continue
+		stage += 1
+		curse_fog_stage[pos] = stage
+		var fog_node = curse_fog_nodes.get(pos)
+		if is_instance_valid(fog_node):
+			fog_node.modulate.a = CURSE_FOG_ALPHAS[stage]
+
+func _remove_curse_fog_tile(pos: Vector2i) -> void:
+	var fog_node = curse_fog_nodes.get(pos)
+	if is_instance_valid(fog_node):
+		fog_node.queue_free()
+	curse_fog_nodes.erase(pos)
+	curse_fog_stage.erase(pos)
+	curse_fog_ticks_per_stage.erase(pos)
+	curse_fog_tick_progress.erase(pos)
+
+# Aktivno "razkritje" prekletstvene megle na danih poljih (npr. Rook.Lookout) -
+# za razliko od tick_curse_fog_decay, ki polja stopi postopoma.
+func clear_curse_fog_area(positions_to_reveal) -> void:
+	for pos in positions_to_reveal:
+		_remove_curse_fog_tile(pos)
+
+func clear_all_curse_fog() -> void:
+	for pos in curse_fog_nodes.keys():
+		_remove_curse_fog_tile(pos)
+	curse_fog_nodes.clear()
+	curse_fog_stage.clear()

@@ -53,7 +53,7 @@ func _do_lookout(tier: Dictionary) -> bool:
 			continue
 		if character.is_enemy == is_enemy or character.is_obstacle:
 			continue
-		if not grid_manager.fog_nodes.has(character.grid_pos):
+		if not grid_manager.fog_nodes.has(character.grid_pos) and not grid_manager.curse_fog_nodes.has(character.grid_pos):
 			continue
 
 		var d = grid_pos.distance_to(character.grid_pos)
@@ -64,7 +64,9 @@ func _do_lookout(tier: Dictionary) -> bool:
 	if not is_instance_valid(closest):
 		return false
 
-	grid_manager.reveal_area(_area_tiles(tier, closest.grid_pos))
+	var area: Array[Vector2i] = _area_tiles(tier, closest.grid_pos)
+	grid_manager.reveal_area(area)
+	grid_manager.clear_curse_fog_area(area)
 	return true
 
 # Postavi (ali obnovi) cono, ki sovražnikom prepove premik na polja znotraj nje.

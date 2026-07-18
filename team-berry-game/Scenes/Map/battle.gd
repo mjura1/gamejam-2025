@@ -105,6 +105,14 @@ func _ready() -> void:
 # dodatnega naključnega prekletstva - verjetnost je odvisna od izbrane
 # težavnosti (SettingsManager.difficulty, glej Data/curses.json
 # config.difficulty_chance_mult).
+#
+# Enemy king: "blizzard" (razpadajoča 3x3 megla, glej blizzard_curse.gd) je
+# kraljev lastni, zajamčeni prekletstveni mehanizem - močnejša, počasneje
+# razpadajoča različica navadne "snowfall" ("+"), ki je izločena iz
+# splošnega naključnega nabora (Data/curses.json weight=0) in je NI mogoče
+# naključno dobiti. Kralj dobi "blizzard" TUKAJ neposredno (šteje kot 1 od
+# get_min_curse_count() zajamčenih mest); preostali sovražniki se še vedno
+# potegujejo za snowfall/frenzy/stunning_gaze kot prej.
 func _apply_curses(enemies: Array) -> void:
 	var valid_enemies: Array = enemies.filter(func(e): return is_instance_valid(e))
 	if valid_enemies.is_empty():
@@ -117,11 +125,19 @@ func _apply_curses(enemies: Array) -> void:
 	if is_instance_valid(settings_manager):
 		difficulty = settings_manager.difficulty
 
-	valid_enemies.shuffle()
 	var min_count: int = min(CurseData.get_min_curse_count(current_floor), valid_enemies.size())
 
-	for i in range(valid_enemies.size()):
-		var enemy = valid_enemies[i]
+	var roll_pool: Array = valid_enemies.duplicate()
+	var king_matches: Array = roll_pool.filter(func(e): return e.strName == "king")
+	if not king_matches.is_empty():
+		var king_enemy = king_matches[0]
+		roll_pool.erase(king_enemy)
+		king_enemy.apply_curse(CurseData.create_curse("blizzard"))
+		min_count = maxi(0, min_count - 1)
+
+	roll_pool.shuffle()
+	for i in range(roll_pool.size()):
+		var enemy = roll_pool[i]
 		if i < min_count:
 			_curse_enemy(enemy) # zajamčeno mesto - prekletstvo ne glede na met
 		elif CurseData.should_curse(current_floor, randf(), difficulty):
