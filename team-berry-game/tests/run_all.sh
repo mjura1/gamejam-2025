@@ -183,6 +183,11 @@ check_script "smoke_mounted_hunters" "res://tests/smoke/smoke_mounted_hunters.gd
 	"SMOKE TEST: mounted_hunters works"
 echo
 
+echo "== Item: fortress rook-house line smoke test =="
+check_script "smoke_fortress" "res://tests/smoke/smoke_fortress.gd" 4 \
+	"SMOKE TEST: fortress item works"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"

@@ -141,12 +141,21 @@ func calculate_valid_targets() -> Array[Vector2i]:
 	if is_instance_valid(grid_manager) and grid_manager.is_frozen(grid_pos, is_enemy):
 		return targets
 
+	# Item "fortress": za sovražnike so polja med prijateljsko trdnjavo in
+	# hišo v njeni liniji neprehodna (ne moreš vstopiti niti drseti skoznje).
+	var fortress: Array[Vector2i] = []
+	if is_enemy:
+		fortress = grid_manager.fortress_blocked_tiles()
+
 	for dir in get_move_directions():
 		for step in range(1, move_range + 1):
 			var target_pos := grid_pos + dir * step
 
 			# 1. Preverjanje mej
 			if not grid_manager.is_inside_boundary(target_pos, tile_map.get_used_rect()):
+				break
+
+			if target_pos in fortress:
 				break
 
 			# 2. Preverjanje zasedenosti

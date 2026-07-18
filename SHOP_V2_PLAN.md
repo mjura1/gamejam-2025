@@ -492,7 +492,22 @@ board corner (e.g. `(0, 11)`) where BOTH of those land out of bounds, causing a 
 failure indistinguishable from a real bug. Fixed by looping over the real
 `KNIGHT_OFFSETS` (now on the queen instance via the base-class const) until an in-bounds,
 unoccupied tile is found, same pattern already used in `smoke_vicious_knights.gd`.
-- [ ] 6b fortress + test
+- [x] 6b fortress + test
+
+**Deviations:**
+- Same untyped-array-in-loop `step` type-inference bug as 5c's `is_castle_protected()`,
+  this time in `grid_manager.fortress_blocked_tiles()` (`character` from
+  `get_all_characters()` is `Variant`-typed even after an `is BaseCharacter` runtime
+  check) - fixed by typing `step` explicitly.
+- A second, worse bug from the plan's own `var fortress: Array[Vector2i] = ... if is_enemy
+  else []` snippet: GDScript accepts this at parse time but throws a **runtime**
+  `SCRIPT ERROR: Trying to assign an array of type "Array" to a variable of type
+  "Array[Vector2i]"` the moment a FRIENDLY piece calls `calculate_valid_targets()` (the
+  ternary's `else []` branch is an untyped empty array literal, and Godot doesn't coerce it
+  to match the declared type). This broke `calculate_valid_targets()` for every ally piece
+  in every other test that happened to run after this change - caught by re-running the
+  full suite, not just the new smoke test. Fixed by replacing the ternary with a plain
+  `if is_enemy:` assignment.
 
 ## Phase 7 — Sprites, wrap-up
 
