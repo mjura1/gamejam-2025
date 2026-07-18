@@ -52,6 +52,26 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Reduced Motion (disable piece slide animations)"
 
+[node name="DifficultyRow" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="DifficultyLabel" type="Label" parent="Content/DifficultyRow"]
+layout_mode = 2
+text = "DIFFICULTY"
+
+[node name="DifficultyOption" type="OptionButton" parent="Content/DifficultyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 3
+selected = 1
+popup/item_0/text = "EASY"
+popup/item_0/id = 0
+popup/item_1/text = "NORMAL"
+popup/item_1/id = 1
+popup/item_2/text = "HARD"
+popup/item_2/id = 2
+
 [node name="RowsScroll" type="ScrollContainer" parent="Content"]
 custom_minimum_size = Vector2(0, 340)
 layout_mode = 2

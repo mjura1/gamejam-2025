@@ -412,8 +412,11 @@ enemy-inspection path.
 3. Curse chance already consumes it (Phase 1d — replace the `"normal"` placeholder with
    `settings_manager.difficulty`; battle.gd needs an `@onready` for the autoload).
 
-- [ ] setting + persistence + menu row + curse-chance wiring; unit-test the
+- [x] setting + persistence + menu row + curse-chance wiring; unit-test the
       `get_curse_chance` multiplier per difficulty.
+
+(`get_curse_chance` × difficulty was already unit-tested in Phase 1's `test_curses.gd` -
+`test_get_curse_chance_applies_difficulty_multiplier` - no new test needed for that part.)
 
 ## Phase 5 — AI improvements (mild, difficulty-gated)
 
