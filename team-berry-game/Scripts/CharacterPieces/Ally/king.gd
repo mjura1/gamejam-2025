@@ -64,6 +64,10 @@ func _do_cleanse(enemy_count: int) -> bool:
 		player_manager.convert_enemy_to_ally("enemy_" + target.strName, "friendly_" + target.strName)
 		target.is_enemy = false
 		target.is_converted_ally = true
+		# Prekletstvo NE preide z obrnjeno figuro na igralčevo stran - očisti
+		# stanje in vizualni marker/tint (glej base_character.clear_curse).
+		if target.curse:
+			target.clear_curse()
 
 	return true
 

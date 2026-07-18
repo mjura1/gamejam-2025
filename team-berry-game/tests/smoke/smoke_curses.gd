@@ -3,7 +3,10 @@ extends SceneTree
 # Enemy curses (Scripts/Curses/): boots a real battle, force-assigns each of
 # the 3 curses onto a single lone enemy pawn (active_enemies overridden to
 # just ["enemy_pawn"] so no other enemy dilutes the flash-count/AI checks),
-# and exercises the real BattleController turn machinery.
+# and exercises the real BattleController turn machinery. Also covers
+# King.Cleanse's curse-clearing-on-conversion (base_character.clear_curse) -
+# see _run_king_cleanse_stage for why that spawns its OWN separate enemy
+# rather than reusing "enemy".
 #
 # frenzy and snowfall are driven through the REAL AI pipeline
 # (battle_controller.start_enemy_turn()) since neither cares about allies.
@@ -44,6 +47,7 @@ enum Stage {
 	SETUP_FRENZY, WAIT_FRENZY,
 	SETUP_SNOWFALL, WAIT_SNOWFALL,
 	STUNNING_GAZE, # popolnoma sinhrono, glej _run_stunning_gaze_stage
+	KING_CLEANSE, # popolnoma sinhrono, glej _run_king_cleanse_stage
 	SETUP_TICK_DOWN, WAIT_TICK_DOWN,
 	DONE,
 }
@@ -55,6 +59,8 @@ var move_highlighter
 var used_rect: Rect2i
 var enemy: BaseCharacter = null
 var ally: BaseCharacter = null
+var king: BaseCharacter = null
+var cleanse_target: BaseCharacter = null
 var gaze # BaseCurse (stunning_gaze) instanca
 
 func _check(label: String, ok: bool):
@@ -74,6 +80,10 @@ func _initialize():
 	var enemies: Array[String] = ["enemy_pawn"]
 	player_manager.enemy_party = enemies
 	player_manager.active_enemies = enemies.duplicate()
+	# A king (King.Cleanse) is needed alongside the default pawn ally, for
+	# the curse-clearing-on-conversion check (see king.gd._do_cleanse).
+	var roster: Array[String] = ["friendly_pawn", "friendly_king"]
+	player_manager.friendly_party = roster
 
 func _teleport(character: BaseCharacter, pos: Vector2i):
 	grid_manager.vacate(character.grid_pos)
@@ -115,11 +125,13 @@ func _process(_delta: float) -> bool:
 				if c is BaseCharacter and not c.is_obstacle:
 					if c.is_enemy and enemy == null:
 						enemy = c
+					elif not c.is_enemy and c.strName == "king" and king == null:
+						king = c
 					elif not c.is_enemy and ally == null:
 						ally = c
 
-			if enemy == null or ally == null:
-				print("SMOKE TEST FAIL: could not find both a lone enemy pawn and an ally on the board")
+			if enemy == null or ally == null or king == null:
+				print("SMOKE TEST FAIL: could not find an enemy pawn + a pawn ally + a king ally on the board")
 				reported = true
 				return false
 
@@ -169,6 +181,10 @@ func _process(_delta: float) -> bool:
 
 		Stage.STUNNING_GAZE:
 			_run_stunning_gaze_stage(battle_controller)
+			stage = Stage.KING_CLEANSE
+
+		Stage.KING_CLEANSE:
+			_run_king_cleanse_stage()
 			stage = Stage.SETUP_TICK_DOWN
 
 		Stage.SETUP_TICK_DOWN:
@@ -233,3 +249,47 @@ func _run_stunning_gaze_stage(battle_controller) -> void:
 	ally.stunned_turns = 0
 	gaze.on_action_taken(enemy, battle_controller)
 	_check("stunning_gaze can stun again once its cooldown is exhausted", ally.stunned_turns > 0)
+
+# King.Cleanse: converted enemies must NOT keep their curse as an ally (glej
+# king.gd._do_cleanse -> base_character.clear_curse). Spawns a FRESH, SEPARATE
+# second enemy (enemy_bishop) just for this stage instead of reusing "enemy"
+# (the pawn used by every earlier stage) for two reasons:
+#   1. Converting the board's ONLY enemy would empty player_manager.active_enemies
+#      and trigger a real, immediate victory (enemyGone()), tearing down the
+#      whole battle scene mid-test.
+#   2. Having it exist from the start (like "enemy") would make it act during
+#      the earlier frenzy/snowfall start_enemy_turn() calls too, polluting
+#      move_highlighter.enemy_move_flashes and breaking those stages' counts.
+# Fully synchronous (activate_ability -> _execute_ability -> _do_cleanse has
+# no awaits), safe to run inline within one _process() call.
+func _run_king_cleanse_stage() -> void:
+	# Move the primary enemy out of the way FIRST - it may currently be
+	# sitting on (3,3)/(3,5) from the stunning_gaze stage above.
+	_teleport(enemy, Vector2i(used_rect.position.x, used_rect.end.y - 1))
+
+	var bishop_scene: PackedScene = battle_instance.enemy_pieces["enemy_bishop"]
+	grid_manager.spawn_character(bishop_scene, grid_manager.grid_to_world(Vector2i(3, 5)))
+	cleanse_target = grid_manager.get_character_at(Vector2i(3, 5))
+	# king.gd._do_cleanse calls player_manager.convert_enemy_to_ally("enemy_bishop", ...),
+	# which only does its bookkeeping if "enemy_bishop" is actually a
+	# tracked active enemy - register it, matching what battle.gd's normal
+	# spawn loop does for every enemy it places.
+	player_manager.active_enemies.append("enemy_bishop")
+
+	cleanse_target.apply_curse(curse_data.create_curse("frenzy"))
+	_check("cleanse target has a curse going into the cleanse", cleanse_target.curse != null)
+	_check("cleanse target has a CurseMarker before cleanse",
+		cleanse_target.get_node_or_null("CurseMarker") != null)
+
+	_teleport(king, Vector2i(3, 3)) # 2 tiles north of cleanse_target, unblocked LOS
+
+	var ok: bool = king.activate_ability(1) # slot 1 = Cleanse (king.gd.ABILITY_DEFS[0])
+	_check("King.Cleanse activates successfully", ok)
+	_check("cleanse target is converted to an ally",
+		is_instance_valid(cleanse_target) and not cleanse_target.is_enemy)
+	_check("cleansed piece no longer carries its curse",
+		is_instance_valid(cleanse_target) and cleanse_target.curse == null)
+	_check("cleansed piece's CurseMarker is gone",
+		is_instance_valid(cleanse_target) and cleanse_target.get_node_or_null("CurseMarker") == null)
+	_check("the primary enemy is untouched and battle continues",
+		is_instance_valid(enemy) and enemy.is_enemy and is_instance_valid(battle_instance))

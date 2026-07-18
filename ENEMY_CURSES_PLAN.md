@@ -487,12 +487,30 @@ like today (except value-aware captures, which are always-on and mild).
   step `smoke_ai.gd` uses. Confirmed clean across 8+ repeated runs after the fix.
 
 ## Phase 6 — Wrap up
-- [ ] Full `./tests/run_all.sh` green; boot `battle.tscn` headless `--quit-after 5` with a
+- [x] Full `./tests/run_all.sh` green; boot `battle.tscn` headless `--quit-after 5` with a
       forced floor ≥ 2 — zero ERROR lines.
-- [ ] `CHANGELOG.md` entry (curses, inspection, difficulty, AI).
-- [ ] `ABILITY_TIER_NOTES.md`/docs untouched; no new sprites expected — if any were generated
+- [x] `CHANGELOG.md` entry (curses, inspection, difficulty, AI).
+- [x] `ABILITY_TIER_NOTES.md`/docs untouched; no new sprites expected — if any were generated
       anyway, `TEMP_SPRITES.md` rows.
-- [ ] Small per-phase commits, Claude co-author line; leave branch unmerged for review.
+- [x] Small per-phase commits, Claude co-author line; leave branch unmerged for review.
+
+**Verification notes:**
+- `./tests/run_all.sh` green (35 unit test files incl. the new `test_curses.gd`, all smoke
+  tests incl. the 3 new ones — `smoke_curses`/`smoke_inspect`/`smoke_ai`).
+- The literal `--scene res://Scenes/Map/battle.tscn --quit-after 5` boot produces zero
+  `ERROR`/`SCRIPT ERROR` lines. Additionally (since a plain scene boot can't inject
+  `player_manager.current_map_floor` before `battle.gd._ready()` runs and `--quit-after 5` alone
+  never reaches PLAYER_TURN), ran a one-off `--script` harness (not committed - built on the
+  same `BattleBoot` helper the real smoke tests use, just with `current_map_floor` forced to 2
+  before boot) through several full player/enemy turn cycles including a real capture: zero
+  error lines, and confirmed a *naturally* (unforced) assigned curse showed up on an enemy
+  (`bishop -> snowfall`) via the real floor-gated `battle.gd._maybe_curse()` path, not just the
+  force-assignment the automated smoke tests use.
+- No new sprites were generated (all curse visuals are code-drawn - particles/tween/`_draw()`
+  diamond, per §1e) - `TEMP_SPRITES.md` untouched. No `ABILITY_TIER_NOTES.md` file exists in
+  this repo at all.
+- Branch `features/enemy-curses` has 6 commits on top of `develop`'s shop-v2 merge (plan doc +
+  one commit per phase), left unmerged and unpushed for review.
 
 ## Explicitly out of scope (don't build)
 - More curses beyond the 3 (framework makes them cheap later; don't invent any).

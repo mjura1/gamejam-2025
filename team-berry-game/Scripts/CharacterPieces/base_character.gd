@@ -151,6 +151,22 @@ func apply_curse(new_curse) -> void:
 	marker.setup(self, curse)
 
 
+# King.Cleanse: obrnjena figura NE obdrži prekletstva kot zaveznica - eno
+# mesto resnice za "odstrani prekletstvo" (počisti stanje + vizualni marker/
+# tint), da ga ni treba podvajati na vsakem klicnem mestu.
+func clear_curse() -> void:
+	curse = null
+	var marker := get_node_or_null("CurseMarker")
+	if marker:
+		# remove_child() PRED queue_free(): queue_free() sam po sebi šele
+		# odloženo (konec sličice) odstrani vozlišče - brez remove_child()
+		# bi get_node_or_null("CurseMarker") še kratek čas vrnil staro
+		# vozlišče, čeprav je "logično" že počiščeno.
+		remove_child(marker)
+		marker.queue_free()
+	modulate = Color.WHITE
+
+
 # ----------------- GIBANJE IN CILJANJE -----------------
 
 func get_move_directions() -> Array[Vector2i]:

@@ -1,3 +1,62 @@
+# Winter March — enemy curses, inspection, difficulty selector, AI improvements → develop
+
+New feature on `features/enemy-curses` (built on top of shop v2): from **floor 2 onward**,
+spawned enemies have a chance to carry a random **curse** that makes them stronger, with a
+visible board effect so the player can tell.
+
+**Curses** get a framework like pieces/items — one base class (`BaseCurse`), variants apply
+effects (`Scripts/Curses/`). Which curse (if any) an enemy gets uses the same
+rarity-weighted-roll scheme as the shop (`Data/curses.json`: per-curse `weight` +
+`excluded_pieces`, plus `min_floor`/`curse_chance`/`difficulty_chance_mult` config — all
+placeholder numbers, Miha balances by hand later). Max one curse per enemy.
+
+- `snowfall`: covers a 3×3 area in fog after it moves (`GridManager.cover_area`, mirrors
+  `reveal_area`).
+- `frenzy`: acts twice every enemy turn (excludes `queen` by default, an example of the
+  exclusion mechanism, not a hard rule).
+- `stunning_gaze`: after it moves, stuns the closest visible ally for exactly the player's next
+  turn (blocks that piece's moves AND abilities), with its own cooldown so it can't chain-stun
+  every turn.
+
+Cursed enemies show an **animated particle effect + pulsing tint** (CPUParticles2D, per-curse
+color) normally; when `SettingsManager.reduced_motion` is on, a **static code-drawn diamond +
+static tint** instead — nothing animates. No new sprites (everything is code-drawn).
+
+**Enemy inspection**: clicking an enemy piece while no ally is selected shows its reachable
+tiles highlighted **all in one distinct red** (never green/gold — can't be confused with an
+ally's own moves) and its status/curse in the battle UI detail panel. Display-only — doesn't
+touch the existing move/capture selection flow at all.
+
+**Difficulty selector** (Settings menu, EASY/NORMAL/HARD, persisted like reduced_motion, default
+NORMAL): scales curse chance (0.5×/1×/1.5×) and gates a new AI danger-avoidance behavior
+(off/50%/always).
+
+**AI improvements** (kept mild — every enemy still moves each turn vs. the player's ~1, so the
+existing asymmetry means small biases are already a big swing):
+- Value-aware captures (always on): when multiple targets are capturable in one move, the AI
+  takes the highest-value one (`Data/ai_config.json` `piece_values`) instead of the first found.
+- Danger avoidance (difficulty-gated): among equally-good chase moves, prefers one no ally could
+  capture next turn — falls back to the normal pick if every option is dangerous, never
+  paralyzes. Capture priority itself is untouched; captures stay aggressive.
+- Explicitly out of scope: no minimax/lookahead, no coordinated focus fire, no changes to
+  spotting/blind-seek/panic.
+
+Two real GDScript/Godot gotchas worth knowing if you touch this code again:
+- A `class_name`-declared script (like `base_character.gd`) is eagerly, fully compiled by
+  Godot's global class scan in `--script`/headless test runs, **before** autoloads are
+  registered — so *any* bare reference to an autoload identifier (`CurseData.foo()`, even fully
+  untyped, not just a typed `BaseCurse` parameter) anywhere in such a script's body breaks every
+  test that touches it with "Identifier not found". Fixed throughout with the same
+  `get_node("/root/CurseData")` pattern already used for `player_manager`/`battle_controller` in
+  that file.
+- `BattleController.start_enemy_turn()`/`end_player_turn()` `await` real timers; a `--script`
+  mode smoke test's own `_process(delta) -> bool` is called directly by the engine's MainLoop,
+  not through GDScript's `await` mechanism, so an `await` suspending *inside* `_process()` itself
+  just silently stalls forever (zero errors, looks like a `--quit-after` tuning problem, isn't
+  one). Anything driving a real enemy turn from a smoke test needs the frame-polled state-machine
+  shape (fire the call without `await`, poll `current_state`/`turn_count` across ordinary
+  frames) already used by `smoke_enemy_turn_pacing.gd`.
+
 # Winter March — shop v2 (rarity-weighted stock + 9 items) → develop
 
 New feature on `features/shop-v2`: the shop no longer sells "everything that
