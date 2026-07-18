@@ -415,7 +415,16 @@ victory branch - lets the "surviving/died/no-courier" cases be pure-unit-tested 
 same reasoning as 5a's deviation (the victory branch itself calls `GF.call_deferred(...)`,
 unsafe to invoke from inside `run_unit_tests.gd`'s shared SceneTree). A smoke test still
 covers the real end-to-end wiring (mark -> badge -> survive -> victory -> reward).
-- [ ] 5c castle + test
+- [x] 5c castle + test
+
+**Deviations:** the plan's `is_castle_protected()` snippet (`for dir in [Vector2i(1,0), ...]:
+var step := grid_pos + dir`) doesn't compile as written - GDScript can't infer `step`'s type
+from an untyped array-literal element (`dir` is `Variant`, so `grid_pos + dir` has no static
+type for `:=`). Fixed by declaring `var directions: Array[Vector2i] = [...]` and typing
+`step` explicitly. `smoke_castle.gd` also needed its free-column search to verify the WHOLE
+king-to-enemy line is clear (not just the 3 placement rows) - a house sitting between them
+produced a false test failure indistinguishable from a real bug (enemy blocked by the house,
+not by castle) until this was tightened.
 
 ## Phase 6 — Rare items
 

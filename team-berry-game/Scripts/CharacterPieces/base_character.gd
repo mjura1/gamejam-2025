@@ -61,7 +61,6 @@ var is_converted_ally: bool = false
 
 # Item "bloodhounds": prijazna figura (trenutno samo volk), ki deluje sama
 # po igralčevi potezi, kot AI (glej BattleController._move_autonomous_allies).
-# Privzeto false, da je get("is_autonomous") varen na vsaki figuri.
 var is_autonomous: bool = false
 
 # ----------------- audio -----------------------
@@ -102,6 +101,25 @@ func get_move_directions() -> Array[Vector2i]:
 	# Podrazredi (Bishop, Rook) implementirajo to
 	return []
 
+# Item "castle": kralj je nezajemljiv, dokler ga vidi prijateljska trdnjava
+# (ravna črta, prvi zadetek na poti mora biti trdnjava). Zaščiti samo pred
+# navadnimi zajetji (glej calculate_valid_targets spodaj) - NE pred Queen.
+# Exterminate ali drugimi sposobnostmi, ki ne gredo skozi to preverjanje.
+func is_castle_protected() -> bool:
+	if is_enemy or strName != "king": return false
+	if not player_manager.has_passive("castle"): return false
+	var directions: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for dir in directions:
+		var step: Vector2i = grid_pos + dir
+		while grid_manager.is_inside_boundary(step, tile_map.get_used_rect()):
+			if grid_manager.is_occupied(step):
+				var c = grid_manager.get_character_at(step)
+				if c and not c.is_enemy and not c.is_obstacle and c.strName == "rook":
+					return true
+				break
+			step += dir
+	return false
+
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
 
@@ -125,8 +143,9 @@ func calculate_valid_targets() -> Array[Vector2i]:
 				# PREVERJANJE: Ali je tarča sovražnik?
 				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 					# Knight.Evade: imunska figura ne more biti zajeta z
-					# navadnim premikom/zajetjem.
-					if target_char.is_capture_immune:
+					# navadnim premikom/zajetjem. Item "castle": enako za
+					# kralja, dokler ga vidi prijateljska trdnjava.
+					if target_char.is_capture_immune or target_char.is_castle_protected():
 						break
 					# Rook.Reinforce: polje je znotraj sovražnikove cone - ni
 					# dovoljeno niti zajetje na to polje.

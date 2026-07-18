@@ -173,6 +173,11 @@ check_script "smoke_courier_package" "res://tests/smoke/smoke_courier_package.gd
 	"SMOKE TEST: courier_package mark + victory reward works"
 echo
 
+echo "== Item: castle king-protection smoke test =="
+check_script "smoke_castle" "res://tests/smoke/smoke_castle.gd" 4 \
+	"SMOKE TEST: castle item works"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"
