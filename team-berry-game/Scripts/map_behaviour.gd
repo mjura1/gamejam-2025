@@ -112,8 +112,9 @@ func _apply_selection(character: BaseCharacter):
 
 	selection_changed.emit(selected_character)
 
-# Item "spyglass": unija dosegljivih (praznih ALI zasedljivih) polj vsakega
-# živega sovražnika, presekana z valid_moves - v tej igri figura zajema
+# Item "spyglass": presek grid_manager.tiles_reachable_by(true) (unija
+# sovražnikovih dosegov - deljena tudi z AI "danger avoidance", glej
+# Scripts/TileMap/grid_manager.gd) z valid_moves - v tej igri figura zajema
 # natanko vzdolž svojega premika, zato so sovražnikova dosegljiva polja
 # točno polja, ki bi jih lahko zajel naslednjo potezo. ZNANA POENOSTAVITEV:
 # ne simulira spremembe plošče zaradi lastne poteze igralca (figura se še
@@ -122,12 +123,9 @@ func _compute_risk_tiles(valid_moves: Array[Vector2i]) -> Array[Vector2i]:
 	var risky: Array[Vector2i] = []
 	if not is_instance_valid(grid_manager):
 		return risky
-	for character in grid_manager.get_all_characters():
-		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
-			continue
-		for target in character.calculate_valid_targets():
-			if target in valid_moves and target not in risky:
-				risky.append(target)
+	for target in grid_manager.tiles_reachable_by(true):
+		if target in valid_moves and target not in risky:
+			risky.append(target)
 	return risky
 
 # Odstrani izbiro in počisti poudarke.

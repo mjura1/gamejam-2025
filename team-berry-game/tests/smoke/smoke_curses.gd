@@ -102,6 +102,15 @@ func _process(_delta: float) -> bool:
 			move_highlighter = battle_instance.get_node("MoveHighlighter")
 			used_rect = battle_instance.get_node("Map/TileMapLayer").get_used_rect()
 
+			# Every stage below teleports pieces onto hand-picked coordinates -
+			# clear the randomly-spawned obstacles first so an occasional house
+			# landing on one of those tiles doesn't flake the test with a
+			# "GridManager.occupy: polje already zasedeno" error.
+			for c in grid_manager.get_all_characters():
+				if c is BaseCharacter and c.is_obstacle:
+					grid_manager.vacate(c.grid_pos)
+					c.queue_free()
+
 			for c in grid_manager.get_all_characters():
 				if c is BaseCharacter and not c.is_obstacle:
 					if c.is_enemy and enemy == null:

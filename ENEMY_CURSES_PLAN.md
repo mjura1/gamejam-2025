@@ -453,11 +453,38 @@ like today (except value-aware captures, which are always-on and mild).
    EASY. The asymmetry (all enemies move, player moves ~1) means small biases are already a
    big swing — resist adding more.
 
-- [ ] value-aware capture + ai_config.json + getters
-- [ ] danger avoidance gated by difficulty, capture step untouched
-- [ ] Unit-ish smoke: board with a pawn and a queen both capturable → AI takes the queen;
+- [x] value-aware capture + ai_config.json + getters
+- [x] danger avoidance gated by difficulty, capture step untouched
+- [x] Unit-ish smoke: board with a pawn and a queen both capturable → AI takes the queen;
       HARD: chase candidate covered by an ally is avoided when an equal-score safe tile
       exists (seed `randf` via fixed difficulty prob 1.0). Print `SMOKE_AI_OK`.
+
+**Deviations:**
+- **CurseData bare-identifier gotcha bites again, more broadly than Phase 1 found:** Phase 1's
+  fix (untype `curse`, `load()` instead of the bare `CurseMarker` class_name) turned out to be
+  necessary but not sufficient in general — a plain, fully untyped `CurseData.get_piece_value(...)`
+  call anywhere in `base_character.gd`'s body (no `BaseCurse` type involved at all) ALSO trips
+  "Identifier not found: CurseData" during the pre-autoload global class scan, since
+  `base_character.gd` itself is `class_name`-declared and therefore eagerly, fully compiled
+  before `--script`/headless autoloads exist. Fixed the same way `player_manager`/
+  `battle_controller`/`tile_map` already are in this file: `@onready var curse_data =
+  get_node("/root/CurseData")` instead of the bare identifier, used throughout
+  `calculate_best_move()`. Verified directly with a throwaway probe function before writing the
+  real implementation, to avoid another silent-hang-shaped surprise.
+- **`ai_config.json` loading lives in `CurseData`, not a new autoload** (per the plan's own
+  §5.1 discussion — "one autoload for all enemy behavior data"): added `get_piece_value(name)`
+  and `get_ai_param(difficulty, key)` to `curse_data.gd` alongside the curse getters, noted in
+  its class comment.
+- **`grid_manager.tiles_reachable_by(is_enemy_side)` reuse point implemented as specified**:
+  `map_behaviour._compute_risk_tiles` now intersects this raw union with `valid_moves` instead
+  of recomputing its own loop; the AI's danger-avoidance step uses the same raw union
+  (`tiles_reachable_by(false)` = ally-reachable tiles, i.e. "danger" from an enemy's perspective).
+- **Found and fixed a pre-existing flaky bug in Phase 2's `smoke_curses.gd`** while writing this
+  phase's own board-teleport tests: it moved pieces onto hardcoded coordinates without clearing
+  randomly-spawned obstacles first, so it would occasionally (rare, but hit during this phase's
+  full-suite run) `push_error` a "polje je že zasedeno" (tile already occupied) collision when a
+  house happened to spawn on one of those tiles. Added the same obstacle-clear-first defensive
+  step `smoke_ai.gd` uses. Confirmed clean across 8+ repeated runs after the fix.
 
 ## Phase 6 — Wrap up
 - [ ] Full `./tests/run_all.sh` green; boot `battle.tscn` headless `--quit-after 5` with a

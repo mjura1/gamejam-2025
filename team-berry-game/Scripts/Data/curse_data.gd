@@ -1,9 +1,14 @@
 # res://Scripts/Data/curse_data.gd
 # Autoload. Prebere Data/curses.json (ogrodje prekletstev sovražnikov), po
 # vzoru item_data.gd ("1 avtoload prebere JSON + registry razredov" vzorec).
+# Nosi TUDI Data/ai_config.json (splošni "enemy behavior" podatki - vrednosti
+# figur za value-aware capture in danger-avoidance verjetnosti po težavnosti,
+# glej base_character.calculate_best_move) - namerno v istem avtoloadu namesto
+# ločenega, da ne množimo majhnih JSON-loaderjev za tesno povezane AI podatke.
 extends Node
 
 const CURSES_PATH := "res://Data/curses.json"
+const AI_CONFIG_PATH := "res://Data/ai_config.json"
 
 # id -> razred (base_curse.gd variante) - "1 osnovni razred, variante" vzorec,
 # enak pieces/items sistemu.
@@ -15,11 +20,13 @@ const CURSE_SCRIPTS: Dictionary = {
 
 var _config: Dictionary = {}
 var _curses: Dictionary = {}
+var _ai_config: Dictionary = {}
 
 func _ready():
 	var parsed := _load_json(CURSES_PATH)
 	_config = parsed.get("config", {})
 	_curses = parsed.get("curses", {})
+	_ai_config = _load_json(AI_CONFIG_PATH)
 
 func _load_json(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
@@ -114,3 +121,17 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> St
 			return id
 
 	return eligible[eligible.size() - 1]
+
+# ----------------- AI_CONFIG (Data/ai_config.json) -----------------
+
+# Relativna vrednost figure (strName) za value-aware capture (glej
+# base_character.calculate_best_move - korak 6, med več hkrati zajemljivimi
+# tarčami izbere najvrednejšo). Privzeto 1, če piece_values nima vnosa.
+func get_piece_value(piece_name: String) -> int:
+	return _ai_config.get("piece_values", {}).get(piece_name, 1)
+
+# Splošen getter za ai_config.json vrednosti po težavnosti (trenutno samo
+# "danger_avoid_prob" - verjetnost, da sovražnik pri "chase" koraku raje
+# izbere polje izven zavezniškega dosega, glej calculate_best_move korak 7).
+func get_ai_param(difficulty: String, key: String, default: float = 0.0) -> float:
+	return _ai_config.get(key, {}).get(difficulty, default)

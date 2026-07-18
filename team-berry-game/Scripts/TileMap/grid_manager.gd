@@ -208,6 +208,32 @@ func get_character_at(grid_pos: Vector2i):
 func get_all_characters():
 	return occupied.values()
 
+# Unija VSEH polj (praznih ALI zasedljivih), ki bi jih katerakoli živa,
+# ne-ovira figura dane frakcije lahko dosegla naslednjo potezo (zajetje v tej
+# igri poteka natanko vzdolž premika - glej calculate_valid_targets). Skupna
+# osnova za:
+#   - item "spyglass" (map_behaviour._compute_risk_tiles presekano z
+#     izbrane figure valid_moves)
+#   - AI "danger avoidance" (base_character.calculate_best_move - raw unija,
+#     brez preseka, glej Phase 5 v ENEMY_CURSES_PLAN.md)
+# is_enemy_side: true = unija sovražnikovih dosegov, false = zaveznikovih.
+func tiles_reachable_by(is_enemy_side: bool) -> Array[Vector2i]:
+	var reachable: Array[Vector2i] = []
+	for character in get_all_characters():
+		if not is_instance_valid(character) or not (character is BaseCharacter):
+			continue
+		# GOTCHA (glej ENEMY_CURSES_PLAN.md POST-SHOP-V2 opombo): character je
+		# tu Variant tudi po "is BaseCharacter" preverjanju - eksplicitno
+		# tipiziran loop var za target, NE ":=", da se AI/spyglass koda ne
+		# zaleti na znano GDScript type-inference napako.
+		if character.is_enemy != is_enemy_side or character.is_obstacle:
+			continue
+		for target in character.calculate_valid_targets():
+			var t: Vector2i = target
+			if t not in reachable:
+				reachable.append(t)
+	return reachable
+
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)
 # ===============================================

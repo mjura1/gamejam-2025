@@ -32,6 +32,15 @@ var grid_manager
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var ability_data = get_node("/root/AbilityData")
 @onready var settings_manager = get_node("/root/SettingsManager")
+# NAMENOMA get_node(), ne bare "CurseData" identifikator (glej Phase 1
+# opombo pri "curse" spodaj/ENEMY_CURSES_PLAN.md): base_character.gd ima
+# class_name, torej ga --script/headless zgodnji "global class scan"
+# eagerly PREVEDE PREDEN so avtoloadi registrirani - CELO en sam gol
+# "CurseData.karkoli()" klic KJERKOLI v telesu te datoteke (ne samo v
+# tipiziranih deklaracijah) sproži "Identifier not found: CurseData" v
+# VSEH smoke testih (preverjeno). get_node() se razreši šele ob teku, ne
+# ob prevajanju - varno.
+@onready var curse_data = get_node("/root/CurseData")
 
 # ----------------- NASTAVITVE IN VREDNOSTI -----------------
 @export var selected: bool = false
@@ -666,23 +675,42 @@ func calculate_best_move() -> Dictionary:
 		is_panicking = true
 
 	# ---------------------------------
-	# 6. CAPTURE HAS ABSOLUTE PRIORITY
+	# 6. CAPTURE HAS ABSOLUTE PRIORITY - VALUE-AWARE (vedno aktivno, ni
+	# gated na težavnost - Miha: "captures stay aggressive, that's the
+	# fun"). Zbere VSE zajemljive tarče na tej potezi in izbere najvrednejšo
+	# (CurseData.get_piece_value, Data/ai_config.json) namesto prve najdene.
 	# ---------------------------------
+	var capture_candidates: Array[Vector2i] = []
 	for pos in valid_targets:
 		var target_char = grid_manager.get_character_at(pos)
-		# 1. Prioriteta: ZAJETJE nasprotnika
 		if target_char and target_char.is_obstacle:
 			continue # skip any obstacle entirely
-
 		if target_char and target_char.is_enemy != is_enemy:
-			return {
-				"move_type": "CAPTURE",
-				"target_pos": pos
-			}
+			capture_candidates.append(pos)
+
+	if not capture_candidates.is_empty():
+		var best_capture: Vector2i = capture_candidates[0]
+		var best_value := -1
+		for pos in capture_candidates:
+			var target_char = grid_manager.get_character_at(pos)
+			var value: int = curse_data.get_piece_value(target_char.strName)
+			if value > best_value:
+				best_value = value
+				best_capture = pos
+		return {
+			"move_type": "CAPTURE",
+			"target_pos": best_capture
+		}
 
 
 	# ---------------------------------
-	# 7. NORMAL CHASE (TOWARD LAST SEEN)
+	# 7. NORMAL CHASE (TOWARD LAST SEEN) - z difficulty-gated "danger
+	# avoidance": z verjetnostjo danger_avoid_prob[difficulty] (EASY 0% /
+	# NORMAL 50% / HARD 100%, Data/ai_config.json) med enako dobrimi
+	# kandidati raje izbere polje, ki ga NOBENA zavezniška figura ne bi
+	# mogla zajeti naslednjo potezo. Če so VSI kandidati nevarni, se vrne
+	# na navadno najboljšo potezo (nikoli se ne "paralizira"). Namerno se
+	# NE uporablja pri zajetju zgoraj - zajetja ostanejo agresivna.
 	# ---------------------------------
 	var best_move: Vector2i = valid_targets[0]
 	var best_score := INF
@@ -692,6 +720,23 @@ func calculate_best_move() -> Dictionary:
 		if score < best_score:
 			best_score = score
 			best_move = pos
+
+	var avoid_prob: float = curse_data.get_ai_param(settings_manager.difficulty, "danger_avoid_prob", 0.0)
+	if avoid_prob > 0.0 and randf() < avoid_prob:
+		var danger_tiles: Array[Vector2i] = grid_manager.tiles_reachable_by(false)
+		var safe_move: Vector2i = best_move
+		var safe_score := INF
+		var found_safe := false
+		for pos in valid_targets:
+			if pos in danger_tiles:
+				continue
+			var score = pos.distance_to(last_known_player_pos)
+			if score < safe_score:
+				safe_score = score
+				safe_move = pos
+				found_safe = true
+		if found_safe:
+			best_move = safe_move
 
 	# ---------------------------------
 	# 8. PANIC RANDOMNESS
