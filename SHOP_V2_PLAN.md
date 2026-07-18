@@ -397,7 +397,16 @@ Your king can't be captured while a friendly rook has line of sight to him.
   a piece) → it must.
 
 ### Phase 5 checklist
-- [ ] 5a divine_intervention + test
+- [x] 5a divine_intervention + test
+
+**Deviations:** the plan suggested a unit test ("set active_party empty + owned
+divine_intervention, call check_battle_end(), assert item consumed and no game_over").
+Adapted to a smoke test instead: the rescue path calls `GF.call_deferred("return_to_map")`,
+which manipulates the REAL running SceneTree's `current_scene` - safe as a standalone smoke
+test process (same pattern as `smoke_battle_end.gd`'s WIN path), but calling it from inside
+`test_*.gd` would run inside `run_unit_tests.gd`'s own shared SceneTree alongside every
+other unit test in that process, risking cross-test interference or a crash if
+`current_map_instance` isn't set up the way a real battle would set it up.
 - [ ] 5b courier_package + badge + test
 - [ ] 5c castle + test
 
