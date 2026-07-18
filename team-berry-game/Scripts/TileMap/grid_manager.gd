@@ -141,6 +141,11 @@ func spawn_character(characterScene: PackedScene, pos: Vector2):
 	# Registracija naj se zgodi takoj po dodajanju v tree
 	register_all_characters_in_scene()
 
+	# Vrnemo instanco, da lahko klicatelj takoj deluje na njej (npr. curse
+	# assignment v battle.gd._maybe_curse) - preverjeno, noben obstoječi
+	# klicatelj (vključno s King.Heal) tega ni uporabljal.
+	return character
+
 
 # FUNKCIJA ZA REGISTRACIJO FIGUR
 func register_all_characters_in_scene():
@@ -202,6 +207,32 @@ func get_character_at(grid_pos: Vector2i):
 
 func get_all_characters():
 	return occupied.values()
+
+# Unija VSEH polj (praznih ALI zasedljivih), ki bi jih katerakoli živa,
+# ne-ovira figura dane frakcije lahko dosegla naslednjo potezo (zajetje v tej
+# igri poteka natanko vzdolž premika - glej calculate_valid_targets). Skupna
+# osnova za:
+#   - item "spyglass" (map_behaviour._compute_risk_tiles presekano z
+#     izbrane figure valid_moves)
+#   - AI "danger avoidance" (base_character.calculate_best_move - raw unija,
+#     brez preseka, glej Phase 5 v ENEMY_CURSES_PLAN.md)
+# is_enemy_side: true = unija sovražnikovih dosegov, false = zaveznikovih.
+func tiles_reachable_by(is_enemy_side: bool) -> Array[Vector2i]:
+	var reachable: Array[Vector2i] = []
+	for character in get_all_characters():
+		if not is_instance_valid(character) or not (character is BaseCharacter):
+			continue
+		# GOTCHA (glej ENEMY_CURSES_PLAN.md POST-SHOP-V2 opombo): character je
+		# tu Variant tudi po "is BaseCharacter" preverjanju - eksplicitno
+		# tipiziran loop var za target, NE ":=", da se AI/spyglass koda ne
+		# zaleti na znano GDScript type-inference napako.
+		if character.is_enemy != is_enemy_side or character.is_obstacle:
+			continue
+		for target in character.calculate_valid_targets():
+			var t: Vector2i = target
+			if t not in reachable:
+				reachable.append(t)
+	return reachable
 
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)
@@ -278,3 +309,13 @@ func reveal_area(positions_to_reveal):
 	for pos in positions_to_reveal:
 		# Odstrani vozlišče megle, če obstaja
 		_remove_fog_tile(pos)
+
+# Prekletstvo "snowfall": zrcalno reveal_area - PONOVNO pokrije polja z
+# meglo. Klicatelj (snowfall_curse.gd) polja že filtrira na mejo plošče, zato
+# tu tega ne preverjamo znova (_spawn_fog_tile je no-op, če megla na tem
+# polju že obstaja). Zavezniki, ki se znajdejo pod novo meglo, se spet
+# razkrijejo na začetku naslednje igralčeve poteze (update_fog_after_turn_start) -
+# namerno, brez posebne izjeme.
+func cover_area(positions_to_cover) -> void:
+	for pos in positions_to_cover:
+		_spawn_fog_tile(pos)

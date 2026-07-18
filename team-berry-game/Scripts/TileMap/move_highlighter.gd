@@ -15,6 +15,13 @@ const PATH_COLOR = Color(0.5, 0.5, 0.5, 0.4) # Siva - pot/L-figura viteza
 const ABILITY_TARGET_COLOR = Color(0.85, 0.65, 0.1, 0.6) # Zlata - cilj sposobnosti (ni premik)
 const RISK_COLOR = Color(0.95, 0.55, 0.1, 0.6) # Oranžna - item "spyglass": polje, ki bi ga sovražnik lahko zajel naslednjo potezo
 
+# Inšpekcija sovražnika (klik na sovražnika, ko ni izbrana nobena zavezniška
+# figura - glej map_behaviour.gd): NAMENOMA vsa polja iste (temnejše rdeče)
+# barve, drugačne od CAPTURE_COLOR - to je predogled dosega, ne moremo ga
+# zamešati z zavezniškim premikom/zajetjem (nikoli ne sobiva z zeleno/zlato/
+# oranžno, saj izbira zaveznika inšpekcijo takoj počisti).
+const ENEMY_PREVIEW_COLOR = Color(0.8, 0.15, 0.15, 0.5)
+
 # Veljavne tarče za trenutno "pending" sposobnost (glej map_behaviour.gd).
 # Ločeno od valid_moves, da se barvno (in pomensko) razlikuje od navadnega
 # premika/zajetja - npr. Bishop.Longshot ne premakne figure.
@@ -24,6 +31,11 @@ var ability_targets: Array[Vector2i] = []
 # naslednjo potezo (glej map_behaviour.gd._apply_selection). Rišemo se
 # NAD valid_moves (glej _draw), da prekrije navadno zeleno/rdečo barvo.
 var risk_tiles: Array[Vector2i] = []
+
+# Inšpekcija sovražnika (glej map_behaviour.gd - klik na sovražnika, ko ni
+# izbrana nobena zavezniška figura): dosegljiva polja TE sovražnikove figure,
+# samo za ogled (display-only - ne gre skozi navadno izbiro/premik).
+var enemy_preview: Array[Vector2i] = []
 
 # ===============================================
 # VIZUALIZACIJA SOVRAŽNIKOVIH POTEZ (NOVO)
@@ -93,6 +105,14 @@ func clear_ability_targets():
 	ability_targets.clear()
 	queue_redraw()
 
+func show_enemy_preview(tiles: Array[Vector2i]):
+	enemy_preview = tiles
+	queue_redraw()
+
+func clear_enemy_preview():
+	enemy_preview.clear()
+	queue_redraw()
+
 # Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih).
 func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_capture: bool) -> void:
 	enemy_move_flashes.append({
@@ -134,3 +154,6 @@ func _draw():
 
 	for grid_pos in risk_tiles:
 		_draw_cell(grid_pos, RISK_COLOR)
+
+	for grid_pos in enemy_preview:
+		_draw_cell(grid_pos, ENEMY_PREVIEW_COLOR)

@@ -32,6 +32,15 @@ var grid_manager
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var ability_data = get_node("/root/AbilityData")
 @onready var settings_manager = get_node("/root/SettingsManager")
+# NAMENOMA get_node(), ne bare "CurseData" identifikator (glej Phase 1
+# opombo pri "curse" spodaj/ENEMY_CURSES_PLAN.md): base_character.gd ima
+# class_name, torej ga --script/headless zgodnji "global class scan"
+# eagerly PREVEDE PREDEN so avtoloadi registrirani - CELO en sam gol
+# "CurseData.karkoli()" klic KJERKOLI v telesu te datoteke (ne samo v
+# tipiziranih deklaracijah) sproži "Identifier not found: CurseData" v
+# VSEH smoke testih (preverjeno). get_node() se razreši šele ob teku, ne
+# ob prevajanju - varno.
+@onready var curse_data = get_node("/root/CurseData")
 
 # ----------------- NASTAVITVE IN VREDNOSTI -----------------
 @export var selected: bool = false
@@ -76,6 +85,27 @@ var is_converted_ally: bool = false
 # po igralčevi potezi, kot AI (glej BattleController._move_autonomous_allies).
 var is_autonomous: bool = false
 
+# Prekletstvo sovražnika (od nadstropja 2 naprej, glej battle.gd._maybe_curse) -
+# null, če figura ni prekleta. Glej Scripts/Curses/base_curse.gd.
+# NAMERNO netipizirano (ne "var curse: BaseCurse", glej tudi apply_curse
+# spodaj): base_character.gd je del enega globalno skeniranih class_name
+# skriptov (BaseCharacter), ki se v --script/headless zagonih (VSI smoke
+# testi + run_unit_tests.gd) eagerly prevedejo PREDEN so avtoloadi (CurseData)
+# sploh registrirani kot globalni identifikatorji. Vsaka statična tipizacija
+# (class var, funkcijski parameter, celo lokalen typed var znotraj metode) na
+# BaseCurse tu prisili GDScript, da polno prevede base_curse.gd (ki bere
+# CurseData v svojih metodah) v tem zgodnjem koraku -> "Identifier not found:
+# CurseData" compile error. Zato ostane ne-tipizirano povsod v tej datoteki;
+# curse_marker.gd sam SME tipizirati na BaseCurse (glej apply_curse spodaj -
+# nalagamo ga z load(), ne z golim CurseMarker identifikatorjem, iz istega
+# razloga).
+var curse = null
+
+# Prekletstvo "stunning_gaze": koliko igralčevih potez ta figura še ne more
+# premikati/uporabljati sposobnosti (glej calculate_valid_targets/
+# activate_ability spodaj in BattleController.end_player_turn tick-down).
+var stunned_turns: int = 0
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -106,8 +136,37 @@ func on_grid_manager_registered():
 
 	# Za debug:
 	print("%s: Uspešno registriran in inicializiran na mreži %s." % [self.name, str(grid_pos)])
-		
-		
+
+# Dodeli prekletstvo tej figuri (glej battle.gd._maybe_curse) in doda njen
+# vizualni marker (delci/pulzirajoč tint ali statična oblika, glej
+# Scripts/Curses/curse_marker.gd - reduced_motion preklop). "new_curse"
+# NAMERNO netipiziran (glej opombo pri "var curse" zgoraj). Iz istega razloga
+# CurseMarker nalagamo z load() namesto z golim class_name identifikatorjem -
+# ta bi enako prisilil zgodnji compile base_curse.gd/CurseData.
+func apply_curse(new_curse) -> void:
+	curse = new_curse
+	var marker = load("res://Scripts/Curses/curse_marker.gd").new()
+	marker.name = "CurseMarker"
+	add_child(marker)
+	marker.setup(self, curse)
+
+
+# King.Cleanse: obrnjena figura NE obdrži prekletstva kot zaveznica - eno
+# mesto resnice za "odstrani prekletstvo" (počisti stanje + vizualni marker/
+# tint), da ga ni treba podvajati na vsakem klicnem mestu.
+func clear_curse() -> void:
+	curse = null
+	var marker := get_node_or_null("CurseMarker")
+	if marker:
+		# remove_child() PRED queue_free(): queue_free() sam po sebi šele
+		# odloženo (konec sličice) odstrani vozlišče - brez remove_child()
+		# bi get_node_or_null("CurseMarker") še kratek čas vrnil staro
+		# vozlišče, čeprav je "logično" že počiščeno.
+		remove_child(marker)
+		marker.queue_free()
+	modulate = Color.WHITE
+
+
 # ----------------- GIBANJE IN CILJANJE -----------------
 
 func get_move_directions() -> Array[Vector2i]:
@@ -135,6 +194,11 @@ func is_castle_protected() -> bool:
 
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
+
+	# Prekletstvo "stunning_gaze": omamljena figura se ne more premakniti
+	# (traja natanko igralčevo naslednjo potezo, glej BattleController.end_player_turn).
+	if stunned_turns > 0:
+		return targets
 
 	# Bishop.Traps: dokler je ta figura ujeta v sovražnikovo cono, se ne more
 	# premakniti nikamor.
@@ -486,6 +550,9 @@ func get_ability_targets(slot: int) -> Array[Vector2i]:
 func activate_ability(slot: int, target = null) -> bool:
 	if is_enemy:
 		return false
+	# Prekletstvo "stunning_gaze": omamljena figura ne more uporabiti sposobnosti.
+	if stunned_turns > 0:
+		return false
 	if not is_instance_valid(battle_controller) or not battle_controller.can_use_ability():
 		return false
 	var defs := get_ability_defs()
@@ -624,23 +691,42 @@ func calculate_best_move() -> Dictionary:
 		is_panicking = true
 
 	# ---------------------------------
-	# 6. CAPTURE HAS ABSOLUTE PRIORITY
+	# 6. CAPTURE HAS ABSOLUTE PRIORITY - VALUE-AWARE (vedno aktivno, ni
+	# gated na težavnost - Miha: "captures stay aggressive, that's the
+	# fun"). Zbere VSE zajemljive tarče na tej potezi in izbere najvrednejšo
+	# (CurseData.get_piece_value, Data/ai_config.json) namesto prve najdene.
 	# ---------------------------------
+	var capture_candidates: Array[Vector2i] = []
 	for pos in valid_targets:
 		var target_char = grid_manager.get_character_at(pos)
-		# 1. Prioriteta: ZAJETJE nasprotnika
 		if target_char and target_char.is_obstacle:
 			continue # skip any obstacle entirely
-
 		if target_char and target_char.is_enemy != is_enemy:
-			return {
-				"move_type": "CAPTURE",
-				"target_pos": pos
-			}
+			capture_candidates.append(pos)
+
+	if not capture_candidates.is_empty():
+		var best_capture: Vector2i = capture_candidates[0]
+		var best_value := -1
+		for pos in capture_candidates:
+			var target_char = grid_manager.get_character_at(pos)
+			var value: int = curse_data.get_piece_value(target_char.strName)
+			if value > best_value:
+				best_value = value
+				best_capture = pos
+		return {
+			"move_type": "CAPTURE",
+			"target_pos": best_capture
+		}
 
 
 	# ---------------------------------
-	# 7. NORMAL CHASE (TOWARD LAST SEEN)
+	# 7. NORMAL CHASE (TOWARD LAST SEEN) - z difficulty-gated "danger
+	# avoidance": z verjetnostjo danger_avoid_prob[difficulty] (EASY 0% /
+	# NORMAL 50% / HARD 100%, Data/ai_config.json) med enako dobrimi
+	# kandidati raje izbere polje, ki ga NOBENA zavezniška figura ne bi
+	# mogla zajeti naslednjo potezo. Če so VSI kandidati nevarni, se vrne
+	# na navadno najboljšo potezo (nikoli se ne "paralizira"). Namerno se
+	# NE uporablja pri zajetju zgoraj - zajetja ostanejo agresivna.
 	# ---------------------------------
 	var best_move: Vector2i = valid_targets[0]
 	var best_score := INF
@@ -650,6 +736,23 @@ func calculate_best_move() -> Dictionary:
 		if score < best_score:
 			best_score = score
 			best_move = pos
+
+	var avoid_prob: float = curse_data.get_ai_param(settings_manager.difficulty, "danger_avoid_prob", 0.0)
+	if avoid_prob > 0.0 and randf() < avoid_prob:
+		var danger_tiles: Array[Vector2i] = grid_manager.tiles_reachable_by(false)
+		var safe_move: Vector2i = best_move
+		var safe_score := INF
+		var found_safe := false
+		for pos in valid_targets:
+			if pos in danger_tiles:
+				continue
+			var score = pos.distance_to(last_known_player_pos)
+			if score < safe_score:
+				safe_score = score
+				safe_move = pos
+				found_safe = true
+		if found_safe:
+			best_move = safe_move
 
 	# ---------------------------------
 	# 8. PANIC RANDOMNESS

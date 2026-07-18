@@ -2,6 +2,8 @@ extends Node
 
 @onready var grid_manager = $GridManager
 @onready var battle_controller = $BattleController # Dodana referenca za zagon bitke
+@onready var player_manager = get_node("/root/PlayerManager")
+@onready var settings_manager = get_node("/root/SettingsManager")
 
 const obstacle: PackedScene = preload("res://Scenes/CharacterPiecesNodes/Neutral/House.tscn")
 
@@ -31,9 +33,8 @@ const enemy_pieces := {
 	
 
 func _ready() -> void:
-	
-	# Preverimo, ali obstaja PlayerManager in ga shranimo
-	var player_manager = get_node("/root/PlayerManager")
+
+	# Preverimo, ali obstaja PlayerManager
 	if not is_instance_valid(player_manager):
 		push_error("PlayerManager singleton ni naložen")
 		return
@@ -83,12 +84,31 @@ func _ready() -> void:
 					continue
 					
 				var piece_name = to_spawn_enemy.pop_at(randi_range(0, to_spawn_enemy.size() - 1))
-				grid_manager.spawn_character(enemy_pieces[piece_name], grid_manager.grid_to_world(Vector2(x, y)))
-				
-	
+				var enemy = grid_manager.spawn_character(enemy_pieces[piece_name], grid_manager.grid_to_world(Vector2(x, y)))
+				_maybe_curse(enemy)
+
+
 	# Zagon BattleControllerja, ki inicializira meglo in začne igro.
 	if is_instance_valid(battle_controller):
 		battle_controller.initialize_battle()
-	
-	
 
+
+# Prekletstva (Scripts/Curses/): od nadstropja 2 naprej ima vsak spawnan
+# sovražnik CurseData.get_curse_chance() možnost, da dobi naključno
+# prekletstvo (uteženo, glej CurseData.roll_curse_for - excluded_pieces).
+# Verjetnost je odvisna od izbrane težavnosti (SettingsManager.difficulty -
+# easy/normal/hard, glej Data/curses.json config.difficulty_chance_mult).
+func _maybe_curse(enemy) -> void:
+	if not is_instance_valid(enemy):
+		return
+	var current_floor: int = 0
+	if is_instance_valid(player_manager):
+		current_floor = player_manager.current_map_floor
+	var difficulty := "normal"
+	if is_instance_valid(settings_manager):
+		difficulty = settings_manager.difficulty
+	if not CurseData.should_curse(current_floor, randf(), difficulty):
+		return
+	var curse_id := CurseData.roll_curse_for(enemy.strName)
+	if curse_id != "":
+		enemy.apply_curse(CurseData.create_curse(curse_id))

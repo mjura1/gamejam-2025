@@ -11,6 +11,11 @@ signal back_pressed
 @onready var restore_button: Button = %RestoreButton
 @onready var back_button: Button = %BackButton
 @onready var reduced_motion_check: CheckBox = %ReducedMotionCheck
+@onready var difficulty_option: OptionButton = %DifficultyOption
+
+# Vrstni red mora ustrezati OptionButton item indeksom v settings_menu.tscn
+# (0=EASY, 1=NORMAL, 2=HARD).
+const DIFFICULTY_IDS := ["easy", "normal", "hard"]
 
 const MODIFIER_KEYCODES := [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META, KEY_CAPSLOCK]
 
@@ -24,11 +29,20 @@ func _ready():
 	back_button.pressed.connect(_on_back_pressed)
 	reduced_motion_check.button_pressed = SettingsManager.reduced_motion
 	reduced_motion_check.toggled.connect(_on_reduced_motion_toggled)
+	difficulty_option.selected = DIFFICULTY_IDS.find(SettingsManager.difficulty)
+	difficulty_option.item_selected.connect(_on_difficulty_selected)
 	_build_rows()
 
 
 func _on_reduced_motion_toggled(enabled: bool):
 	SettingsManager.set_reduced_motion(enabled)
+
+
+func _on_difficulty_selected(index: int):
+	UiAudio.play_click()
+	if index < 0 or index >= DIFFICULTY_IDS.size():
+		return
+	SettingsManager.set_difficulty(DIFFICULTY_IDS[index])
 
 
 func _build_rows():
