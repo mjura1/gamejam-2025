@@ -271,6 +271,10 @@ func remove_item(id: String) -> bool:
 func get_item_count(id: String) -> int:
 	return owned_items.get(id, 0)
 
+# Pasivni itemi: aktivni, dokler je v inventarju vsaj 1 kos.
+func has_passive(id: String) -> bool:
+	return owned_items.get(id, 0) > 0 and ItemData.get_kind(id) == "passive"
+
 # Kupi 1x item po ceni iz ItemData. Zavrne, če ni dovolj upgrade_items.
 func try_buy_item(id: String) -> bool:
 	var cost: int = ItemData.get_buy_cost(id)

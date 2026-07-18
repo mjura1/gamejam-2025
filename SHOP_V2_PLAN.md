@@ -195,7 +195,7 @@ drag-to-use path calls it (guarded in Phase 3).
    In `use_item()` (l.885) guard `if ItemData.get_kind(id) != "consumable": return false`
    (belt and braces; also `create_item` would return null).
 
-- [ ] has_passive + drawer passive rows + use_item guard
+- [x] has_passive + drawer passive rows + use_item guard
 
 ## Phase 4 — Common items
 

@@ -830,7 +830,10 @@ func _build_item_row(id: String, count: int) -> Control:
 	var row := PanelContainer.new()
 	row.custom_minimum_size = Vector2(0, 40)
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
-	row.gui_input.connect(_on_item_row_input.bind(id))
+
+	var is_passive: bool = ItemData.get_kind(id) == "passive"
+	if not is_passive:
+		row.gui_input.connect(_on_item_row_input.bind(id))
 
 	var hbox := HBoxContainer.new()
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -848,6 +851,13 @@ func _build_item_row(id: String, count: int) -> Control:
 	label.text = "x%d" % count
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(label)
+
+	if is_passive:
+		var passive_label := Label.new()
+		passive_label.text = "PASSIVE"
+		passive_label.add_theme_font_size_override("font_size", 10)
+		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(passive_label)
 
 	return row
 
@@ -885,6 +895,8 @@ func _resolve_item_drop(screen_pos: Vector2):
 func use_item(id: String, grid_pos: Vector2i) -> bool:
 	if player_manager.get_item_count(id) <= 0:
 		return false
+	if ItemData.get_kind(id) != "consumable":
+		return false # pasivni itemi niso vlečljivi/uporabni (belt and braces; create_item vrne null tudi)
 	var item: BaseItem = ItemData.create_item(id)
 	if item == null:
 		return false

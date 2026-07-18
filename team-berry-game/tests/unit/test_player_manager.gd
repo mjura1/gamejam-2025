@@ -148,3 +148,17 @@ func test_set_starting_resets_upgrades_and_items():
 	pm.setStarting()
 	assert_eq(pm.upgrade_items, 0, "a new run should start with 0 upgrade items")
 	assert_eq(pm.get_piece_upgrades("pawn")["levels"][1], 1, "a new run should reset all piece upgrades to level 1")
+
+func test_has_passive_false_when_not_owned():
+	var pm = PlayerManagerScript.new()
+	assert_false(pm.has_passive("spyglass"), "has_passive should be false when the item isn't owned")
+
+func test_has_passive_true_when_owned():
+	var pm = PlayerManagerScript.new()
+	pm.add_item("spyglass", 1)
+	assert_true(pm.has_passive("spyglass"), "has_passive should be true once at least 1 copy is owned")
+
+func test_has_passive_false_for_consumable_even_if_owned():
+	var pm = PlayerManagerScript.new()
+	pm.add_item("extra_move", 1)
+	assert_false(pm.has_passive("extra_move"), "has_passive should be false for consumable-kind items")
