@@ -450,18 +450,24 @@ lighter hand-rolled one) to call `PlayerManager.setStarting("infinite")`, set
 `ENEMY_TURN` state, tick a few frames, assert no enemy piece's `grid_pos` changed and the state
 returned to `PLAYER_TURN`. Print `SMOKE_TUTORIAL_AI_OK`.
 
-- [ ] `smoke_start_new_game.gd` updated for the new PLAY → Mode Select → CLASSIC flow
-- [ ] `smoke_mode_select.gd` added + wired into `run_all.sh`
-- [ ] `smoke_infinite_mode.gd` added + wired into `run_all.sh`
-- [ ] `smoke_tutorial_ai_disabled.gd` added + wired into `run_all.sh`
-- [ ] Full `./tests/run_all.sh` green
-- [ ] Boot checks with zero ERROR lines: `main_menu.tscn`, `mode_select_menu.tscn` (as a
-      standalone scene, if it's given its own script entry point for testing) and
-      `tutorial_hub_menu.tscn`, `tutorial_movement.tscn`
-- [ ] `godot4 --headless --import --path team-berry-game` re-run after adding the new scenes
+- [x] `smoke_start_new_game.gd` updated for the new PLAY → Mode Select → CLASSIC flow
+- [x] `smoke_mode_select.gd` added + wired into `run_all.sh`
+- [x] `smoke_infinite_mode.gd` added + wired into `run_all.sh`
+- [x] `smoke_tutorial_ai_disabled.gd` added + wired into `run_all.sh`
+- [x] Full `./tests/run_all.sh` green (all 38 checks). The "3 pre-existing failures" noted
+      in §4 were NOT pre-existing after all: `smoke_campfire_flow` and `smoke_shop_map_flow`
+      also called `_on_start_pressed()` (this plan's §0 claim that only
+      `smoke_start_new_game` drives the real Start flow was wrong) — the Phase 1 rename
+      made their `has_method()` gate return false forever, a silent no-op with zero errors.
+      Both now drive PLAY → overlay CLASSIC like `smoke_start_new_game`. `smoke_spyglass`
+      just flakes occasionally; it passed unmodified in both full runs.
+- [x] Boot checks with zero ERROR lines: `main_menu.tscn`, `mode_select_menu.tscn` (boots
+      fine standalone as-is — its script only needs autoloads), `tutorial_hub_menu.tscn`,
+      `tutorial_movement.tscn`
+- [x] `godot4 --headless --import --path team-berry-game` re-run after adding the new scenes
       (needed for `.import` files to exist before any scene-loading test can find them)
-- [ ] `CHANGELOG.md` entry added (repo keeps one)
-- [ ] Commits: small, per-phase, imperative English messages matching `git log` style, each
+- [x] `CHANGELOG.md` entry added (repo keeps one)
+- [x] Commits: small, per-phase, imperative English messages matching `git log` style, each
       ending with the Claude co-author line already used in this repo. Do NOT merge to
       `develop` — leave the branch for review.
 

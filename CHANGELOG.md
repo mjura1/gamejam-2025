@@ -1,3 +1,38 @@
+# Winter March — play modes (Mode Select + Infinite + Tutorial hub) → features/play-modes (awaiting review)
+
+New feature on `features/play-modes` (NOT merged — left for review): the main menu's
+"START GAME" button is now **PLAY** and opens a **Mode Select** overlay (same
+instantiate/hide/free overlay pattern as the settings menu) offering **CLASSIC**,
+**INFINITE**, **TUTORIAL**, **BACK**, plus one shared EASY/NORMAL/HARD difficulty
+selector (a second view of `SettingsManager.difficulty`, with a static `tooltip_text`
+bubble quoting what each difficulty actually changes).
+
+- **CLASSIC**: today's 3-tier run, unchanged.
+- **INFINITE**: same run, but `GameFlow.advance_map_tier()` only ends the run at tier 3
+  when `PlayerManager.game_mode != "infinite"` (new field, set by `setStarting(mode)` —
+  signature gained a defaulted param, all other callers are zero-arg). Tier 3+ maps
+  silently reuse the tier-2 config forever via `MapGenerator._configure_tier()`'s
+  existing clamp — zero generator changes.
+- **TUTORIAL**: a real scene (not an overlay) — scrollable hub listing stages from
+  `Data/tutorials.json` via the new `TutorialData` autoload, entered/left through
+  `GF.start_tutorial_hub()/start_tutorial_stage()/return_to_tutorial_hub()`. One
+  concrete stage ("Moving & Capturing", built from `piece_test.tscn`) with the new
+  `@export var ai_enabled` on `BattleController`: when false, `start_enemy_turn()`
+  immediately hands the turn back, so enemies stand still while the player practices.
+  The stage populates `PlayerManager.active_party/active_enemies` itself (no run is
+  active) with a `"tutorial_keepalive"` enemy entry so `check_battle_end()` can never
+  fire a victory/defeat transition — the stage exits only via BACK.
+
+Tests: `run_all.sh` gained `smoke_mode_select` (overlay open/close contract),
+`smoke_infinite_mode` (tier 2→3 keeps generating maps on the clamped tier-2 config,
+run not ended) and `smoke_tutorial_ai_disabled` (enemy `grid_pos` frozen across a full
+turn cycle). Gotcha caught during this: renaming `_on_start_pressed` →
+`_on_play_pressed` silently no-op'd **three** smoke tests, not one —
+`smoke_campfire_flow` and `smoke_shop_map_flow` also drove the real Start button via
+`has_method("_on_start_pressed")`, which just returns false forever after a rename
+(zero errors, no marker, looks like a flaky test). All three now drive the real
+two-press flow: `_on_play_pressed()` → overlay `._on_classic_pressed()`.
+
 # Winter March — enemy curses, inspection, difficulty selector, AI improvements → develop
 
 New feature on `features/enemy-curses` (built on top of shop v2): from **floor 2 onward**,

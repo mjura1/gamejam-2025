@@ -88,9 +88,24 @@ check_scene "main_menu.tscn" "res://Scenes/Menu/main_menu.tscn"
 check_scene "map.tscn" "res://Scenes/Map/map.tscn"
 echo
 
-echo "== Main menu Start -> GameFlow._initialize_game() smoke test =="
+echo "== Main menu Play -> Mode Select CLASSIC -> GameFlow._initialize_game() smoke test =="
 check_script "smoke_start_new_game" "res://tests/smoke/smoke_start_new_game.gd" 5 \
 	"SMOKE TEST: map initialized cleanly via the real Start flow"
+echo
+
+echo "== Mode Select overlay open/close smoke test =="
+check_script "smoke_mode_select" "res://tests/smoke/smoke_mode_select.gd" 5 \
+	"SMOKE_MODE_SELECT_OK"
+echo
+
+echo "== Infinite mode tier-3 continuation smoke test =="
+check_script "smoke_infinite_mode" "res://tests/smoke/smoke_infinite_mode.gd" 8 \
+	"SMOKE_INFINITE_MODE_OK"
+echo
+
+echo "== Tutorial stage AI-disabled smoke test =="
+check_script "smoke_tutorial_ai_disabled" "res://tests/smoke/smoke_tutorial_ai_disabled.gd" 8 \
+	"SMOKE_TUTORIAL_AI_OK"
 echo
 
 echo "== Campfire room -> Campfire scene -> REST -> BACK -> map smoke test =="
