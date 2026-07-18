@@ -47,6 +47,8 @@ enum Stage {
 	SETUP_FRENZY, WAIT_FRENZY,
 	SETUP_SNOWFALL, WAIT_SNOWFALL,
 	STUNNING_GAZE, # popolnoma sinhrono, glej _run_stunning_gaze_stage
+	NEW_CURSES, # popolnoma sinhrono, glej _run_new_curses_stage (fey_step/changeling/abduction/entangle/wraith_cloak/contagion)
+	SETUP_BLOODLUST, WAIT_BLOODLUST,
 	KING_CLEANSE, # popolnoma sinhrono, glej _run_king_cleanse_stage
 	SETUP_TICK_DOWN, WAIT_TICK_DOWN,
 	DONE,
@@ -93,6 +95,10 @@ func _teleport(character: BaseCharacter, pos: Vector2i):
 
 func _stun_badge_visible(character: BaseCharacter) -> bool:
 	var badge := character.get_node_or_null("StunBadge")
+	return badge != null and badge.visible
+
+func _root_badge_visible(character: BaseCharacter) -> bool:
+	var badge := character.get_node_or_null("RootBadge")
 	return badge != null and badge.visible
 
 func _process(_delta: float) -> bool:
@@ -181,6 +187,23 @@ func _process(_delta: float) -> bool:
 
 		Stage.STUNNING_GAZE:
 			_run_stunning_gaze_stage(battle_controller)
+			stage = Stage.NEW_CURSES
+
+		Stage.NEW_CURSES:
+			_run_new_curses_stage(battle_controller)
+			stage = Stage.SETUP_BLOODLUST
+
+		Stage.SETUP_BLOODLUST:
+			_run_setup_bloodlust_stage(battle_controller)
+			stage = Stage.WAIT_BLOODLUST
+
+		Stage.WAIT_BLOODLUST:
+			if not (battle_controller.current_state == battle_controller.BattleState.PLAYER_TURN \
+					and battle_controller.turn_count > turn_count_before):
+				return false # enemy turn still in progress
+
+			_check("bloodlust-cursed enemy produced 2 move flashes (1 capture + 1 bonus action)",
+				move_highlighter.enemy_move_flashes.size() == 2)
 			stage = Stage.KING_CLEANSE
 
 		Stage.KING_CLEANSE:
@@ -249,6 +272,137 @@ func _run_stunning_gaze_stage(battle_controller) -> void:
 	ally.stunned_turns = 0
 	gaze.on_action_taken(enemy, battle_controller)
 	_check("stunning_gaze can stun again once its cooldown is exhausted", ally.stunned_turns > 0)
+
+# Novih 6 prekletstev (fey_step/entangle/changeling/abduction/wraith_cloak/
+# contagion) - vse popolnoma sinhrone (nobena od njihovih on_action_taken/
+# on_applied ne await-a ničesar), varno jih je pognati v celoti znotraj enega
+# _process() klica, enako kot _run_stunning_gaze_stage zgoraj. bloodlust je
+# IZLOČEN v svoj lasten SETUP/WAIT par (glej spodaj) - potrebuje pravi
+# start_enemy_turn()/AI pipeline, ne direktnega hook klica, in "ally" bi bila
+# ob zajetju uničena (queue_free), zato porabi SVOJO začasno figuro namesto
+# skupne "ally" spremenljivke, ki jo potrebujejo poznejše faze.
+func _run_new_curses_stage(battle_controller) -> void:
+	# --- fey_step: nosilec ne sme zajemati ---
+	var fey = curse_data.create_curse("fey_step") # BaseCurse - glej "gaze" opombo zgoraj, zakaj netipizirano
+	enemy.curse = fey
+	_teleport(enemy, Vector2i(5, 5))
+	_teleport(ally, Vector2i(5, 6)) # sosednje polje - bi bilo sicer zajemljivo
+	enemy.has_spotted_player = true
+	enemy.last_known_player_pos = ally.grid_pos
+	var fey_action: Dictionary = enemy.calculate_best_move()
+	_check("fey_step-cursed enemy never offers a capture on an adjacent ally",
+		fey_action.get("target_pos", Vector2i(-999, -999)) != ally.grid_pos)
+
+	# --- fey_step: blink (forsiran na 100% verjetnost, da ni flaky) ---
+	var original_blink_chance = curse_data.get_param("fey_step", "blink_chance", 0.5)
+	curse_data._curses["fey_step"]["blink_chance"] = 1.0
+	_teleport(enemy, Vector2i(used_rect.position.x, used_rect.position.y))
+	var before_blink: Vector2i = enemy.grid_pos
+	fey.on_action_taken(enemy, battle_controller)
+	_check("fey_step blink (100% forced) moved the enemy to a new tile",
+		is_instance_valid(enemy) and enemy.grid_pos != before_blink)
+	_check("grid_manager occupancy follows the fey_step blink",
+		grid_manager.get_character_at(enemy.grid_pos) == enemy)
+	curse_data._curses["fey_step"]["blink_chance"] = original_blink_chance
+
+	# --- entangle: ukorenini najbližjega vidnega zaveznika ---
+	var tangle = curse_data.create_curse("entangle") # BaseCurse - glej "gaze" opombo zgoraj, zakaj netipizirano
+	enemy.curse = tangle
+	_teleport(enemy, Vector2i(3, 3))
+	_teleport(ally, Vector2i(4, 3)) # sosednje, v sovražnikovem vidnem polju
+	ally.rooted_turns = 0
+	tangle.on_action_taken(enemy, battle_controller)
+	_check("entangle rooted the closest visible ally",
+		ally.rooted_turns == curse_data.get_param("entangle", "duration", 1))
+	_check("battle_ui set the RootBadge on the rooted ally", _root_badge_visible(ally))
+
+	var remaining_targets: Array = ally.calculate_valid_targets()
+	var only_captures := true
+	for pos in remaining_targets:
+		var t = grid_manager.get_character_at(pos)
+		if t == null or t.is_enemy == ally.is_enemy:
+			only_captures = false
+	_check("rooted ally's remaining valid targets (if any) are capture-only", only_captures)
+	ally.rooted_turns = 0
+
+	# --- changeling: zamenja mesto z najbližjim soborcem ---
+	var bishop_scene: PackedScene = battle_instance.enemy_pieces["enemy_bishop"]
+	grid_manager.spawn_character(bishop_scene, grid_manager.grid_to_world(Vector2i(2, 2)))
+	var partner: BaseCharacter = grid_manager.get_character_at(Vector2i(2, 2))
+	_teleport(enemy, Vector2i(1, 1))
+	var change = curse_data.create_curse("changeling") # BaseCurse - glej "gaze" opombo zgoraj, zakaj netipizirano
+	enemy.curse = change
+	var enemy_pos_before: Vector2i = enemy.grid_pos
+	var partner_pos_before: Vector2i = partner.grid_pos
+	change.on_action_taken(enemy, battle_controller)
+	_check("changeling swapped positions with its closest fellow enemy",
+		enemy.grid_pos == partner_pos_before and partner.grid_pos == enemy_pos_before)
+	_check("grid_manager occupancy reflects the changeling swap",
+		grid_manager.get_character_at(enemy_pos_before) == partner \
+			and grid_manager.get_character_at(partner_pos_before) == enemy)
+	grid_manager.vacate(partner.grid_pos)
+	partner.queue_free()
+
+	# --- abduction: zamenja mesto z najbližjim vidnim zaveznikom ---
+	_teleport(enemy, Vector2i(3, 3))
+	_teleport(ally, Vector2i(4, 3))
+	var abduct = curse_data.create_curse("abduction") # BaseCurse - glej "gaze" opombo zgoraj, zakaj netipizirano
+	enemy.curse = abduct
+	var enemy_pos_before2: Vector2i = enemy.grid_pos
+	var ally_pos_before2: Vector2i = ally.grid_pos
+	abduct.on_action_taken(enemy, battle_controller)
+	_check("abduction swapped positions with the closest visible ally",
+		enemy.grid_pos == ally_pos_before2 and ally.grid_pos == enemy_pos_before2)
+	# Po zamenjavi je "enemy" na (4,3) in "ally" na (3,3) - KING_CLEANSE
+	# stopnja spodaj rabi (3,3)/(3,5) prosta, SETUP_TICK_DOWN pa rabi "ally"
+	# pravilno registriranega v grid_managerju. NAJPREJ umaknemo sovražnika,
+	# ŠELE NATO zaveznika na (4,3) - obratni vrstni red bi trčil (zaveznik bi
+	# poskušal zasesti polje, ki ga sovražnik še vedno zaseda, kar
+	# grid_manager.occupy samo tiho zavrne - "ally" bi ostal brez veljavnega
+	# grid_pos vpisa v occupied slovarju).
+	_teleport(enemy, Vector2i(used_rect.position.x, used_rect.position.y))
+	_teleport(ally, Vector2i(4, 3))
+
+	# --- wraith_cloak: on_applied TAKOJ pokrije lastno polje ---
+	grid_manager.clear_all_curse_fog()
+	_teleport(enemy, Vector2i(used_rect.position.x, used_rect.position.y))
+	enemy.apply_curse(curse_data.create_curse("wraith_cloak"))
+	_check("wraith_cloak covers its own tile the instant it's applied",
+		grid_manager.curse_fog_nodes.has(enemy.grid_pos))
+	grid_manager.clear_all_curse_fog()
+
+	# --- contagion: pokrije + območje IN označi svoja polja kot "spreading" ---
+	var contagion = curse_data.create_curse("contagion") # BaseCurse - glej "gaze" opombo zgoraj, zakaj netipizirano
+	enemy.curse = contagion
+	_teleport(enemy, Vector2i(used_rect.position.x, used_rect.position.y))
+	contagion.on_action_taken(enemy, battle_controller)
+	_check("contagion covered the enemy's own landing tile",
+		grid_manager.curse_fog_nodes.has(enemy.grid_pos))
+	_check("contagion registered its tile as spreading",
+		grid_manager.curse_fog_spread.has(enemy.grid_pos))
+	grid_manager.clear_all_curse_fog()
+
+# Prekletstvo "bloodlust": porabi SVOJO začasno zavezniško figuro (ne skupno
+# "ally"), ker jo bo sovražnik dejansko zajel - "ally" mora preživeti do
+# SETUP_TICK_DOWN stopnje spodaj. Vodeno skozi PRAVI start_enemy_turn()
+# pipeline (ne direkten hook klic) - bonus akcija je vezana v
+# BattleController.start_enemy_turn()-ovo zanko, ne v curse.on_action_taken.
+var bloodlust_target: BaseCharacter = null
+
+func _run_setup_bloodlust_stage(battle_controller) -> void:
+	grid_manager.clear_all_curse_fog()
+
+	var pawn_scene: PackedScene = battle_instance.friendly_pieces["friendly_pawn"]
+	grid_manager.spawn_character(pawn_scene, grid_manager.grid_to_world(Vector2i(used_rect.position.x + 1, used_rect.position.y)))
+	bloodlust_target = grid_manager.get_character_at(Vector2i(used_rect.position.x + 1, used_rect.position.y))
+
+	enemy.curse = curse_data.create_curse("bloodlust")
+	enemy.has_spotted_player = true
+	_teleport(enemy, Vector2i(used_rect.position.x, used_rect.position.y))
+	enemy.last_known_player_pos = bloodlust_target.grid_pos
+
+	turn_count_before = battle_controller.turn_count
+	battle_controller.start_enemy_turn() # fire-and-forget, see header note
 
 # King.Cleanse: converted enemies must NOT keep their curse as an ally (glej
 # king.gd._do_cleanse -> base_character.clear_curse). Spawns a FRESH, SEPARATE

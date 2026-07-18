@@ -17,6 +17,13 @@ const CURSE_SCRIPTS: Dictionary = {
 	"frenzy": preload("res://Scripts/Curses/frenzy_curse.gd"),
 	"stunning_gaze": preload("res://Scripts/Curses/stunning_gaze_curse.gd"),
 	"blizzard": preload("res://Scripts/Curses/blizzard_curse.gd"),
+	"fey_step": preload("res://Scripts/Curses/fey_step_curse.gd"),
+	"changeling": preload("res://Scripts/Curses/changeling_curse.gd"),
+	"abduction": preload("res://Scripts/Curses/abduction_curse.gd"),
+	"entangle": preload("res://Scripts/Curses/entangle_curse.gd"),
+	"wraith_cloak": preload("res://Scripts/Curses/wraith_cloak_curse.gd"),
+	"contagion": preload("res://Scripts/Curses/contagion_curse.gd"),
+	"bloodlust": preload("res://Scripts/Curses/bloodlust_curse.gd"),
 }
 
 var _config: Dictionary = {}

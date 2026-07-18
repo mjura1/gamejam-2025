@@ -3,8 +3,11 @@ extends TestCase
 # Prekletstva (Scripts/Curses/, Data/curses.json): razred/data-loader logika.
 # Glej ENEMY_CURSES_PLAN.md Phase 1.
 
+const ALL_CURSE_IDS := ["snowfall", "frenzy", "stunning_gaze", "blizzard",
+	"fey_step", "changeling", "abduction", "entangle", "wraith_cloak", "contagion", "bloodlust"]
+
 func test_create_curse_returns_correct_variant_with_data_from_json():
-	for id in ["snowfall", "frenzy", "stunning_gaze", "blizzard"]:
+	for id in ALL_CURSE_IDS:
 		var curse: BaseCurse = CurseData.create_curse(id)
 		assert_true(curse != null, "create_curse(%s) should not be null" % id)
 		assert_eq(curse.id, id, "curse.id should match requested id")
@@ -88,3 +91,49 @@ func test_roll_curse_for_piece_excluded_from_one_curse_only_gets_others():
 		var id := CurseData.roll_curse_for("queen", rng)
 		assert_true(id != "frenzy", "a piece excluded from frenzy should never roll frenzy")
 	CurseData._curses["frenzy"]["excluded_pieces"] = original
+
+# ----------------- NEW CURSES (Fey Step/Changeling/Abduction/Entangle/
+# Wraith Cloak/Contagion/Bloodlust): base_curse.gd hook defaults + JSON param
+# wiring. Live-grid effects (blink/swap/root/self-fog/spread/bonus action)
+# are exercised through the real BattleController in
+# tests/smoke/smoke_curses.gd - these cover the pure, grid-independent logic.
+
+func test_base_curse_can_capture_defaults_to_true():
+	for id in ["snowfall", "frenzy", "stunning_gaze", "blizzard", "changeling", "abduction", "entangle", "wraith_cloak", "contagion", "bloodlust"]:
+		var curse: BaseCurse = CurseData.create_curse(id)
+		assert_true(curse.can_capture(), "%s should be able to capture (only fey_step can't)" % id)
+
+func test_fey_step_cannot_capture():
+	var curse: BaseCurse = CurseData.create_curse("fey_step")
+	assert_false(curse.can_capture(), "fey_step should not be able to capture")
+
+func test_base_curse_grants_bonus_action_on_capture_defaults_to_false():
+	for id in ["snowfall", "frenzy", "stunning_gaze", "blizzard", "fey_step", "changeling", "abduction", "entangle", "wraith_cloak", "contagion"]:
+		var curse: BaseCurse = CurseData.create_curse(id)
+		assert_false(curse.grants_bonus_action_on_capture(), "%s should not grant a bloodlust-style bonus action" % id)
+
+func test_bloodlust_grants_bonus_action_on_capture():
+	var curse: BaseCurse = CurseData.create_curse("bloodlust")
+	assert_true(curse.grants_bonus_action_on_capture(), "bloodlust should grant a bonus action on capture")
+
+func test_fey_step_blink_params_read_from_json():
+	var chance: float = CurseData.get_param("fey_step", "blink_chance", -1.0)
+	assert_true(chance > 0.0 and chance <= 1.0, "fey_step blink_chance should be a probability in (0, 1]")
+	assert_true(CurseData.get_param("fey_step", "blink_range", -1) > 0, "fey_step should define a positive blink_range")
+
+func test_entangle_duration_and_cooldown_read_from_json():
+	assert_true(CurseData.get_param("entangle", "duration", -1) > 0, "entangle should define a positive duration")
+	assert_true(CurseData.get_param("entangle", "cooldown", -1) > 0, "entangle should define a positive cooldown")
+
+func test_contagion_spread_chance_reads_from_json():
+	var chance: float = CurseData.get_param("contagion", "spread_chance", -1.0)
+	assert_true(chance > 0.0 and chance < 1.0, "contagion spread_chance should be a probability in (0, 1)")
+
+func test_bloodlust_max_bonus_actions_reads_from_json():
+	assert_true(CurseData.get_param("bloodlust", "max_bonus_actions", -1) > 0, "bloodlust should define a positive max_bonus_actions")
+
+func test_bloodlust_has_very_low_weight():
+	# Miha: bloodlust "can wipe your board" - keep it rare relative to the
+	# original 3 curses (snowfall=40/frenzy=30/stunning_gaze=30).
+	assert_true(CurseData.get_weight("bloodlust") < CurseData.get_weight("snowfall"),
+		"bloodlust should be rarer than the baseline curses")

@@ -54,6 +54,7 @@ const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
 const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
 const STATUS_STUNNED_COLOR := Color(0.8, 0.5, 1.0)
+const STATUS_ROOTED_COLOR := Color(0.45, 0.65, 0.25)
 
 var placement_active: bool = false
 
@@ -86,6 +87,7 @@ func _ready():
 	battle_controller.bounty_marked.connect(func(character): _set_board_badge(character, "☠"))
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
 	battle_controller.piece_stunned.connect(_on_piece_stunned)
+	battle_controller.piece_rooted.connect(_on_piece_rooted)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
 	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
@@ -190,6 +192,7 @@ func _on_battle_state_changed(new_state):
 			# se zgodi v BattleController.end_player_turn) - značka se s tem
 			# zanesljivo pojavi/izgine, tudi če je bilo vmes več sprememb.
 			_refresh_stun_badges()
+			_refresh_root_badges()
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
@@ -570,6 +573,35 @@ func _refresh_stun_badges():
 		_set_stun_badge(character, character.stunned_turns > 0)
 
 
+# Prekletstvo "entangle": ločena značka ("RootBadge", zamaknjena POD
+# StunBadge - Vector2(2, 9) - da se figura, ki bi bila hkrati omamljena IN
+# ukoreninjena, ne bi izgubila ene od dveh značk).
+func _set_root_badge(character: BaseCharacter, rooted: bool):
+	_set_named_badge(character, "RootBadge", "ROOT" if rooted else "", STATUS_ROOTED_COLOR, Vector2(2, 17))
+
+
+# Prekletstvo "entangle": character je bil pravkar ukoreninjen (sproženo iz
+# BattleController.piece_rooted, glej _ready). Takoj osveži značko na plošči
+# in, če je ta figura trenutno prikazana v detail panelu, tudi njega.
+func _on_piece_rooted(character):
+	_set_root_badge(character, true)
+	if is_instance_valid(character) and character == _shown_character:
+		_show_character(character)
+
+
+# Prekletstvo "entangle": enak razlog kot _refresh_stun_badges zgoraj -
+# rooted_turns se odšteje v BattleController.end_player_turn, ne prek signala.
+func _refresh_root_badges():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or character.is_enemy or character.is_obstacle:
+			continue
+		_set_root_badge(character, character.rooted_turns > 0)
+
+
 # ===============================================
 # VRSTICI Z IKONAMI (roster + aktivne)
 # ===============================================
@@ -705,11 +737,16 @@ func _on_selection_changed(character):
 
 func _show_character(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/friendly_%s.png" % character.strName)
-	# Prekletstvo "stunning_gaze": omamljena zavezniška figura kaže STUNNED
-	# namesto ALIVE (glej stunned_turns tick-down v BattleController.end_player_turn).
+	# Prekletstvo "stunning_gaze"/"entangle": prizadeta zavezniška figura kaže
+	# STUNNED/ROOTED namesto ALIVE (glej stunned_turns/rooted_turns tick-down v
+	# BattleController.end_player_turn). STUNNED ima prednost, če je figura
+	# hkrati oboje - popolnoma onesposobljena je "hujše" stanje od ROOTED.
 	if character.stunned_turns > 0:
 		status_value.text = "STUNNED"
 		status_value.add_theme_color_override("font_color", STATUS_STUNNED_COLOR)
+	elif character.rooted_turns > 0:
+		status_value.text = "ROOTED"
+		status_value.add_theme_color_override("font_color", STATUS_ROOTED_COLOR)
 	else:
 		status_value.text = "ALIVE"
 		status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)

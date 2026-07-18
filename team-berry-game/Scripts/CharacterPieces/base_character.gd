@@ -107,6 +107,12 @@ var curse = null
 # activate_ability spodaj in BattleController.end_player_turn tick-down).
 var stunned_turns: int = 0
 
+# Prekletstvo "entangle": koliko igralčevih potez ta figura še ne more
+# premakniti na PRAZNO polje (zajetja so še vedno dovoljena, za razliko od
+# stunning_gaze - glej calculate_valid_targets spodaj in
+# BattleController.end_player_turn tick-down).
+var rooted_turns: int = 0
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -150,6 +156,8 @@ func apply_curse(new_curse) -> void:
 	marker.name = "CurseMarker"
 	add_child(marker)
 	marker.setup(self, curse)
+	if curse:
+		curse.on_applied(self)
 
 
 # King.Cleanse: obrnjena figura NE obdrži prekletstva kot zaveznica - eno
@@ -245,6 +253,14 @@ func calculate_valid_targets() -> Array[Vector2i]:
 			# 3. Polje je prazno - Rook.Reinforce ga lahko izloči kot cilj.
 			if not grid_manager.is_entry_denied(target_pos, is_enemy):
 				targets.append(target_pos)
+
+	# Prekletstvo "entangle": ukoreninjena figura obdrži SAMO zajetja (polja,
+	# ki jih že zgoraj zasede nasprotnik) - navadni premiki na prazna polja
+	# odpadejo.
+	if rooted_turns > 0:
+		targets = targets.filter(func(pos):
+			var t = grid_manager.get_character_at(pos)
+			return t != null and t.is_enemy != is_enemy)
 
 	return targets
 
@@ -633,7 +649,19 @@ func calculate_best_move() -> Dictionary:
 	var valid_targets = calculate_valid_targets()
 	if valid_targets.is_empty():
 		return {}
-	
+
+	# Prekletstvo "fey_step": nosilec ne sme zajemati - odstranimo sovražnikova
+	# (=igralčeva) zasedena polja iz veljavnih ciljev PREDEN se karkoli spodaj
+	# odloči zanje (tudi slepo iskanje/lov spodaj bi sicer lahko "slučajno"
+	# pristala na zajemljivem polju - try_move zajame samodejno, če je polje
+	# zasedeno z nasprotnikom, ne glede na predlagani move_type).
+	if curse and not curse.can_capture():
+		valid_targets = valid_targets.filter(func(pos):
+			var t = grid_manager.get_character_at(pos)
+			return not (t and t.is_enemy != is_enemy))
+		if valid_targets.is_empty():
+			return {}
+
 	# ---------------------------------
 	# 3. SLEPO ISKANJE (BLIND SEEK) - NOV DODATEK
 	# ---------------------------------

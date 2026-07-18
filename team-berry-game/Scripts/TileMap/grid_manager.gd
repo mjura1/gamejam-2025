@@ -320,6 +320,25 @@ func cover_area(positions_to_cover) -> void:
 	for pos in positions_to_cover:
 		_spawn_fog_tile(pos)
 
+# Prekletstvi "changeling"/"abduction": neposredno zamenja mrežni poziciji
+# dveh figur (BREZ execute_move-a - ni to "premik" v smislu enega koraka po
+# get_move_directions(), zato tudi ne sproži zajetja/immunity/fortress
+# preverjanj, ki veljajo samo za navadne premike/zajetja). Klicatelj (curse
+# skripta) je odgovoren za izbiro veljavnega partnerja.
+func swap_characters(a, b) -> void:
+	if not is_instance_valid(a) or not is_instance_valid(b) or a == b:
+		return
+	var pos_a: Vector2i = a.grid_pos
+	var pos_b: Vector2i = b.grid_pos
+	vacate(pos_a)
+	vacate(pos_b)
+	a.grid_pos = pos_b
+	b.grid_pos = pos_a
+	occupy(pos_b, a)
+	occupy(pos_a, b)
+	a.slide_to(grid_to_world(pos_b))
+	b.slide_to(grid_to_world(pos_a))
+
 # Kvadratna oblika s "+" (križ) rokami dolžine radius - center + polja
 # neposredno gor/dol/levo/desno vsak korak do radiusa (BREZ diagonal), za
 # razliko od square_radius_tiles zgoraj. radius=1 => klasičen 5-poljski križ.
@@ -354,13 +373,20 @@ var curse_fog_stage: Dictionary = {}
 var curse_fog_ticks_per_stage: Dictionary = {}
 # grid_pos -> int (koliko tickov je minilo od zadnje spremembe faze na tem polju)
 var curse_fog_tick_progress: Dictionary = {}
+# grid_pos -> {"chance": float, "color": Color} - SAMO za polja, ki jih je
+# pokrila "spreading" prekletstvena megla (contagion), glej cover_area_curse
+# spread_chance parameter in tick_curse_fog_decay spodaj.
+var curse_fog_spread: Dictionary = {}
 
-# Prekletstvo "snowfall"/"blizzard": pokrije polja s SVOJO (razpadajočo)
-# meglo. Polje, ki že ima prekletstveno meglo, PRESKOČIMO - ne resetiramo
-# faze razpada. ticks_per_stage: koliko rund traja ena faza (1 = privzeto
-# tempo, več = počasnejši razpad). color: naj se vizualno loči med viri
-# (npr. kraljev "blizzard" od navadnega "snowfall").
-func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color = CURSE_FOG_COLOR) -> void:
+# Prekletstvo "snowfall"/"blizzard"/"contagion": pokrije polja s SVOJO
+# (razpadajočo) meglo. Polje, ki že ima prekletstveno meglo, PRESKOČIMO - ne
+# resetiramo faze razpada. ticks_per_stage: koliko rund traja ena faza
+# (1 = privzeto tempo, več = počasnejši razpad). color: naj se vizualno loči
+# med viri (npr. kraljev "blizzard" od navadnega "snowfall").
+# spread_chance > 0: prekletstvo "contagion" - vsako polje, ki ga to
+# pokrivanje NA NOVO ustvari, ima to verjetnost, da se ob vsakem tick-u
+# razpadanja "preseli" tudi na naključno prazno sosednje polje (glej spodaj).
+func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color = CURSE_FOG_COLOR, spread_chance: float = 0.0) -> void:
 	for pos in positions_to_cover:
 		if curse_fog_nodes.has(pos):
 			continue
@@ -375,6 +401,8 @@ func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color
 		curse_fog_stage[pos] = 0
 		curse_fog_ticks_per_stage[pos] = maxi(1, ticks_per_stage)
 		curse_fog_tick_progress[pos] = 0
+		if spread_chance > 0.0:
+			curse_fog_spread[pos] = {"chance": spread_chance, "color": color}
 
 # Pokliče se enkrat na rundo (glej BattleController.update_fog_after_turn_start) -
 # vsako prekletstveno polje napreduje 1 tick proti svoji naslednji fazi
@@ -399,6 +427,32 @@ func tick_curse_fog_decay() -> void:
 		if is_instance_valid(fog_node):
 			fog_node.modulate.a = CURSE_FOG_ALPHAS[stage]
 
+	# Prekletstvo "contagion": vsako še živeče "spreading" polje ima svojo
+	# verjetnost, da ta tick "preskoči" na eno naključno prazno sosednje
+	# polje (samo ravne smeri, ne diagonale) - iteriramo SNAPSHOT ključev
+	# (.keys() vrne nov Array), ker spodnji cover_area_curse med iteracijo
+	# doda NOVE vnose v ta isti slovar (verižna rast).
+	var used_rect: Rect2i = tile_map.get_used_rect() if is_instance_valid(tile_map) else Rect2i()
+	for pos in curse_fog_spread.keys():
+		if not curse_fog_nodes.has(pos):
+			curse_fog_spread.erase(pos)
+			continue
+		var info: Dictionary = curse_fog_spread[pos]
+		if randf() >= info["chance"]:
+			continue
+		var neighbors: Array[Vector2i] = [
+			pos + Vector2i(1, 0), pos + Vector2i(-1, 0),
+			pos + Vector2i(0, 1), pos + Vector2i(0, -1),
+		]
+		neighbors.shuffle()
+		for n in neighbors:
+			if curse_fog_nodes.has(n) or is_occupied(n):
+				continue
+			if is_instance_valid(tile_map) and not is_inside_boundary(n, used_rect):
+				continue
+			cover_area_curse([n], curse_fog_ticks_per_stage.get(pos, 1), info["color"], info["chance"])
+			break
+
 func _remove_curse_fog_tile(pos: Vector2i) -> void:
 	var fog_node = curse_fog_nodes.get(pos)
 	if is_instance_valid(fog_node):
@@ -407,6 +461,7 @@ func _remove_curse_fog_tile(pos: Vector2i) -> void:
 	curse_fog_stage.erase(pos)
 	curse_fog_ticks_per_stage.erase(pos)
 	curse_fog_tick_progress.erase(pos)
+	curse_fog_spread.erase(pos)
 
 # Aktivno "razkritje" prekletstvene megle na danih poljih (npr. Rook.Lookout) -
 # za razliko od tick_curse_fog_decay, ki polja stopi postopoma.

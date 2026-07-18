@@ -9,6 +9,12 @@ class_name BattleController
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var move_highlighter = get_node("../MoveHighlighter")
 @onready var tile_map = get_node("../Map/TileMapLayer")
+# NAMENOMA get_node(), ne bare "CurseData" identifikator - BattleController.gd
+# ima class_name, torej ga --script/headless zgodnji "global class scan"
+# eagerly prevede PREDEN so avtoloadi registrirani (ista opomba kot
+# base_character.gd's "var curse"). Uporabljeno v start_enemy_turn()
+# "bloodlust" bonus-akcija veji.
+@onready var curse_data = get_node("/root/CurseData")
 
 # Sproži se ob vsaki spremembi stanja bitke (za battle UI: turn label,
 # START/END TURN gumb, placement overlay).
@@ -32,6 +38,11 @@ signal courier_marked(character: BaseCharacter)
 # stunning_gaze_curse.gd.on_action_taken -> notify_stun spodaj) - battle_ui.gd
 # poveže to na značko/STATUS.
 signal piece_stunned(character: BaseCharacter)
+
+# Prekletstvo "entangle": character je bil pravkar ukoreninjen (glej
+# entangle_curse.gd.on_action_taken -> notify_root spodaj) - battle_ui.gd
+# poveže to na značko/STATUS, enako kot piece_stunned.
+signal piece_rooted(character: BaseCharacter)
 
 # ENUM za stanja bitke
 enum BattleState {
@@ -332,13 +343,19 @@ func _maybe_pay_courier_reward():
 func notify_stun(character: BaseCharacter) -> void:
 	piece_stunned.emit(character)
 
+# Prekletstvo "entangle": kliče ga entangle_curse.gd.on_action_taken, enako
+# kot notify_stun zgoraj.
+func notify_root(character: BaseCharacter) -> void:
+	piece_rooted.emit(character)
+
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
 
-	# Prekletstvo "stunning_gaze": omamljenost traja NATANKO igralčevo
-	# naslednjo potezo - odštejemo TUKAJ (ob koncu poteze, v kateri je bila
-	# figura omamljena), ne ob začetku naslednje, da actual "ena poteza"
-	# učinek ne podaljša za dodatno potezo, če bi tikali v start_player_turn.
+	# Prekletstvo "stunning_gaze"/"entangle": oba statusa trajata NATANKO
+	# igralčevo naslednjo potezo - odštejemo TUKAJ (ob koncu poteze, v kateri
+	# je bila figura prizadeta), ne ob začetku naslednje, da actual "ena
+	# poteza" učinek ne podaljša za dodatno potezo, če bi tikali v
+	# start_player_turn.
 	if is_instance_valid(grid_manager):
 		for character in grid_manager.get_all_characters():
 			if not is_instance_valid(character):
@@ -349,6 +366,8 @@ func end_player_turn():
 				continue
 			if character.stunned_turns > 0:
 				character.stunned_turns -= 1
+			if character.rooted_turns > 0:
+				character.rooted_turns -= 1
 
 	if check_battle_end():
 		return
@@ -393,28 +412,45 @@ func start_enemy_turn():
 		# Prekletstvo "frenzy": nosilec dobi 1+extra_actions() akcij v TEJ
 		# sovražnikovi potezi (glej frenzy_curse.gd). Zanka namesto enega
 		# await-a, da vsaka akcija dobi svoj flash/pause + battle-end preverbo.
+		# "actions" je NAMERNO mutable (while namesto for) - prekletstvo
+		# "bloodlust" lahko med zanko doda dodatno akcijo po uspešnem zajetju
+		# (glej grants_bonus_action_on_capture spodaj), do največ
+		# max_bonus_actions (Data/curses.json) na to sovražnikovo potezo.
 		var actions: int = 1 + (character.curse.extra_actions() if character.curse else 0)
-		for i in actions:
+		var bloodlust_bonus_used := 0
+		var i := 0
+		while i < actions:
 			# Lahko je umrl/izginil med prejšnjo akcijo v tej isti zanki
 			# (npr. Queen.Exterminate sprožen z lastnim premikom).
 			if not is_instance_valid(character):
 				break
-			await _take_enemy_action(character)
+			var was_capture: bool = await _take_enemy_action(character)
 
 			# Če je ta akcija končala bitko, takoj prekinemo potezo
 			if check_battle_end():
 				return
+
+			if was_capture and is_instance_valid(character) and character.curse \
+					and character.curse.grants_bonus_action_on_capture():
+				var max_bonus: int = curse_data.get_param(character.curse.id, "max_bonus_actions", 2)
+				if bloodlust_bonus_used < max_bonus:
+					bloodlust_bonus_used += 1
+					actions += 1
+
+			i += 1
 
 	end_enemy_turn()
 
 # Izračuna najboljšo potezo za eno sovražnikovo figuro in jo izvede.
 # Če je premik uspel, poskrbi za vizualizacijo + premor pred naslednjo potezo,
 # in sproži morebiten curse hook (snowfall/stunning_gaze - glej curse
-# variante v Scripts/Curses/).
-func _take_enemy_action(character: BaseCharacter) -> void:
+# variante v Scripts/Curses/). Vrne true, če je ta akcija dejansko zajela
+# nasprotnika - glej "bloodlust" v start_enemy_turn() zgoraj, ki na podlagi
+# tega dodeli bonus akcijo.
+func _take_enemy_action(character: BaseCharacter) -> bool:
 	var action = character.calculate_best_move()
 	if action.is_empty():
-		return
+		return false
 
 	var from_pos: Vector2i = character.grid_pos
 	var is_capture: bool = action.get("move_type", "") == "CAPTURE"
@@ -425,6 +461,7 @@ func _take_enemy_action(character: BaseCharacter) -> void:
 		if character.curse:
 			character.curse.on_action_taken(character, self)
 		await _flash_move_and_pause(from_pos, action["target_pos"], is_capture)
+	return moved and is_capture
 
 # Prikaže vizualizacijo ene sovražnikove poteze (izvorno/ciljno polje + pot)
 # in počaka kratek premor, preden se izvede naslednja poteza.
