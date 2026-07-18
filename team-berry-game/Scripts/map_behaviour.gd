@@ -18,6 +18,7 @@ signal ability_activated(character)
 @onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var move_highlighter = get_node("../MoveHighlighter")
 @onready var battle_controller = get_node("../BattleController") # Dodana @onready referenca
+@onready var player_manager = get_node("/root/PlayerManager")
 
 var selected_character: BaseCharacter = null
 
@@ -93,7 +94,31 @@ func _apply_selection(character: BaseCharacter):
 
 	var valid_moves = selected_character.calculate_valid_targets()
 	move_highlighter.show_moves(valid_moves)
+
+	# Item "spyglass": obarva podmnožico valid_moves, ki bi jo sovražnik
+	# lahko zajel naslednjo potezo.
+	if player_manager.has_passive("spyglass"):
+		move_highlighter.show_risk_tiles(_compute_risk_tiles(valid_moves))
+
 	selection_changed.emit(selected_character)
+
+# Item "spyglass": unija dosegljivih (praznih ALI zasedljivih) polj vsakega
+# živega sovražnika, presekana z valid_moves - v tej igri figura zajema
+# natanko vzdolž svojega premika, zato so sovražnikova dosegljiva polja
+# točno polja, ki bi jih lahko zajel naslednjo potezo. ZNANA POENOSTAVITEV:
+# ne simulira spremembe plošče zaradi lastne poteze igralca (figura se še
+# ni premaknila) - sprejemljivo, gre za opozorilni marker, ne za garancijo.
+func _compute_risk_tiles(valid_moves: Array[Vector2i]) -> Array[Vector2i]:
+	var risky: Array[Vector2i] = []
+	if not is_instance_valid(grid_manager):
+		return risky
+	for character in grid_manager.get_all_characters():
+		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
+			continue
+		for target in character.calculate_valid_targets():
+			if target in valid_moves and target not in risky:
+				risky.append(target)
+	return risky
 
 # Odstrani izbiro in počisti poudarke.
 func _clear_selection():
@@ -175,6 +200,7 @@ func _unhandled_input(event):
 			if clicked_character.is_enemy != selected_character.is_enemy:
 
 				# try_move() v BaseCharacter.gd zdaj obravnava logiko capture()
+				var mover := selected_character
 				if selected_character.try_move(clicked_grid):
 					last_moved_character = selected_character
 
@@ -185,6 +211,14 @@ func _unhandled_input(event):
 					# se ne konča sama (glej consume_move()).
 					if is_instance_valid(battle_controller):
 						battle_controller.consume_move()
+
+						# Item "vicious_knights": trmoglavo zajetje s skakačem
+						# podeli +1 premik, omejeno na 1x na potezo.
+						if mover.strName == "knight" and player_manager.has_passive("vicious_knights") \
+								and not battle_controller.vicious_knight_used:
+							battle_controller.vicious_knight_used = true
+							battle_controller.add_bonus_move()
+
 						battle_controller.check_battle_end()
 
 					return

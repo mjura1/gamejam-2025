@@ -2,6 +2,19 @@
 extends Node2D
 class_name BaseCharacter
 
+# Skoki viteza - eno mesto resnice, ki jo knight.gd.get_move_directions()
+# vrne, in ki jo item "mounted_hunters" doda queen.gd/bishop.gd.
+const KNIGHT_OFFSETS: Array[Vector2i] = [
+	Vector2i(1, 2),
+	Vector2i(2, 1),
+	Vector2i(-1, 2),
+	Vector2i(-2, 1),
+	Vector2i(1, -2),
+	Vector2i(2, -1),
+	Vector2i(-1, -2),
+	Vector2i(-2, -1),
+]
+
 var grid_pos: Vector2i
 # Tracks if the piece has ever seen a player
 
@@ -59,6 +72,10 @@ var is_capture_immune: bool = false
 # napačnega vnosa v trajni roster/dead_party (glej register_dead_character).
 var is_converted_ally: bool = false
 
+# Item "bloodhounds": prijazna figura (trenutno samo volk), ki deluje sama
+# po igralčevi potezi, kot AI (glej BattleController._move_autonomous_allies).
+var is_autonomous: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -97,6 +114,25 @@ func get_move_directions() -> Array[Vector2i]:
 	# Podrazredi (Bishop, Rook) implementirajo to
 	return []
 
+# Item "castle": kralj je nezajemljiv, dokler ga vidi prijateljska trdnjava
+# (ravna črta, prvi zadetek na poti mora biti trdnjava). Zaščiti samo pred
+# navadnimi zajetji (glej calculate_valid_targets spodaj) - NE pred Queen.
+# Exterminate ali drugimi sposobnostmi, ki ne gredo skozi to preverjanje.
+func is_castle_protected() -> bool:
+	if is_enemy or strName != "king": return false
+	if not player_manager.has_passive("castle"): return false
+	var directions: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for dir in directions:
+		var step: Vector2i = grid_pos + dir
+		while grid_manager.is_inside_boundary(step, tile_map.get_used_rect()):
+			if grid_manager.is_occupied(step):
+				var c = grid_manager.get_character_at(step)
+				if c and not c.is_enemy and not c.is_obstacle and c.strName == "rook":
+					return true
+				break
+			step += dir
+	return false
+
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
 
@@ -104,6 +140,12 @@ func calculate_valid_targets() -> Array[Vector2i]:
 	# premakniti nikamor.
 	if is_instance_valid(grid_manager) and grid_manager.is_frozen(grid_pos, is_enemy):
 		return targets
+
+	# Item "fortress": za sovražnike so polja med prijateljsko trdnjavo in
+	# hišo v njeni liniji neprehodna (ne moreš vstopiti niti drseti skoznje).
+	var fortress: Array[Vector2i] = []
+	if is_enemy:
+		fortress = grid_manager.fortress_blocked_tiles()
 
 	for dir in get_move_directions():
 		for step in range(1, move_range + 1):
@@ -113,6 +155,9 @@ func calculate_valid_targets() -> Array[Vector2i]:
 			if not grid_manager.is_inside_boundary(target_pos, tile_map.get_used_rect()):
 				break
 
+			if target_pos in fortress:
+				break
+
 			# 2. Preverjanje zasedenosti
 			if grid_manager.is_occupied(target_pos):
 				var target_char = grid_manager.get_character_at(target_pos)
@@ -120,8 +165,9 @@ func calculate_valid_targets() -> Array[Vector2i]:
 				# PREVERJANJE: Ali je tarča sovražnik?
 				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 					# Knight.Evade: imunska figura ne more biti zajeta z
-					# navadnim premikom/zajetjem.
-					if target_char.is_capture_immune:
+					# navadnim premikom/zajetjem. Item "castle": enako za
+					# kralja, dokler ga vidi prijateljska trdnjava.
+					if target_char.is_capture_immune or target_char.is_castle_protected():
 						break
 					# Rook.Reinforce: polje je znotraj sovražnikove cone - ni
 					# dovoljeno niti zajetje na to polje.
@@ -193,8 +239,10 @@ func execute_move(target: Vector2i):
 
 
 func try_move(target: Vector2i) -> bool:
-	# Omogoči AI-ju premik brez preverjanja stanja battle_controllerja
-	if not is_enemy and not battle_controller.can_move():
+	# Omogoči AI-ju (in item "bloodhounds" avtonomnim zaveznikom) premik brez
+	# preverjanja proračuna premikov igralca - ta je že porabljen do konca
+	# igralčeve poteze.
+	if not is_enemy and not is_autonomous and not battle_controller.can_move():
 		return false
 	
 	# 1. Ali je tarča veljavna tarča za premik/zajetje?
@@ -252,6 +300,10 @@ func die():
 		player_manager.register_dead_character("enemy_" + strName)
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
+
+	# Item "bounty": prva sovražnikova smrt v bitki odloči zmago/poraz stave.
+	if is_enemy and not is_obstacle and is_instance_valid(battle_controller):
+		battle_controller.on_enemy_died(self)
 
 	queue_free() # Uniči vozlišče
 

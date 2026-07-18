@@ -10,6 +10,9 @@ extends SceneTree
 # uses call_deferred) - so this polls for readiness each step instead of
 # assuming a fixed frame count, unlike smoke_upgrade_panel.gd's panel (which
 # is only ever added once, from _initialize()).
+# Shop v2: stock is hand-built here (not rolled via ShopController._ready())
+# so the panel's single row is deterministically extra_move regardless of
+# rarity RNG - this test drives the BUY panel directly, bypassing shop.gd.
 # Run with: godot4 --headless --path . --script res://tests/smoke/smoke_shop.gd --quit-after 8
 
 var player_manager
@@ -18,6 +21,7 @@ var sell_panel
 var fails := 0
 
 var bought := false
+var checked_sold_state := false
 var sold_item := false
 var sold_reserve := false
 var checked_last_active := false
@@ -36,6 +40,7 @@ func _initialize():
 	var buy_scene: PackedScene = load("res://Scenes/Menu/ShopBuyPanel.tscn")
 	buy_panel = buy_scene.instantiate()
 	buy_panel.name = "ShopBuyPanelNode"
+	buy_panel.stock = [{"id": "extra_move", "sold": false}]
 	root.add_child(buy_panel)
 
 func _check(label: String, ok: bool):
@@ -67,6 +72,14 @@ func _process(_delta: float) -> bool:
 		_check("buying spent upgrade items", player_manager.upgrade_items == 1)
 		_check("buying granted 1x extra_move", player_manager.get_item_count("extra_move") == 1)
 		bought = true
+		return false
+
+	if not checked_sold_state:
+		var b := _buy_row_button()
+		if b == null or b.text != "SOLD":
+			return false # items_changed-triggered _refresh() rebuild in flight
+		_check("bought slot shows SOLD and is disabled (no re-buy)", b.disabled)
+		checked_sold_state = true
 		buy_panel.close_menu()
 		var sell_scene: PackedScene = load("res://Scenes/Menu/ShopSellPanel.tscn")
 		sell_panel = sell_scene.instantiate()

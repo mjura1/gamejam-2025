@@ -63,6 +63,40 @@ func is_entry_denied(pos: Vector2i, mover_is_enemy: bool) -> bool:
 			return true
 	return false
 
+# Item "fortress": polja med prijateljsko trdnjavo in hišo v njeni ravni
+# liniji so za sovražnike neprehodna. Vključno s poljem hiše ni treba -
+# hiša je že ovira; blokiramo stroga vmesna polja. Računa se na klic (12x12
+# plošča, poceni) - ni potrebe po predpomnjenju.
+func fortress_blocked_tiles() -> Array[Vector2i]:
+	var blocked: Array[Vector2i] = []
+	if not is_instance_valid(player_manager) or not player_manager.has_passive("fortress"):
+		return blocked
+	if not is_instance_valid(tile_map):
+		return blocked
+
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	var directions: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+	for character in get_all_characters():
+		if not is_instance_valid(character) or not (character is BaseCharacter):
+			continue
+		if character.is_enemy or character.is_obstacle or character.strName != "rook":
+			continue
+
+		for dir in directions:
+			var between: Array[Vector2i] = []
+			var step: Vector2i = character.grid_pos + dir
+			while is_inside_boundary(step, used_rect):
+				if is_occupied(step):
+					var c = get_character_at(step)
+					if c and c.is_obstacle:
+						blocked.append_array(between)
+					break
+				between.append(step)
+				step += dir
+
+	return blocked
+
 func _in_zone(pos: Vector2i, zone: Dictionary) -> bool:
 	var d: Vector2i = pos - zone.center
 	var shape_offsets: Array = zone.get("shape_offsets", [])

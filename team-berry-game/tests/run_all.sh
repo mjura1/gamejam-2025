@@ -143,6 +143,51 @@ check_script "smoke_ability_ui_pipeline" "res://tests/smoke/smoke_ability_ui_pip
 	"SMOKE TEST: all 12 abilities exercised cleanly through the real UI pipeline"
 echo
 
+echo "== Item: vicious_knights bonus move smoke test =="
+check_script "smoke_vicious_knights" "res://tests/smoke/smoke_vicious_knights.gd" 4 \
+	"SMOKE TEST: vicious_knights bonus move works, once-per-turn latch holds"
+echo
+
+echo "== Item: bounty mark + reward smoke test =="
+check_script "smoke_bounty" "res://tests/smoke/smoke_bounty.gd" 4 \
+	"SMOKE TEST: bounty mark + reward works"
+echo
+
+echo "== Item: spyglass risk tiles smoke test =="
+check_script "smoke_spyglass" "res://tests/smoke/smoke_spyglass.gd" 4 \
+	"SMOKE TEST: spyglass risk tiles work"
+echo
+
+echo "== Item: bloodhounds wolf spawn + autonomous action smoke test =="
+check_script "smoke_bloodhounds" "res://tests/smoke/smoke_bloodhounds.gd" 8 \
+	"SMOKE TEST: bloodhounds wolf spawn + autonomous action works"
+echo
+
+echo "== Item: divine_intervention rescue smoke test =="
+check_script "smoke_divine_intervention" "res://tests/smoke/smoke_divine_intervention.gd" 10 \
+	"SMOKE TEST: divine_intervention rescue works"
+echo
+
+echo "== Item: courier_package mark + victory reward smoke test =="
+check_script "smoke_courier_package" "res://tests/smoke/smoke_courier_package.gd" 10 \
+	"SMOKE TEST: courier_package mark + victory reward works"
+echo
+
+echo "== Item: castle king-protection smoke test =="
+check_script "smoke_castle" "res://tests/smoke/smoke_castle.gd" 4 \
+	"SMOKE TEST: castle item works"
+echo
+
+echo "== Item: mounted_hunters knight-jump smoke test =="
+check_script "smoke_mounted_hunters" "res://tests/smoke/smoke_mounted_hunters.gd" 4 \
+	"SMOKE TEST: mounted_hunters works"
+echo
+
+echo "== Item: fortress rook-house line smoke test =="
+check_script "smoke_fortress" "res://tests/smoke/smoke_fortress.gd" 4 \
+	"SMOKE TEST: fortress item works"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"

@@ -8,6 +8,7 @@ class_name BattleController
 @onready var grid_manager: GridManager = get_node("../GridManager")
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var move_highlighter = get_node("../MoveHighlighter")
+@onready var tile_map = get_node("../Map/TileMapLayer")
 
 # Sproži se ob vsaki spremembi stanja bitke (za battle UI: turn label,
 # START/END TURN gumb, placement overlay).
@@ -18,6 +19,14 @@ signal state_changed(new_state)
 # moves_remaining spodaj za razlog.
 signal moves_changed(remaining: int, max_moves: int)
 signal abilities_changed(remaining: int, max_abilities: int)
+
+# Item "bounty": sproži se, ko je tarča izbrana ob začetku prve poteze
+# (battle_ui poveže to na _set_board_badge, glej start_player_turn()).
+signal bounty_marked(character: BaseCharacter)
+
+# Item "courier_package": enako kot bounty_marked, a za kurirja (glej
+# start_player_turn()).
+signal courier_marked(character: BaseCharacter)
 
 # ENUM za stanja bitke
 enum BattleState {
@@ -40,6 +49,23 @@ var turn_count: int = 0
 # start_player_turn(), consume_move(), consume_ability().
 var moves_remaining: int = 0
 var abilities_remaining: int = 0
+
+# Item "vicious_knights": omejitev na 1x na potezo (Miha pre-approved balance
+# limiter) - resetira se v start_player_turn().
+var vicious_knight_used: bool = false
+
+# Item "bounty": naključen sovražnik je označen ob začetku prve poteze v
+# bitki (glej start_player_turn()); če je PRVI sovražnik, ki v tej bitki
+# umre, igralec dobi nagrado (glej on_enemy_died()). Resetira se v
+# initialize_battle().
+var bounty_target: BaseCharacter = null
+var first_enemy_death_resolved: bool = false
+
+# Item "courier_package": naključen živ zaveznik je izbran ob začetku prve
+# poteze v bitki (izključuje volka - glej start_player_turn()); če preživi
+# bitko do zmage, igralec dobi nagrado (glej check_battle_end() victory
+# branch). Resetira se v initialize_battle().
+var courier: BaseCharacter = null
 
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
@@ -91,6 +117,10 @@ func _ready():
 
 
 func initialize_battle():
+	bounty_target = null
+	first_enemy_death_resolved = false
+	courier = null
+
 	# 1. Pridobimo trenutni napredek igralca
 	var current_floor = 0
 	if is_instance_valid(player_manager):
@@ -163,6 +193,32 @@ func start_player_turn():
 
 	moves_remaining = player_manager.moves_per_turn
 	abilities_remaining = player_manager.abilities_per_turn
+	vicious_knight_used = false
+
+	# Itema "bounty"/"courier_package": tarča/kurir se izbereta enkrat, ob
+	# začetku prve poteze v bitki (sovražniki so do takrat že spawnani).
+	if turn_count == 1 and is_instance_valid(player_manager) and is_instance_valid(grid_manager):
+		if player_manager.has_passive("bounty"):
+			var enemies: Array = []
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and character.is_enemy and not character.is_obstacle:
+					enemies.append(character)
+			if not enemies.is_empty():
+				bounty_target = enemies.pick_random()
+				bounty_marked.emit(bounty_target)
+
+		if player_manager.has_passive("bloodhounds"):
+			_spawn_bloodhound_wolf()
+
+		if player_manager.has_passive("courier_package"):
+			var allies: Array = []
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and not character.is_enemy \
+						and not character.is_obstacle and not character.is_converted_ally:
+					allies.append(character)
+			if not allies.is_empty():
+				courier = allies.pick_random()
+				courier_marked.emit(courier)
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
@@ -195,9 +251,84 @@ func add_bonus_move():
 	moves_remaining += 1
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 
+# Item "bloodhounds": prikliče enega volka na naključno prosto polje v
+# spodnjih 3 vrsticah (isti obseg kot placement cona) - natanko en volk na
+# bitko, ne glede na to, koliko kosov itema igralec ima.
+func _spawn_bloodhound_wolf():
+	if not is_instance_valid(grid_manager) or not is_instance_valid(tile_map):
+		return
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	var candidates: Array[Vector2i] = []
+	for y in range(used_rect.end.y - 3, used_rect.end.y):
+		for x in range(used_rect.position.x, used_rect.end.x):
+			var pos := Vector2i(x, y)
+			if grid_manager.is_inside_boundary(pos, used_rect) and not grid_manager.is_occupied(pos):
+				candidates.append(pos)
+	if candidates.is_empty():
+		return
+
+	var tile: Vector2i = candidates.pick_random()
+	var battle_root = get_node("..")
+	var wolf_scene: PackedScene = battle_root.friendly_pieces["friendly_wolf"]
+	grid_manager.spawn_character(wolf_scene, grid_manager.grid_to_world(tile))
+
+	# Začasen zaveznik - ni del trajnega rosterja (glej PlayerManager.
+	# add_temporary_ally); is_converted_ally usmeri smrt skozi
+	# remove_converted_ally(), ne register_dead_character().
+	var wolf: BaseCharacter = grid_manager.get_character_at(tile)
+	if is_instance_valid(wolf):
+		wolf.is_converted_ally = true
+		player_manager.add_temporary_ally("friendly_wolf")
+
+# Item "bloodhounds": po igralčevi potezi (pred sovražnikovo) se vsaka
+# avtonomna zavezniška figura (trenutno samo volk) premakne sama, po
+# enaki poti kot sovražnikova AI poteza (glej _take_enemy_action).
+func _move_autonomous_allies() -> void:
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter):
+			continue
+		if character.is_enemy or not character.is_autonomous:
+			continue
+
+		await _take_enemy_action(character)
+
+		if check_battle_end():
+			return
+
+# Item "bounty": kliče base_character.die() za VSAKEGA sovražnika, ki umre -
+# samo prva smrt v bitki šteje (poznejše zajetja bounty_targeta ne vplivajo).
+func on_enemy_died(character: BaseCharacter):
+	if first_enemy_death_resolved:
+		return
+	first_enemy_death_resolved = true
+	if character == bounty_target and is_instance_valid(player_manager):
+		player_manager.add_upgrade_items(ItemData.get_reward("bounty"))
+		print("BOUNTY: tarča je padla prva - nagrada izplačana")
+
+# Item "courier_package": kurir mora PREŽIVETI do zmage - die() ga
+# queue_free()-a, zaradi česar is_instance_valid() vrne false, torej zajeti
+# kurirji ne izplačajo ničesar. Ločena funkcija (namesto inline v
+# check_battle_end()), da je testljiva brez sprožitve GF.call_deferred().
+func _maybe_pay_courier_reward():
+	if is_instance_valid(courier) and is_instance_valid(player_manager):
+		player_manager.add_upgrade_items(ItemData.get_reward("courier_package"))
+		print("COURIER_PACKAGE: kurir je preživel - nagrada izplačana")
+
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
 
+	if check_battle_end():
+		return
+
+	# Item "bloodhounds": avtonomni zavezniki (volk) delujejo TAKOJ po
+	# igralčevi potezi, pred sovražnikovo. Klicatelji (battle_ui action
+	# gumb) tega ne awaitajo - v redu, nadaljuje kot coroutine, enako kot
+	# spodnji start_enemy_turn() await-i že delajo.
+	await _move_autonomous_allies()
 	if check_battle_end():
 		return
 
@@ -285,10 +416,19 @@ func check_battle_end() -> bool:
 		else:
 			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_WIN)
 			GF.call_deferred("return_to_map")
+
+		_maybe_pay_courier_reward()
 		return true
 
 	if player_manager.activeGone():
 		_set_state(BattleState.GAME_OVER)
+		# Item "divine_intervention": porabi 1 kos in reši igralca pred
+		# porazom - vrne se na mapo (napredek mape se OHRANI, friendly_party
+		# se s smrtjo v bitki ne spreminja), ne izgubi nadstropja/game_over.
+		if player_manager.remove_item("divine_intervention"):
+			print("DIVINE_INTERVENTION: rešeni pred porazom")
+			GF.call_deferred("return_to_map")
+			return true
 		player_manager.reset_floor_number()
 		GF.call_deferred("game_over")
 		return true

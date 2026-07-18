@@ -13,11 +13,17 @@ const MOVE_COLOR = Color(0.1, 0.9, 0.1, 0.6) # Svetla Zelena
 const CAPTURE_COLOR = Color(0.9, 0.1, 0.1, 0.6) # Svetla Rdeča
 const PATH_COLOR = Color(0.5, 0.5, 0.5, 0.4) # Siva - pot/L-figura viteza
 const ABILITY_TARGET_COLOR = Color(0.85, 0.65, 0.1, 0.6) # Zlata - cilj sposobnosti (ni premik)
+const RISK_COLOR = Color(0.95, 0.55, 0.1, 0.6) # Oranžna - item "spyglass": polje, ki bi ga sovražnik lahko zajel naslednjo potezo
 
 # Veljavne tarče za trenutno "pending" sposobnost (glej map_behaviour.gd).
 # Ločeno od valid_moves, da se barvno (in pomensko) razlikuje od navadnega
 # premika/zajetja - npr. Bishop.Longshot ne premakne figure.
 var ability_targets: Array[Vector2i] = []
+
+# Item "spyglass": podmnožica valid_moves, ki bi jo sovražnik lahko zajel
+# naslednjo potezo (glej map_behaviour.gd._apply_selection). Rišemo se
+# NAD valid_moves (glej _draw), da prekrije navadno zeleno/rdečo barvo.
+var risk_tiles: Array[Vector2i] = []
 
 # ===============================================
 # VIZUALIZACIJA SOVRAŽNIKOVIH POTEZ (NOVO)
@@ -72,6 +78,11 @@ func show_moves(moves: Array[Vector2i]):
 func clear_moves():
 	#"""Počisti seznam in skrije poudarek."""
 	valid_moves.clear()
+	risk_tiles.clear()
+	queue_redraw()
+
+func show_risk_tiles(tiles: Array[Vector2i]):
+	risk_tiles = tiles
 	queue_redraw()
 
 func show_ability_targets(targets: Array[Vector2i]):
@@ -120,3 +131,6 @@ func _draw():
 
 	for grid_pos in ability_targets:
 		_draw_cell(grid_pos, ABILITY_TARGET_COLOR)
+
+	for grid_pos in risk_tiles:
+		_draw_cell(grid_pos, RISK_COLOR)

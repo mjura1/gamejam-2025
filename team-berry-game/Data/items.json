@@ -1,3 +1,15 @@
 {
-	"extra_move": {"name": "Extra Move", "description": "One use. Gives +1 move this turn in battle.", "buy_cost": 1, "sell_value": 1}
+	"extra_move":   {"name": "Extra Move", "description": "One use. Gives +1 move this turn in battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+
+	"spyglass":     {"name": "Spyglass", "description": "When selecting a piece, tiles the enemy could capture next turn are marked.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive"},
+	"bloodhounds":  {"name": "Bloodhounds", "description": "A friendly wolf joins each battle and hunts on its own after your turn.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive"},
+	"vicious_knights": {"name": "Vicious Knights", "description": "Once per turn, a knight that captures may move again.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive"},
+	"bounty":       {"name": "Bounty", "description": "Each battle a random enemy is marked. If it is the first enemy to fall, gain upgrade items.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "reward": 1},
+
+	"castle":       {"name": "Castle", "description": "Your king cannot be captured while a friendly rook has line of sight to him.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive"},
+	"courier_package": {"name": "Courier Package", "description": "Each battle a random ally is the courier. If they survive the battle, gain upgrade items.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "reward": 1},
+	"divine_intervention": {"name": "Divine Intervention", "description": "Consumed on party wipe: return to the map instead of game over.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive"},
+
+	"fortress":     {"name": "Fortress", "description": "Enemies cannot cross the line between a friendly rook and a house in its line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive"},
+	"mounted_hunters": {"name": "Mounted Hunters", "description": "Your queen and bishops may also move like knights.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive"}
 }
