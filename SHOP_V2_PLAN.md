@@ -511,7 +511,7 @@ unoccupied tile is found, same pattern already used in `smoke_vicious_knights.gd
 
 ## Phase 7 — Sprites, wrap-up
 
-- 10 temp sprites, same generation route as before (headless GDScript `Image.create`→`save_png`
+- [x] 10 temp sprites, same generation route as before (headless GDScript `Image.create`→`save_png`
   or ImageMagick; distinct solid color + 1–2 letter monogram is plenty):
   `item_spyglass.png`, `item_bloodhounds.png`, `item_vicious_knights.png`, `item_bounty.png`,
   `item_castle.png`, `item_courier_package.png`, `item_divine_intervention.png`,
@@ -519,10 +519,13 @@ unoccupied tile is found, same pattern already used in `smoke_vicious_knights.gd
   `friendly_wolf.png` (match ally piece sprite dimensions, e.g. `friendly_pawn.png`).
   **Every one gets a `TEMP_SPRITES.md` row.** Rerun the headless import; commit pngs +
   `.import` files (repo tracks them).
-- [ ] Full `./tests/run_all.sh` green; boot `shop.tscn` and `battle.tscn` headless
+
+  **Deviation:** done in Phase 1 instead of last — see that phase's deviation note (sized
+  256×256 to match the real existing convention, not the plan's guessed 48×48).
+- [x] Full `./tests/run_all.sh` green; boot `shop.tscn` and `battle.tscn` headless
       `--quit-after 5` with zero ERROR lines.
-- [ ] `CHANGELOG.md` entry.
-- [ ] Check every `[ ]` in this file; commits small and per-phase; leave the branch for review,
+- [x] `CHANGELOG.md` entry.
+- [x] Check every `[ ]` in this file; commits small and per-phase; leave the branch for review,
       do NOT merge to develop.
 
 ## Explicitly out of scope (don't build)

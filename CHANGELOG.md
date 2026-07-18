@@ -1,3 +1,41 @@
+# Winter March — shop v2 (rarity-weighted stock + 9 items) → develop
+
+New feature on `features/shop-v2`: the shop no longer sells "everything that
+exists" — it rolls **4 independent slots**, each an item picked by a
+JSON-editable rarity chance (`Data/shop_config.json`: `common`/`uncommon`/
+`rare` weights, default 50/25/10), rolled once per shop visit. A bought slot
+shows `SOLD` and can't be re-bought until the next visit; duplicate rolls
+across slots are allowed (owning 2+ copies of a passive has no extra
+effect).
+
+9 new items (placeholder sprites + prices, same rule as the item shop v1 —
+correct names/numbers to balance by hand later):
+
+- **Common**: `spyglass` (marks tiles the enemy could capture next turn on
+  selection), `bloodhounds` (a friendly wolf joins each battle and acts on
+  its own right after your turn), `vicious_knights` (a knight capture grants
+  +1 move, once per turn), `bounty` (a marked enemy pays out if it's the
+  first to die).
+- **Uncommon**: `castle` (king can't be captured while a friendly rook has
+  line of sight to him), `courier_package` (a marked ally pays out if it
+  survives to victory), `divine_intervention` (consumed on a party wipe to
+  return to the map instead of game over — floor progress kept).
+- **Rare**: `fortress` (enemies can't cross the line between a friendly rook
+  and a house in its sight), `mounted_hunters` (queen and bishops can also
+  move/capture like a knight).
+
+Most new items are **passive** (always active while owned that run, no
+inventory-drawer drag needed) — the item schema gained `rarity` and `kind`
+(`consumable`/`passive`) fields; `PlayerManager.has_passive(id)` is the one
+check every effect above gates on.
+
+Placeholder sprites for all 9 items + the bloodhounds wolf piece, tracked in
+`TEMP_SPRITES.md`. A pre-existing `tests/run_unit_tests.gd` bug was fixed
+along the way: autoload `_ready()` (e.g. `ItemData`'s JSON load) doesn't run
+until the engine's first frame, which is after `--script` mode's
+`_initialize()` — any unit test touching autoload-loaded data was silently
+seeing empty dictionaries.
+
 # Winter March — item shop → develop
 
 New feature on `features/item-shop`: a shop room on map tiers 1 and 2 (the
