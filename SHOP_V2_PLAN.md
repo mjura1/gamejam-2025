@@ -313,7 +313,7 @@ A friendly wolf (pawn-like) spawns each battle and acts autonomously after every
 
 ### Phase 4 checklist
 - [x] 4a vicious_knights + test
-- [ ] 4b bounty + badge + test
+- [x] 4b bounty + badge + test
 - [ ] 4c spyglass + highlighter color + test
 - [ ] 4d bloodhounds (wolf script/scene/spawn/AI/roster) + test
 

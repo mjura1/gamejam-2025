@@ -19,6 +19,10 @@ signal state_changed(new_state)
 signal moves_changed(remaining: int, max_moves: int)
 signal abilities_changed(remaining: int, max_abilities: int)
 
+# Item "bounty": sproži se, ko je tarča izbrana ob začetku prve poteze
+# (battle_ui poveže to na _set_board_badge, glej start_player_turn()).
+signal bounty_marked(character: BaseCharacter)
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -44,6 +48,13 @@ var abilities_remaining: int = 0
 # Item "vicious_knights": omejitev na 1x na potezo (Miha pre-approved balance
 # limiter) - resetira se v start_player_turn().
 var vicious_knight_used: bool = false
+
+# Item "bounty": naključen sovražnik je označen ob začetku prve poteze v
+# bitki (glej start_player_turn()); če je PRVI sovražnik, ki v tej bitki
+# umre, igralec dobi nagrado (glej on_enemy_died()). Resetira se v
+# initialize_battle().
+var bounty_target: BaseCharacter = null
+var first_enemy_death_resolved: bool = false
 
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
@@ -95,6 +106,9 @@ func _ready():
 
 
 func initialize_battle():
+	bounty_target = null
+	first_enemy_death_resolved = false
+
 	# 1. Pridobimo trenutni napredek igralca
 	var current_floor = 0
 	if is_instance_valid(player_manager):
@@ -168,6 +182,18 @@ func start_player_turn():
 	moves_remaining = player_manager.moves_per_turn
 	abilities_remaining = player_manager.abilities_per_turn
 	vicious_knight_used = false
+
+	# Itema "bounty"/"courier_package": tarča/kurir se izbereta enkrat, ob
+	# začetku prve poteze v bitki (sovražniki so do takrat že spawnani).
+	if turn_count == 1 and is_instance_valid(player_manager) and is_instance_valid(grid_manager):
+		if player_manager.has_passive("bounty"):
+			var enemies: Array = []
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and character.is_enemy and not character.is_obstacle:
+					enemies.append(character)
+			if not enemies.is_empty():
+				bounty_target = enemies.pick_random()
+				bounty_marked.emit(bounty_target)
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
@@ -199,6 +225,16 @@ func consume_ability():
 func add_bonus_move():
 	moves_remaining += 1
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
+
+# Item "bounty": kliče base_character.die() za VSAKEGA sovražnika, ki umre -
+# samo prva smrt v bitki šteje (poznejše zajetja bounty_targeta ne vplivajo).
+func on_enemy_died(character: BaseCharacter):
+	if first_enemy_death_resolved:
+		return
+	first_enemy_death_resolved = true
+	if character == bounty_target and is_instance_valid(player_manager):
+		player_manager.add_upgrade_items(ItemData.get_reward("bounty"))
+		print("BOUNTY: tarča je padla prva - nagrada izplačana")
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")

@@ -253,6 +253,10 @@ func die():
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
 
+	# Item "bounty": prva sovražnikova smrt v bitki odloči zmago/poraz stave.
+	if is_enemy and not is_obstacle and is_instance_valid(battle_controller):
+		battle_controller.on_enemy_died(self)
+
 	queue_free() # Uniči vozlišče
 
 # Logika zajetja tarče in premika napadalca na tarčino polje

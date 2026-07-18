@@ -28,3 +28,43 @@ func test_knight_jump_long_y_bend():
 	# delta (1, 2): |dy| > |dx|, so the stylized bend goes the long (y) axis first.
 	var path = bc._compute_path_tiles(Vector2i(0, 0), Vector2i(1, 2))
 	assert_eq(path, [Vector2i(0, 2)], "knight jump with |dy|>|dx| should bend along y first")
+
+# ----------------- Item "bounty" -----------------
+
+const PlayerManagerScript = preload("res://Scripts/Player/PlayerManager.gd")
+const BaseCharacterScript = preload("res://Scripts/CharacterPieces/base_character.gd")
+
+func test_on_enemy_died_rewards_only_when_bounty_target_dies_first():
+	var bc = BattleControllerScript.new()
+	bc.player_manager = PlayerManagerScript.new()
+	var target := BaseCharacterScript.new()
+	bc.bounty_target = target
+
+	var before: int = bc.player_manager.upgrade_items
+	bc.on_enemy_died(target)
+	assert_eq(bc.player_manager.upgrade_items, before + 1,
+		"the bounty target dying first should grant the reward (1x reward field, default 1)")
+
+func test_on_enemy_died_no_reward_when_target_not_first_to_die():
+	var bc = BattleControllerScript.new()
+	bc.player_manager = PlayerManagerScript.new()
+	var target := BaseCharacterScript.new()
+	var other := BaseCharacterScript.new()
+	bc.bounty_target = target
+
+	var before: int = bc.player_manager.upgrade_items
+	bc.on_enemy_died(other) # some other enemy dies first - bounty missed
+	assert_eq(bc.player_manager.upgrade_items, before,
+		"no reward should be granted when the first enemy to die isn't the bounty target")
+
+func test_on_enemy_died_only_resolves_once_per_battle():
+	var bc = BattleControllerScript.new()
+	bc.player_manager = PlayerManagerScript.new()
+	var target := BaseCharacterScript.new()
+	bc.bounty_target = target
+
+	bc.on_enemy_died(BaseCharacterScript.new()) # first death (miss) resolves the bounty
+	var before: int = bc.player_manager.upgrade_items
+	bc.on_enemy_died(target) # target dies second - too late, already resolved
+	assert_eq(bc.player_manager.upgrade_items, before,
+		"only the FIRST enemy death in a battle should be able to resolve the bounty")
