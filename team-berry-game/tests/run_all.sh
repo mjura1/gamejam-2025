@@ -143,6 +143,11 @@ check_script "smoke_ability_ui_pipeline" "res://tests/smoke/smoke_ability_ui_pip
 	"SMOKE TEST: all 12 abilities exercised cleanly through the real UI pipeline"
 echo
 
+echo "== Item: vicious_knights bonus move smoke test =="
+check_script "smoke_vicious_knights" "res://tests/smoke/smoke_vicious_knights.gd" 4 \
+	"SMOKE TEST: vicious_knights bonus move works, once-per-turn latch holds"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"

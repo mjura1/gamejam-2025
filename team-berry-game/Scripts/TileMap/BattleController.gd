@@ -41,6 +41,10 @@ var turn_count: int = 0
 var moves_remaining: int = 0
 var abilities_remaining: int = 0
 
+# Item "vicious_knights": omejitev na 1x na potezo (Miha pre-approved balance
+# limiter) - resetira se v start_player_turn().
+var vicious_knight_used: bool = false
+
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
 # {} kadar ni naborožena, sicer {"tiles": Array[Vector2i], "owner": BaseCharacter, "owner_is_enemy": bool}.
@@ -163,6 +167,7 @@ func start_player_turn():
 
 	moves_remaining = player_manager.moves_per_turn
 	abilities_remaining = player_manager.abilities_per_turn
+	vicious_knight_used = false
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 

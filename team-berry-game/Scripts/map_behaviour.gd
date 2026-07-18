@@ -18,6 +18,7 @@ signal ability_activated(character)
 @onready var tile_map = get_node("../Map/TileMapLayer")
 @onready var move_highlighter = get_node("../MoveHighlighter")
 @onready var battle_controller = get_node("../BattleController") # Dodana @onready referenca
+@onready var player_manager = get_node("/root/PlayerManager")
 
 var selected_character: BaseCharacter = null
 
@@ -175,6 +176,7 @@ func _unhandled_input(event):
 			if clicked_character.is_enemy != selected_character.is_enemy:
 
 				# try_move() v BaseCharacter.gd zdaj obravnava logiko capture()
+				var mover := selected_character
 				if selected_character.try_move(clicked_grid):
 					last_moved_character = selected_character
 
@@ -185,6 +187,14 @@ func _unhandled_input(event):
 					# se ne konča sama (glej consume_move()).
 					if is_instance_valid(battle_controller):
 						battle_controller.consume_move()
+
+						# Item "vicious_knights": trmoglavo zajetje s skakačem
+						# podeli +1 premik, omejeno na 1x na potezo.
+						if mover.strName == "knight" and player_manager.has_passive("vicious_knights") \
+								and not battle_controller.vicious_knight_used:
+							battle_controller.vicious_knight_used = true
+							battle_controller.add_bonus_move()
+
 						battle_controller.check_battle_end()
 
 					return
