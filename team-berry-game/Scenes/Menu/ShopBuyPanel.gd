@@ -1,14 +1,24 @@
 # res://Scenes/Menu/ShopBuyPanel.gd
-# Trgovina - nakup: ena vrstica na item iz ItemData.get_item_ids() (trenutno
-# samo extra_move - zaloga trgovine je "vse, kar obstaja", glej ITEM_SHOP_PLAN
-# Phase 3). Gumb BUY je onemogočen, če igralec nima dovolj upgrade_items.
+# Trgovina - nakup: ena vrstica na rolan slot (glej ShopController.stock,
+# SHOP_V2_PLAN Phase 2). Slot je {"id": String, "sold": bool}; ShopController
+# nastavi `stock` na to sceno pred add_child. Gumb BUY je onemogočen, če
+# igralec nima dovolj upgrade_items; kupljen slot postane SOLD in ostane
+# onemogočen (brez re-buy) do naslednjega obiska trgovine.
 extends CanvasLayer
+
+const RARITY_COLORS := {
+	"common": Color.WHITE,
+	"uncommon": Color(0.4, 0.9, 0.4),
+	"rare": Color(0.45, 0.65, 1.0),
+}
 
 @onready var player_manager = get_node("/root/PlayerManager")
 
 @onready var items_label: Label = %ItemsLabel
 @onready var item_list: VBoxContainer = %ItemList
 @onready var back_button: Button = %BackButton
+
+var stock: Array = []
 
 
 func _ready():
@@ -27,11 +37,12 @@ func _refresh():
 
 	for child in item_list.get_children():
 		child.queue_free()
-	for id in ItemData.get_item_ids():
-		item_list.add_child(_build_item_row(id))
+	for slot in stock:
+		item_list.add_child(_build_item_row(slot))
 
 
-func _build_item_row(id: String) -> Control:
+func _build_item_row(slot: Dictionary) -> Control:
+	var id: String = slot["id"]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 
@@ -46,6 +57,7 @@ func _build_item_row(id: String) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name_label := Label.new()
 	name_label.text = ItemData.get_item_name(id)
+	name_label.add_theme_color_override("font_color", RARITY_COLORS.get(ItemData.get_rarity(id), Color.WHITE))
 	info.add_child(name_label)
 	var desc_label := Label.new()
 	desc_label.text = ItemData.get_item_description(id)
@@ -56,9 +68,21 @@ func _build_item_row(id: String) -> Control:
 
 	var cost: int = ItemData.get_buy_cost(id)
 	var button := Button.new()
-	button.text = "BUY (%d)" % cost
-	button.disabled = player_manager.upgrade_items < cost
-	button.pressed.connect(func(): player_manager.try_buy_item(id))
+	if slot.get("sold", false):
+		button.text = "SOLD"
+		button.disabled = true
+	else:
+		button.text = "BUY (%d)" % cost
+		button.disabled = player_manager.upgrade_items < cost
+		button.pressed.connect(func():
+			# try_buy_item() emits items_changed (-> _refresh()) internally,
+			# BEFORE returning here - so slot.sold must be set and the panel
+			# re-refreshed explicitly, or the SOLD state only shows up on the
+			# panel's next unrelated refresh.
+			if player_manager.try_buy_item(id):
+				slot["sold"] = true
+				_refresh()
+		)
 	row.add_child(button)
 
 	return row

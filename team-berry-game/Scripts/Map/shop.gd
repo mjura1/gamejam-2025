@@ -9,6 +9,17 @@ class_name ShopController
 const BUY_PANEL_SCENE := preload("res://Scenes/Menu/ShopBuyPanel.tscn")
 const SELL_PANEL_SCENE := preload("res://Scenes/Menu/ShopSellPanel.tscn")
 
+# {"id": String, "sold": bool} en na slot; met se zgodi enkrat na obisk
+# trgovine (tu, v _ready), zato zaprtje/ponovno odprtje panela med istim
+# obiskom obdrži iste slote in SOLD zastavice.
+var stock: Array = []
+
+
+func _ready():
+	stock = []
+	for id in ItemData.roll_shop_stock():
+		stock.append({"id": id, "sold": false})
+
 
 func _on_buy_pressed():
 	UiAudio.play_click()
@@ -16,6 +27,7 @@ func _on_buy_pressed():
 		return
 	var instance = BUY_PANEL_SCENE.instantiate()
 	instance.name = "ShopBuyPanelNode"
+	instance.stock = stock
 	get_tree().root.add_child(instance)
 
 

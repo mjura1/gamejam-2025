@@ -127,13 +127,28 @@ No item class needed for passives — `ITEM_SCRIPTS` stays as-is (only consumabl
 drag-to-use path calls it (guarded in Phase 3).
 
 ### Phase 1 checklist
-- [ ] items.json rewritten (9 new entries + rarity/kind on extra_move)
-- [ ] shop_config.json
-- [ ] ItemData: config load + 6 getters + roll_shop_stock
-- [ ] Unit test `tests/unit/test_shop_stock.gd`: seeded RNG → deterministic assert; slot count
+- [x] items.json rewritten (9 new entries + rarity/kind on extra_move)
+- [x] shop_config.json
+- [x] ItemData: config load + 6 getters + roll_shop_stock
+- [x] Unit test `tests/unit/test_shop_stock.gd`: seeded RNG → deterministic assert; slot count
       respected; weights `{"common": 1}` → all common; weights naming an empty rarity → no
       crash, only existing rarities returned; every returned id exists in items.json.
-- [ ] `godot4 --headless --import --path team-berry-game` + `./tests/run_all.sh` green.
+- [x] `godot4 --headless --import --path team-berry-game` + `./tests/run_all.sh` green.
+
+**Deviations from plan (adapted, not escalated):**
+- Pulled Phase 7's placeholder-sprite generation forward into Phase 1 (all 9 item sprites +
+  `friendly_wolf.png`, TEMP_SPRITES.md rows added now). Reason: `ShopBuyPanel` still lists
+  *every* item id until Phase 2, so the moment items.json grew 9 spriteless ids,
+  `smoke_shop` broke on `Resource file not found` — the plan's "each phase ends
+  runnable/testable" goal required art to exist before that gap opened, not at the end.
+  Used 256×256 (matching the real `item_extra_move.png`/`shop.png` convention), not the
+  plan's guessed "48×48-ish".
+- Found and fixed a pre-existing bug in `tests/run_unit_tests.gd`: autoload `_ready()` (e.g.
+  `ItemData`'s JSON load) hasn't run yet when `_initialize()` executes in `--script` mode, so
+  any unit test reading autoload-loaded data silently saw `{}` and only passed when a
+  hardcoded default happened to match the real configured value. Fixed with
+  `await process_frame` before the discovery loop. This was latent before this plan (not
+  introduced by it) but `test_shop_stock.gd` is what exposed it.
 
 ## Phase 2 — Shop UI: rolled slots instead of "everything"
 
@@ -152,9 +167,20 @@ drag-to-use path calls it (guarded in Phase 3).
 3. Sell view (`ShopSellPanel.gd`) needs no logic change; passives sell like any item.
 
 ### Phase 2 checklist
-- [ ] shop.gd rolls once per visit; panel renders slots + SOLD + rarity colors
-- [ ] Extend `tests/smoke/smoke_shop.gd`: inject a hand-built stock array (don't rely on RNG),
+- [x] shop.gd rolls once per visit; panel renders slots + SOLD + rarity colors
+- [x] Extend `tests/smoke/smoke_shop.gd`: inject a hand-built stock array (don't rely on RNG),
       buy a slot → count 1 + slot sold; re-buy refused. Keep printing `SMOKE_SHOP_OK`.
+
+**Deviations:**
+- run_all.sh's actual `expect_str` for this smoke test is
+  `"SMOKE TEST: shop buy/sell flow completed cleanly"`, not `SMOKE_SHOP_OK` (that string
+  doesn't appear anywhere in the test or harness) - kept the real existing string instead.
+- Found an ordering bug while wiring SOLD: `try_buy_item()` emits `items_changed` (→
+  `_refresh()`) *before* returning, so setting `slot["sold"] = true` only after
+  `try_buy_item()` returns means the refresh that just ran still saw the stale (unsold)
+  flag - the row would show `BUY` again for one frame and never flip to `SOLD` until some
+  unrelated later refresh. Fixed by calling `_refresh()` again explicitly right after setting
+  the flag in the same callback.
 
 ## Phase 3 — Passive plumbing (tiny)
 
