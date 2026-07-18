@@ -1,6 +1,6 @@
 {
 	"config": {
-		"min_floor": 2,
+		"min_floor": 4,
 		"curse_chance": 0.25,
 		"difficulty_chance_mult": {"easy": 0.5, "normal": 1.0, "hard": 1.5}
 	},
