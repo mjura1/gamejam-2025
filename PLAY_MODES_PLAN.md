@@ -250,13 +250,18 @@ stays exactly as-is — it already does the right thing for tier 3, 4, 5, ... si
 through the existing `game_over()` (unchanged) → main menu, for both modes.
 
 ### Phase 3 checklist
-- [ ] `PlayerManager.game_mode` added, `setStarting(mode)` sets it, default arg keeps other
-      callers working
-- [ ] `advance_map_tier()` infinite-mode branch added
-- [ ] Manual/headless check: start an infinite run, defeat 3+ boss floors in a row (or
+- [x] `PlayerManager.game_mode` added, `setStarting(mode)` sets it, default arg keeps other
+      callers working (landed early, in the Phase 1 commit — see §1 checklist note; grep
+      confirmed all other callers are zero-arg)
+- [x] `advance_map_tier()` infinite-mode branch added
+- [x] Manual/headless check: start an infinite run, defeat 3+ boss floors in a row (or
       temporarily hack `current_map_tier = 2` before the 3rd boss fight to reach the branch
       quickly), confirm no return to main menu and a 4th map generates using tier-2 config
       (king boss, full enemy pool)
+      (done headless via scratch SceneTree script: infinite tier 2→3 keeps a MapInstance on
+      the tier-2 config — floors=9, king boss, full pool — and classic tier 2→3 still ends
+      the run back at MainMenu with tier reset. Gotcha: run godot4 with an explicit
+      `--path team-berry-game`; `--path .` from repo root silently loads no project.)
 
 ---
 

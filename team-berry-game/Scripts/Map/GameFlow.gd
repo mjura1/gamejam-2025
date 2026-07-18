@@ -93,7 +93,7 @@ func start_event(room_type: int):
 func advance_map_tier():
 	PlayerManager.current_map_tier += 1
 
-	if PlayerManager.current_map_tier >= 3:
+	if PlayerManager.current_map_tier >= 3 and PlayerManager.game_mode != "infinite":
 		print("GF: Igralec je premagal vse 3 mape. Vračanje na Main Menu.")
 		_end_run()
 		_change_scene_instance(MAIN_MENU_SCENE.instantiate())
