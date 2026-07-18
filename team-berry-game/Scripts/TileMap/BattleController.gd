@@ -16,6 +16,11 @@ class_name BattleController
 # "bloodlust" bonus-akcija veji.
 @onready var curse_data = get_node("/root/CurseData")
 
+# Tutorial stopnje: scena lahko izklopi sovražnikovo AI (override na
+# instanciranem BattleController vozlišču, glej Scenes/Tutorial/*). Privzeto
+# true - živa battle.tscn ostane nespremenjena.
+@export var ai_enabled: bool = true
+
 # Sproži se ob vsaki spremembi stanja bitke (za battle UI: turn label,
 # START/END TURN gumb, placement overlay).
 signal state_changed(new_state)
@@ -386,6 +391,11 @@ func end_player_turn():
 func start_enemy_turn():
 	_set_state(BattleState.ENEMY_TURN)
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
+
+	# AI izklopljen (tutorial): poteza gre takoj nazaj igralcu, figure mirujejo.
+	if not ai_enabled:
+		end_enemy_turn()
+		return
 
 	# Počisti poudarke prejšnjega kroga (tudi če še niso do konca izginili),
 	# da se ne mešajo s poudarki tega kroga.

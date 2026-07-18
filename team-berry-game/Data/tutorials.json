@@ -1,0 +1,9 @@
+{
+  "stages": [
+    {
+      "id": "movement",
+      "title": "Moving & Capturing",
+      "description": "Practice moving your pieces onto the board and capturing enemies. Enemies here won't move or fight back - take your time."
+    }
+  ]
+}

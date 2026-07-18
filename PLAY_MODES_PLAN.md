@@ -397,16 +397,28 @@ func return_to_tutorial_hub():
 `Mode Select`'s `_on_tutorial_pressed()` (§1) already calls `GF.start_tutorial_hub()`.
 
 ### Phase 4 checklist
-- [ ] `Data/tutorials.json` + `TutorialData` autoload registered
-- [ ] `tutorial_movement.tscn` built from `piece_test.tscn`, `ai_enabled = false`, enemy
+- [x] `Data/tutorials.json` + `TutorialData` autoload registered
+- [x] `tutorial_movement.tscn` built from `piece_test.tscn`, `ai_enabled = false`, enemy
       pieces added, description + BACK overlay wired
-- [ ] `BattleController.ai_enabled` export + `start_enemy_turn()` guard added; live
+      (plus one thing this plan missed: the stage's root script must populate
+      `PlayerManager.active_party`/`active_enemies` itself — entered from the menu, no run
+      is active so `resetActives()` never ran, and `check_battle_end()` would fire the
+      victory/defeat branch on the first END TURN with no map to return to. An extra
+      `"tutorial_keepalive"` entry in `active_enemies` keeps `enemyGone()` false even after
+      both pawns are captured — the stage exits only via BACK.)
+- [x] `BattleController.ai_enabled` export + `start_enemy_turn()` guard added; live
       `battle.tscn` behavior unchanged (default `true`)
-- [ ] `tutorial_hub_menu.tscn`/`.gd` built, scrollable, lists stage(s) from `TutorialData`
-- [ ] `GF.start_tutorial_hub/start_tutorial_stage/return_to_tutorial_hub` added
-- [ ] Manual playtest: Main Menu → PLAY → TUTORIAL → Moving & Capturing → confirm the enemy
+- [x] `tutorial_hub_menu.tscn`/`.gd` built, scrollable, lists stage(s) from `TutorialData`
+- [x] `GF.start_tutorial_hub/start_tutorial_stage/return_to_tutorial_hub` added
+- [x] Manual playtest: Main Menu → PLAY → TUTORIAL → Moving & Capturing → confirm the enemy
       pieces never move even after taking several player turns → BACK → back at the hub →
       BACK → back at Main Menu
+      (done headless via a scratch SceneTree driver: hub lists 1 row; stage loads with
+      `ai_enabled=false`; END TURN → enemy turn immediately hands back → Turn 2 with both
+      pawn `grid_pos` unchanged; BACK rebuilds a fresh hub. Suite note for Phase 5:
+      `smoke_campfire_flow`, `smoke_shop_map_flow`, `smoke_spyglass` fail on this branch
+      even at the pre-Phase-4 HEAD — pre-existing, verified via stash round-trip — alongside
+      the expected `smoke_start_new_game` breakage.)
 
 ---
 
