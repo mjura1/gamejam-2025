@@ -465,7 +465,7 @@ func check_battle_end() -> bool:
 		# se s smrtjo v bitki ne spreminja), ne izgubi nadstropja/game_over.
 		if player_manager.remove_item("divine_intervention"):
 			print("DIVINE_INTERVENTION: rešeni pred porazom")
-			GF.call_deferred("return_to_map")
+			GF.call_deferred("return_to_map_after_escape")
 			return true
 		player_manager.reset_floor_number()
 		GF.call_deferred("game_over")

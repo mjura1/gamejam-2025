@@ -142,7 +142,7 @@ func spawn_character(characterScene: PackedScene, pos: Vector2):
 	register_all_characters_in_scene()
 
 	# Vrnemo instanco, da lahko klicatelj takoj deluje na njej (npr. curse
-	# assignment v battle.gd._maybe_curse) - preverjeno, noben obstoječi
+	# assignment v battle.gd._apply_curses) - preverjeno, noben obstoječi
 	# klicatelj (vključno s King.Heal) tega ni uporabljal.
 	return character
 

@@ -85,6 +85,14 @@ func should_curse(current_floor: int, roll: float, difficulty: String = "normal"
 		return false
 	return roll < get_curse_chance(difficulty)
 
+# Zajamčeno minimalno število prekletih sovražnikov na bitko, od get_min_floor()
+# naprej (min_floor => 1, min_floor+1 => 2, ... - linearno +1 na nadstropje).
+# Pod min_floor je 0 (garancije sploh ni, glej should_curse za enak prag).
+func get_min_curse_count(current_floor: int) -> int:
+	if current_floor < get_min_floor():
+		return 0
+	return current_floor - get_min_floor() + 1
+
 func create_curse(id: String) -> BaseCurse:
 	if not CURSE_SCRIPTS.has(id):
 		return null

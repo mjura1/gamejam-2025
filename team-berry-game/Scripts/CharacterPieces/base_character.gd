@@ -85,7 +85,8 @@ var is_converted_ally: bool = false
 # po igralčevi potezi, kot AI (glej BattleController._move_autonomous_allies).
 var is_autonomous: bool = false
 
-# Prekletstvo sovražnika (od nadstropja 2 naprej, glej battle.gd._maybe_curse) -
+# Prekletstvo sovražnika (od nadstropja CurseData.get_min_floor() naprej,
+# glej battle.gd._apply_curses) -
 # null, če figura ni prekleta. Glej Scripts/Curses/base_curse.gd.
 # NAMERNO netipizirano (ne "var curse: BaseCurse", glej tudi apply_curse
 # spodaj): base_character.gd je del enega globalno skeniranih class_name
@@ -137,7 +138,7 @@ func on_grid_manager_registered():
 	# Za debug:
 	print("%s: Uspešno registriran in inicializiran na mreži %s." % [self.name, str(grid_pos)])
 
-# Dodeli prekletstvo tej figuri (glej battle.gd._maybe_curse) in doda njen
+# Dodeli prekletstvo tej figuri (glej battle.gd._apply_curses) in doda njen
 # vizualni marker (delci/pulzirajoč tint ali statična oblika, glej
 # Scripts/Curses/curse_marker.gd - reduced_motion preklop). "new_curse"
 # NAMERNO netipiziran (glej opombo pri "var curse" zgoraj). Iz istega razloga

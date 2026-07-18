@@ -73,19 +73,23 @@ func _ready() -> void:
 		push_warning("battle.gd: preveč sovražnikov za spawn (%d > %d) - odvečni so izpuščeni." % [to_spawn_enemy.size(), max_enemy_slots])
 		to_spawn_enemy.resize(max_enemy_slots)
 
+	var spawned_enemies: Array = []
+
 	while not to_spawn_enemy.is_empty():
 		for y in enemy_spawn_rows:
 			for x in range(0, map_width):
 				if to_spawn_enemy.is_empty():
 					break
-				
+
 				# Prepreči spawn na že zasedeno mesto ali z nizko verjetnostjo
 				if randf() < 0.8 or grid_manager.is_occupied(Vector2i(x, y)):
 					continue
-					
+
 				var piece_name = to_spawn_enemy.pop_at(randi_range(0, to_spawn_enemy.size() - 1))
 				var enemy = grid_manager.spawn_character(enemy_pieces[piece_name], grid_manager.grid_to_world(Vector2(x, y)))
-				_maybe_curse(enemy)
+				spawned_enemies.append(enemy)
+
+	_apply_curses(spawned_enemies)
 
 
 	# Zagon BattleControllerja, ki inicializira meglo in začne igro.
@@ -93,22 +97,39 @@ func _ready() -> void:
 		battle_controller.initialize_battle()
 
 
-# Prekletstva (Scripts/Curses/): od nadstropja 2 naprej ima vsak spawnan
-# sovražnik CurseData.get_curse_chance() možnost, da dobi naključno
-# prekletstvo (uteženo, glej CurseData.roll_curse_for - excluded_pieces).
-# Verjetnost je odvisna od izbrane težavnosti (SettingsManager.difficulty -
-# easy/normal/hard, glej Data/curses.json config.difficulty_chance_mult).
-func _maybe_curse(enemy) -> void:
-	if not is_instance_valid(enemy):
+# Prekletstva (Scripts/Curses/): od nadstropja CurseData.get_min_floor() naprej
+# vsaka bitka ZAGOTOVI vsaj CurseData.get_min_curse_count(current_floor)
+# prekletih sovražnikov (naključno izbranih izmed spawnanih, glej
+# CurseData.roll_curse_for - excluded_pieces). Vsak PREOSTALI, še ne prekleti
+# sovražnik ima poleg tega še vedno CurseData.get_curse_chance() možnost
+# dodatnega naključnega prekletstva - verjetnost je odvisna od izbrane
+# težavnosti (SettingsManager.difficulty, glej Data/curses.json
+# config.difficulty_chance_mult).
+func _apply_curses(enemies: Array) -> void:
+	var valid_enemies: Array = enemies.filter(func(e): return is_instance_valid(e))
+	if valid_enemies.is_empty():
 		return
+
 	var current_floor: int = 0
 	if is_instance_valid(player_manager):
 		current_floor = player_manager.current_map_floor
 	var difficulty := "normal"
 	if is_instance_valid(settings_manager):
 		difficulty = settings_manager.difficulty
-	if not CurseData.should_curse(current_floor, randf(), difficulty):
-		return
+
+	valid_enemies.shuffle()
+	var min_count: int = min(CurseData.get_min_curse_count(current_floor), valid_enemies.size())
+
+	for i in range(valid_enemies.size()):
+		var enemy = valid_enemies[i]
+		if i < min_count:
+			_curse_enemy(enemy) # zajamčeno mesto - prekletstvo ne glede na met
+		elif CurseData.should_curse(current_floor, randf(), difficulty):
+			_curse_enemy(enemy) # bonus met nad zajamčenim minimumom
+
+func _curse_enemy(enemy) -> bool:
 	var curse_id := CurseData.roll_curse_for(enemy.strName)
-	if curse_id != "":
-		enemy.apply_curse(CurseData.create_curse(curse_id))
+	if curse_id == "":
+		return false
+	enemy.apply_curse(CurseData.create_curse(curse_id))
+	return true

@@ -11,6 +11,10 @@ const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 var map_data: Array = []
 var room_node_map: Dictionary = {}
 var current_room: Room = null
+# Soba, ki je bila current_room PRED trenutno izbiro - potrebna za
+# revert_current_room_selection() (Divine Intervention), da vemo, na
+# katero stanje se vrniti.
+var previous_room: Room = null
 var is_initialized: bool = false
 var generator: MapGenerator = null
 
@@ -193,6 +197,34 @@ func _refresh_all_icons():
 		room_node.update_look(room.is_unlocked, room.selected)
 
 
+## Razveljavi izbiro trenutne sobe. _update_reachable_rooms() sobo označi
+## kot selected/is_unlocked=false TAKOJ ob kliku, še preden se bitka sploh
+## odigra - zato mora Divine Intervention (glej BattleController.
+## check_battle_end()) po pobegu iz poraza to stanje razveljaviti, sicer
+## soba ostane trajno "odigrana" in je ni več mogoče ponovno izbrati.
+func revert_current_room_selection():
+	if current_room == null:
+		return
+
+	var fled_room = current_room
+	fled_room.selected = false
+
+	if previous_room != null:
+		# _update_reachable_rooms ponovno izračuna is_unlocked za vse sobe
+		# glede na previous_room.next_rooms - ker fled_room ni več selected,
+		# se pravilno spet odklene.
+		_update_reachable_rooms(previous_room)
+	else:
+		# fled_room je bila prva izbrana soba (na začetnem nadstropju) -
+		# ni previous_room, na katerega bi se vrnili, zato jo preprosto
+		# odklenemo nazaj.
+		current_room = null
+		_set_room_unlocked(fled_room, true)
+		_refresh_all_icons()
+
+	queue_redraw()
+
+
 func _update_reachable_rooms(new_room: Room):
 	
 	new_room.selected = true
@@ -301,7 +333,9 @@ func _center_and_zoom_camera():
 
 func _on_room_selected(room_data: Room):
 	print("Igralec izbral sobo: %s pri %s" % [Room.RoomType.keys()[room_data.type], room_data.grid_position])
-	
+
+	previous_room = current_room
+
 	# grid_position = Vector2i(nadstropje, stolpec) - glej MapGenerator._initialize_grid()
 	var new_floor = room_data.grid_position.x
 	

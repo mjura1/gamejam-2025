@@ -121,6 +121,17 @@ func return_to_map():
 	print("GF: Vračanje na že obstoječo sceno Map.")
 	_change_scene_instance(current_map_instance)
 
+## Kliče se, ko igralec pobegne iz bitke z Divine Intervention. Za razliko
+## od return_to_map() (uporablja se po zmagi) razveljavi izbiro sobe, iz
+## katere je pobegnil - sicer MapController._update_reachable_rooms() to
+## sobo trajno označi kot selected/zaklenjeno, čeprav je igralec izgubil,
+## ne zmagal (glej BattleController.check_battle_end()).
+func return_to_map_after_escape():
+	print("GF: Vračanje na mapo po Divine Intervention - soba ostaja igriva.")
+	if is_instance_valid(current_map_instance) and current_map_instance.has_method("revert_current_room_selection"):
+		current_map_instance.revert_current_room_selection()
+	_change_scene_instance(current_map_instance)
+
 # =========================================================
 # 5. OSNOVNA LOGIKA MENJAVE SCENE
 # =========================================================

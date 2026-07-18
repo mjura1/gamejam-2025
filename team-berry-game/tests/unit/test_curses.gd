@@ -69,6 +69,16 @@ func test_roll_curse_for_piece_excluded_from_every_curse_returns_empty():
 	for id in CurseData.get_curse_ids():
 		CurseData._curses[id]["excluded_pieces"] = originals[id]
 
+func test_get_min_curse_count_below_min_floor_is_zero():
+	var min_floor := CurseData.get_min_floor()
+	assert_eq(CurseData.get_min_curse_count(min_floor - 1), 0, "floor below min_floor should guarantee 0 curses")
+
+func test_get_min_curse_count_scales_by_one_per_floor_from_min_floor():
+	var min_floor := CurseData.get_min_floor()
+	assert_eq(CurseData.get_min_curse_count(min_floor), 1, "min_floor should guarantee 1 curse")
+	assert_eq(CurseData.get_min_curse_count(min_floor + 1), 2, "min_floor + 1 should guarantee 2 curses")
+	assert_eq(CurseData.get_min_curse_count(min_floor + 2), 3, "min_floor + 2 should guarantee 3 curses")
+
 func test_roll_curse_for_piece_excluded_from_one_curse_only_gets_others():
 	var original: Array = CurseData._curses["frenzy"].get("excluded_pieces", []).duplicate()
 	CurseData._curses["frenzy"]["excluded_pieces"] = ["queen"]
