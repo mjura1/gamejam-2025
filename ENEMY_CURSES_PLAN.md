@@ -314,13 +314,33 @@ flash/pause: `if character.curse: character.curse.on_action_taken(character, sel
     and STUN don't overwrite each other.
 
 ### Phase 2 checklist
-- [ ] frenzy loop (+ dead-mid-frenzy guard) — smoke: frenzied enemy acts 2× in one enemy turn
-- [ ] on_action_taken hook wired
-- [ ] cover_area + snowfall — smoke: fog_nodes gains tiles around the enemy after its move
-- [ ] stunned state (targets + abilities blocked), tick-down, cooldown, STATUS + badge
-- [ ] Smoke `tests/smoke/smoke_curses.gd` printing `SMOKE_CURSES_OK` (build board by hand like
+- [x] frenzy loop (+ dead-mid-frenzy guard) — smoke: frenzied enemy acts 2× in one enemy turn
+- [x] on_action_taken hook wired
+- [x] cover_area + snowfall — smoke: fog_nodes gains tiles around the enemy after its move
+- [x] stunned state (targets + abilities blocked), tick-down, cooldown, STATUS + badge
+- [x] Smoke `tests/smoke/smoke_curses.gd` printing `SMOKE_CURSES_OK` (build board by hand like
       `smoke_item_use.gd`; force-assign each curse; drive turns via
       `end_player_turn`/`start_enemy_turn`); wire into `run_all.sh`.
+
+**DEVIATION (important, real gotcha for any future coroutine-driving smoke test):**
+`smoke_item_use.gd`'s pattern (build board, call the thing, read the result, all inline) does
+NOT work for anything that goes through `BattleController.start_enemy_turn()` /
+`end_player_turn()`, because those `await get_tree().create_timer(...)`. `_process(delta) ->
+bool` is called directly by the engine's `MainLoop`, not through GDScript's own `await`
+mechanism — if `_process()` itself contains an `await` that suspends, the engine never resumes
+that specific call (the test just silently stalls forever after the first suspension, prints
+nothing further, zero `ERROR:` lines, and `--quit-after N` eventually kills the process with no
+indication anything was wrong). `smoke_enemy_turn_pacing.gd`/`smoke_courier_package.gd` already
+work around this correctly: fire the BattleController call WITHOUT `await` and poll
+`current_state`/`turn_count` across ordinary subsequent frames until it settles.
+`smoke_curses.gd` had to be rewritten from an inline `await`-per-stage script into an explicit
+frame-polled state machine (`Stage` enum) for exactly this reason — first draft hung
+indefinitely with zero error output, which is the trap: it LOOKS like a `--quit-after` tuning
+problem (bumped it from 6 → 60 → 300 → 2000 frames with no change) but is actually a structural
+one. `stunning_gaze`'s `curse.on_action_taken()` itself has no `await` inside, so THAT part is
+safe to call synchronously within one `_process()` tick — only the `frenzy`/`snowfall` stages
+(driven through the real `start_enemy_turn()`) and the final tick-down check (through
+`end_player_turn()`) needed the state-machine treatment.
 
 ## Phase 3 — Enemy inspection (click enemy → red range + status)
 

@@ -53,6 +53,7 @@ const MAX_PLACED := 5
 const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
 const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
+const STATUS_STUNNED_COLOR := Color(0.8, 0.5, 1.0)
 
 var placement_active: bool = false
 
@@ -83,6 +84,7 @@ func _ready():
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
 	battle_controller.bounty_marked.connect(func(character): _set_board_badge(character, "☠"))
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
+	battle_controller.piece_stunned.connect(_on_piece_stunned)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
 	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
@@ -182,6 +184,11 @@ func _on_battle_state_changed(new_state):
 			# moves_remaining/abilities_remaining se posodobita malo kasneje v
 			# isti klicni verigi (glej BattleController.start_player_turn()) -
 			# moves_changed/abilities_changed ju takoj zatem osvežita tudi tukaj.
+			# Prekletstvo "stunning_gaze": ob vsakem vstopu v igralčevo potezo
+			# preberemo dejansko stunned_turns stanje vseh zaveznikov (odštevanje
+			# se zgodi v BattleController.end_player_turn) - značka se s tem
+			# zanesljivo pojavi/izgine, tudi če je bilo vmes več sprememb.
+			_refresh_stun_badges()
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
@@ -484,16 +491,20 @@ const BADGE_RASTER_BOOST := BADGE_RASTER_FONT_SIZE / BADGE_WORLD_FONT_HEIGHT
 # igralec vidi katera bližnjica (1-0) pripada kateri figuri tudi med potezo,
 # ne le v roster/aktivni vrstici. Značka je otrok figure, zato se avtomatsko
 # premika/izgine z njo - ustvarimo jo samo enkrat, nato le posodabljamo besedilo.
-func _set_board_badge(character: BaseCharacter, text: String):
+# node_name/offset ločita to značko od DRUGIH značk na isti figuri (glej
+# _set_stun_badge spodaj) - brez tega bi si npr. slot številka in "STUN" delili
+# isto vozlišče in se prepisovali.
+func _set_named_badge(character: BaseCharacter, node_name: String, text: String,
+		color: Color = Color(1, 1, 1, 0.65), offset: Vector2 = Vector2(2, 2)):
 	if not is_instance_valid(character):
 		return
-	var badge := character.get_node_or_null("SlotBadge") as Label
+	var badge := character.get_node_or_null(node_name) as Label
 	if badge == null:
 		badge = Label.new()
-		badge.name = "SlotBadge"
+		badge.name = node_name
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_theme_font_size_override("font_size", BADGE_RASTER_FONT_SIZE)
-		badge.add_theme_color_override("font_color", Color(1, 1, 1, 0.65))
+		badge.add_theme_color_override("font_color", color)
 		badge.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.65))
 		badge.add_theme_constant_override("shadow_offset_x", 1)
 		badge.add_theme_constant_override("shadow_offset_y", 1)
@@ -512,10 +523,47 @@ func _set_board_badge(character: BaseCharacter, text: String):
 		var inv_scale := Vector2.ONE / character.scale
 		badge.scale = inv_scale / BADGE_RASTER_BOOST
 		badge.size = Vector2(10, 8) * BADGE_RASTER_BOOST
-		badge.position = Vector2(2, 2) * inv_scale
+		badge.position = offset * inv_scale
 
 	badge.text = text
 	badge.visible = text != ""
+
+
+# Ohranjen obstoječi klicni vmesnik (slot številke, bounty/courier značke) -
+# vsi ti si delijo "SlotBadge" vozlišče kot doslej.
+func _set_board_badge(character: BaseCharacter, text: String):
+	_set_named_badge(character, "SlotBadge", text)
+
+
+# Prekletstvo "stunning_gaze": ločena značka ("StunBadge", zamaknjena desno
+# navzdol), da se ne prepisuje s slot številko/bounty/courier značko na isti
+# figuri.
+func _set_stun_badge(character: BaseCharacter, stunned: bool):
+	_set_named_badge(character, "StunBadge", "STUN" if stunned else "", STATUS_STUNNED_COLOR, Vector2(2, 9))
+
+
+# Prekletstvo "stunning_gaze": character je bil PRAVKAR omamljen (sproženo iz
+# BattleController.piece_stunned, glej _ready). Takoj osveži značko na plošči
+# in, če je ta figura trenutno prikazana v detail panelu, tudi njega.
+func _on_piece_stunned(character):
+	_set_stun_badge(character, true)
+	if is_instance_valid(character) and character == _shown_character:
+		_show_character(character)
+
+
+# Prekletstvo "stunning_gaze": ob vsakem vstopu v igralčevo potezo preberemo
+# dejansko stunned_turns stanje vsake žive zavezniške figure na plošči in
+# postavimo/skrijemo njeno značko - zanesljivejše od zgolj poslušanja
+# piece_stunned (ki se sproži samo ob NASTAVITVI, ne ob odštevanju na 0).
+func _refresh_stun_badges():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or character.is_enemy or character.is_obstacle:
+			continue
+		_set_stun_badge(character, character.stunned_turns > 0)
 
 
 # ===============================================
@@ -653,8 +701,14 @@ func _on_selection_changed(character):
 
 func _show_character(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/friendly_%s.png" % character.strName)
-	status_value.text = "ALIVE"
-	status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)
+	# Prekletstvo "stunning_gaze": omamljena zavezniška figura kaže STUNNED
+	# namesto ALIVE (glej stunned_turns tick-down v BattleController.end_player_turn).
+	if character.stunned_turns > 0:
+		status_value.text = "STUNNED"
+		status_value.add_theme_color_override("font_color", STATUS_STUNNED_COLOR)
+	else:
+		status_value.text = "ALIVE"
+		status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)
 	_shown_character = character
 	_show_abilities(character)
 

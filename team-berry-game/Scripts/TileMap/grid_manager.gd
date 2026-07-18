@@ -283,3 +283,13 @@ func reveal_area(positions_to_reveal):
 	for pos in positions_to_reveal:
 		# Odstrani vozlišče megle, če obstaja
 		_remove_fog_tile(pos)
+
+# Prekletstvo "snowfall": zrcalno reveal_area - PONOVNO pokrije polja z
+# meglo. Klicatelj (snowfall_curse.gd) polja že filtrira na mejo plošče, zato
+# tu tega ne preverjamo znova (_spawn_fog_tile je no-op, če megla na tem
+# polju že obstaja). Zavezniki, ki se znajdejo pod novo meglo, se spet
+# razkrijejo na začetku naslednje igralčeve poteze (update_fog_after_turn_start) -
+# namerno, brez posebne izjeme.
+func cover_area(positions_to_cover) -> void:
+	for pos in positions_to_cover:
+		_spawn_fog_tile(pos)

@@ -170,6 +170,11 @@ func is_castle_protected() -> bool:
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
 
+	# Prekletstvo "stunning_gaze": omamljena figura se ne more premakniti
+	# (traja natanko igralčevo naslednjo potezo, glej BattleController.end_player_turn).
+	if stunned_turns > 0:
+		return targets
+
 	# Bishop.Traps: dokler je ta figura ujeta v sovražnikovo cono, se ne more
 	# premakniti nikamor.
 	if is_instance_valid(grid_manager) and grid_manager.is_frozen(grid_pos, is_enemy):
@@ -519,6 +524,9 @@ func get_ability_targets(slot: int) -> Array[Vector2i]:
 # sposobnosti). target je Vector2i za ciljane sposobnosti, sicer null.
 func activate_ability(slot: int, target = null) -> bool:
 	if is_enemy:
+		return false
+	# Prekletstvo "stunning_gaze": omamljena figura ne more uporabiti sposobnosti.
+	if stunned_turns > 0:
 		return false
 	if not is_instance_valid(battle_controller) or not battle_controller.can_use_ability():
 		return false

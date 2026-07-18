@@ -28,6 +28,11 @@ signal bounty_marked(character: BaseCharacter)
 # start_player_turn()).
 signal courier_marked(character: BaseCharacter)
 
+# Prekletstvo "stunning_gaze": character je bil pravkar omamljen (glej
+# stunning_gaze_curse.gd.on_action_taken -> notify_stun spodaj) - battle_ui.gd
+# poveže to na značko/STATUS.
+signal piece_stunned(character: BaseCharacter)
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -318,8 +323,28 @@ func _maybe_pay_courier_reward():
 		player_manager.add_upgrade_items(ItemData.get_reward("courier_package"))
 		print("COURIER_PACKAGE: kurir je preživel - nagrada izplačana")
 
+# Prekletstvo "stunning_gaze": kliče ga stunning_gaze_curse.gd.on_action_taken,
+# da battle_ui.gd lahko takoj osveži značko/STATUS omamljene figure.
+func notify_stun(character: BaseCharacter) -> void:
+	piece_stunned.emit(character)
+
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
+
+	# Prekletstvo "stunning_gaze": omamljenost traja NATANKO igralčevo
+	# naslednjo potezo - odštejemo TUKAJ (ob koncu poteze, v kateri je bila
+	# figura omamljena), ne ob začetku naslednje, da actual "ena poteza"
+	# učinek ne podaljša za dodatno potezo, če bi tikali v start_player_turn.
+	if is_instance_valid(grid_manager):
+		for character in grid_manager.get_all_characters():
+			if not is_instance_valid(character):
+				continue
+			if not (character is BaseCharacter):
+				continue
+			if character.is_enemy:
+				continue
+			if character.stunned_turns > 0:
+				character.stunned_turns -= 1
 
 	if check_battle_end():
 		return
@@ -361,16 +386,27 @@ func start_enemy_turn():
 		if not character.is_enemy:
 			continue
 
-		await _take_enemy_action(character)
+		# Prekletstvo "frenzy": nosilec dobi 1+extra_actions() akcij v TEJ
+		# sovražnikovi potezi (glej frenzy_curse.gd). Zanka namesto enega
+		# await-a, da vsaka akcija dobi svoj flash/pause + battle-end preverbo.
+		var actions: int = 1 + (character.curse.extra_actions() if character.curse else 0)
+		for i in actions:
+			# Lahko je umrl/izginil med prejšnjo akcijo v tej isti zanki
+			# (npr. Queen.Exterminate sprožen z lastnim premikom).
+			if not is_instance_valid(character):
+				break
+			await _take_enemy_action(character)
 
-		# Če je ta akcija končala bitko, takoj prekinemo potezo
-		if check_battle_end():
-			return
+			# Če je ta akcija končala bitko, takoj prekinemo potezo
+			if check_battle_end():
+				return
 
 	end_enemy_turn()
 
 # Izračuna najboljšo potezo za eno sovražnikovo figuro in jo izvede.
-# Če je premik uspel, poskrbi za vizualizacijo + premor pred naslednjo potezo.
+# Če je premik uspel, poskrbi za vizualizacijo + premor pred naslednjo potezo,
+# in sproži morebiten curse hook (snowfall/stunning_gaze - glej curse
+# variante v Scripts/Curses/).
 func _take_enemy_action(character: BaseCharacter) -> void:
 	var action = character.calculate_best_move()
 	if action.is_empty():
@@ -382,6 +418,8 @@ func _take_enemy_action(character: BaseCharacter) -> void:
 	# try_move sam ponovno preveri veljavnost tarče in izvede premik ALI zajetje
 	var moved: bool = character.try_move(action["target_pos"])
 	if moved:
+		if character.curse:
+			character.curse.on_action_taken(character, self)
 		await _flash_move_and_pause(from_pos, action["target_pos"], is_capture)
 
 # Prikaže vizualizacijo ene sovražnikove poteze (izvorno/ciljno polje + pot)
