@@ -72,6 +72,8 @@ var current_map_floor: int = 0
 
 # NOVO: Sledenje napredku igralca med 3 zaporednimi mapami (0, 1, 2)
 var current_map_tier: int = 0
+# NOVO: Način igre za trenutni run ("classic" ali "infinite"), nastavi setStarting()
+var game_mode: String = "classic"
 # NOVO: Ali je soba, ki je sprožila trenutno bitko, boss soba te mape
 var is_boss_floor: bool = false
 
@@ -249,7 +251,8 @@ func resetActives():
 	dead_party.clear()
 	party_changed.emit()
 	
-func setStarting() -> void:
+func setStarting(mode: String = "classic") -> void:
+	game_mode = mode
 	friendly_party = default_friends.duplicate()
 	enemy_party = default_enemies.duplicate()
 	# Nov run: nadgradnje in itemi se ne prenašajo iz prejšnjega runa.
