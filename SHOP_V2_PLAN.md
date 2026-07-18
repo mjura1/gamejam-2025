@@ -484,7 +484,14 @@ Enemies cannot enter or cross the straight line between a friendly rook and a ho
   valid target on/through the line; remove item → path opens.
 
 ### Phase 6 checklist
-- [ ] 6a mounted_hunters (+ knight.gd refactor to shared offsets) + test
+- [x] 6a mounted_hunters (+ knight.gd refactor to shared offsets) + test
+
+**Deviations:** `smoke_mounted_hunters.gd`'s first attempt used a single fixed L-offset
+`(1, 2)`/fallback `(-1, -2)` for the contested tile - placement can land the queen in a
+board corner (e.g. `(0, 11)`) where BOTH of those land out of bounds, causing a false
+failure indistinguishable from a real bug. Fixed by looping over the real
+`KNIGHT_OFFSETS` (now on the queen instance via the base-class const) until an in-bounds,
+unoccupied tile is found, same pattern already used in `smoke_vicious_knights.gd`.
 - [ ] 6b fortress + test
 
 ## Phase 7 — Sprites, wrap-up

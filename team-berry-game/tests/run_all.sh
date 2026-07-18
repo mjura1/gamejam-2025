@@ -178,6 +178,11 @@ check_script "smoke_castle" "res://tests/smoke/smoke_castle.gd" 4 \
 	"SMOKE TEST: castle item works"
 echo
 
+echo "== Item: mounted_hunters knight-jump smoke test =="
+check_script "smoke_mounted_hunters" "res://tests/smoke/smoke_mounted_hunters.gd" 4 \
+	"SMOKE TEST: mounted_hunters works"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"

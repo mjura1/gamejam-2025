@@ -2,6 +2,19 @@
 extends Node2D
 class_name BaseCharacter
 
+# Skoki viteza - eno mesto resnice, ki jo knight.gd.get_move_directions()
+# vrne, in ki jo item "mounted_hunters" doda queen.gd/bishop.gd.
+const KNIGHT_OFFSETS: Array[Vector2i] = [
+	Vector2i(1, 2),
+	Vector2i(2, 1),
+	Vector2i(-1, 2),
+	Vector2i(-2, 1),
+	Vector2i(1, -2),
+	Vector2i(2, -1),
+	Vector2i(-1, -2),
+	Vector2i(-2, -1),
+]
+
 var grid_pos: Vector2i
 # Tracks if the piece has ever seen a player
 

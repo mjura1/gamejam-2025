@@ -17,6 +17,28 @@ func get_move_directions() -> Array[Vector2i]:
 		Vector2i(-1, -1),
 	]
 
+# Item "mounted_hunters": igralčeva kraljica se lahko premakne/zajme tudi kot
+# vitez (pravi skoki, ne drsenje - is_enemy vrata pomembna, ker sovražnikova
+# kraljica deli isto skripto, glej §0 gotcha v SHOP_V2_PLAN.md).
+func calculate_valid_targets() -> Array[Vector2i]:
+	var targets := super.calculate_valid_targets()
+	if is_enemy or not player_manager.has_passive("mounted_hunters"):
+		return targets
+	if grid_manager.is_frozen(grid_pos, is_enemy): # super je za to že vrnil []
+		return targets
+	for offset in KNIGHT_OFFSETS:
+		var pos := grid_pos + offset
+		if pos in targets: continue
+		if not grid_manager.is_inside_boundary(pos, tile_map.get_used_rect()): continue
+		if grid_manager.is_entry_denied(pos, is_enemy): continue
+		var c = grid_manager.get_character_at(pos)
+		if c == null:
+			targets.append(pos)
+		elif c.is_enemy != is_enemy and not c.is_obstacle and not c.is_capture_immune \
+				and not c.is_castle_protected():
+			targets.append(pos)
+	return targets
+
 # ----------------- SPOSOBNOSTI -----------------
 
 const ABILITY_DEFS = [

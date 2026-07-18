@@ -8,16 +8,7 @@ func _ready():
 
 # KLJUČNA SPREMEMBA: Sedaj implementira get_move_directions()
 func get_move_directions() -> Array[Vector2i]:
-	return [
-		Vector2i(1, 2),
-		Vector2i(2, 1),
-		Vector2i(-1, 2),
-		Vector2i(-2, 1),
-		Vector2i(1, -2),
-		Vector2i(2, -1),
-		Vector2i(-1, -2),
-		Vector2i(-2, -1),
-	]
+	return KNIGHT_OFFSETS
 # calculate_valid_targets() se podeduje
 
 # ----------------- SPOSOBNOSTI -----------------
