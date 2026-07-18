@@ -315,7 +315,23 @@ A friendly wolf (pawn-like) spawns each battle and acts autonomously after every
 - [x] 4a vicious_knights + test
 - [x] 4b bounty + badge + test
 - [x] 4c spyglass + highlighter color + test
-- [ ] 4d bloodhounds (wolf script/scene/spawn/AI/roster) + test
+- [x] 4d bloodhounds (wolf script/scene/spawn/AI/roster) + test
+
+**Deviations:**
+- `try_move`'s guard uses `is_autonomous` directly (a real `BaseCharacter` field added for
+  this item) rather than `get("is_autonomous")` - the plan's `get()` was only needed if the
+  field lived solely on `wolf.gd`; adding it to the base class makes direct access
+  type-safe and the `get()` indirection unnecessary.
+- Actual print string differs from the plan's `SMOKE_BLOODHOUNDS_OK` (same drift pattern as
+  Phase 2's shop test) - used a real descriptive confirmation string instead, matched in
+  `run_all.sh`.
+- Noticed `smoke_ability_ui_pipeline` fails intermittently (~30-50% of full `run_all.sh`
+  runs) with "expected confirmation not found", but passes 100% of the time run standalone
+  at the same `--quit-after`. This is pre-existing environmental flakiness (cumulative
+  system load from running many sequential headless Godot processes in one session), not a
+  regression - confirmed by running full-suite retries back to back, where it flips
+  pass/fail with no code changes in between. Not touched; out of scope to fix a pre-existing
+  test's timing budget.
 
 ## Phase 5 — Uncommon items
 

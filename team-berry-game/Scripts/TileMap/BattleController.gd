@@ -8,6 +8,7 @@ class_name BattleController
 @onready var grid_manager: GridManager = get_node("../GridManager")
 @onready var player_manager = get_node("/root/PlayerManager")
 @onready var move_highlighter = get_node("../MoveHighlighter")
+@onready var tile_map = get_node("../Map/TileMapLayer")
 
 # Sproži se ob vsaki spremembi stanja bitke (za battle UI: turn label,
 # START/END TURN gumb, placement overlay).
@@ -194,6 +195,9 @@ func start_player_turn():
 			if not enemies.is_empty():
 				bounty_target = enemies.pick_random()
 				bounty_marked.emit(bounty_target)
+
+		if player_manager.has_passive("bloodhounds"):
+			_spawn_bloodhound_wolf()
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
@@ -226,6 +230,54 @@ func add_bonus_move():
 	moves_remaining += 1
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 
+# Item "bloodhounds": prikliče enega volka na naključno prosto polje v
+# spodnjih 3 vrsticah (isti obseg kot placement cona) - natanko en volk na
+# bitko, ne glede na to, koliko kosov itema igralec ima.
+func _spawn_bloodhound_wolf():
+	if not is_instance_valid(grid_manager) or not is_instance_valid(tile_map):
+		return
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	var candidates: Array[Vector2i] = []
+	for y in range(used_rect.end.y - 3, used_rect.end.y):
+		for x in range(used_rect.position.x, used_rect.end.x):
+			var pos := Vector2i(x, y)
+			if grid_manager.is_inside_boundary(pos, used_rect) and not grid_manager.is_occupied(pos):
+				candidates.append(pos)
+	if candidates.is_empty():
+		return
+
+	var tile: Vector2i = candidates.pick_random()
+	var battle_root = get_node("..")
+	var wolf_scene: PackedScene = battle_root.friendly_pieces["friendly_wolf"]
+	grid_manager.spawn_character(wolf_scene, grid_manager.grid_to_world(tile))
+
+	# Začasen zaveznik - ni del trajnega rosterja (glej PlayerManager.
+	# add_temporary_ally); is_converted_ally usmeri smrt skozi
+	# remove_converted_ally(), ne register_dead_character().
+	var wolf: BaseCharacter = grid_manager.get_character_at(tile)
+	if is_instance_valid(wolf):
+		wolf.is_converted_ally = true
+		player_manager.add_temporary_ally("friendly_wolf")
+
+# Item "bloodhounds": po igralčevi potezi (pred sovražnikovo) se vsaka
+# avtonomna zavezniška figura (trenutno samo volk) premakne sama, po
+# enaki poti kot sovražnikova AI poteza (glej _take_enemy_action).
+func _move_autonomous_allies() -> void:
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter):
+			continue
+		if character.is_enemy or not character.is_autonomous:
+			continue
+
+		await _take_enemy_action(character)
+
+		if check_battle_end():
+			return
+
 # Item "bounty": kliče base_character.die() za VSAKEGA sovražnika, ki umre -
 # samo prva smrt v bitki šteje (poznejše zajetja bounty_targeta ne vplivajo).
 func on_enemy_died(character: BaseCharacter):
@@ -239,6 +291,14 @@ func on_enemy_died(character: BaseCharacter):
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
 
+	if check_battle_end():
+		return
+
+	# Item "bloodhounds": avtonomni zavezniki (volk) delujejo TAKOJ po
+	# igralčevi potezi, pred sovražnikovo. Klicatelji (battle_ui action
+	# gumb) tega ne awaitajo - v redu, nadaljuje kot coroutine, enako kot
+	# spodnji start_enemy_turn() await-i že delajo.
+	await _move_autonomous_allies()
 	if check_battle_end():
 		return
 

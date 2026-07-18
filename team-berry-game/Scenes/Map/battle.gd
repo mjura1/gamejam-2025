@@ -15,7 +15,8 @@ const friendly_pieces := {
 	"friendly_bishop": preload("res://Scenes/CharacterPiecesNodes/Ally/bishop.tscn"),
 	"friendly_knight": preload("res://Scenes/CharacterPiecesNodes/Ally/knight.tscn"),
 	"friendly_king": preload("res://Scenes/CharacterPiecesNodes/Ally/king.tscn"),
-	"friendly_queen": preload("res://Scenes/CharacterPiecesNodes/Ally/queen.tscn")
+	"friendly_queen": preload("res://Scenes/CharacterPiecesNodes/Ally/queen.tscn"),
+	"friendly_wolf": preload("res://Scenes/CharacterPiecesNodes/Ally/wolf.tscn")
 }
 
 # Enemy pieces dictionary

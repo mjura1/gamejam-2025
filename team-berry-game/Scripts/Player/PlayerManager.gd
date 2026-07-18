@@ -228,6 +228,15 @@ func remove_converted_ally(character_name: String):
 		active_party.remove_at(idx)
 	party_changed.emit()
 
+# Item "bloodhounds": doda začasnega zaveznika (npr. "friendly_wolf") v
+# active_party za TO bitko - ni del trajnega rosterja (friendly_party), zato
+# ne gre skozi noben nakup/prodajo. Smrt take figure mora iti skozi
+# remove_converted_ally() (glej BaseCharacter.die() is_converted_ally veja),
+# NE register_dead_character(), da ne pusti fantomskega dead_party vnosa.
+func add_temporary_ally(character_name: String):
+	active_party.append(character_name)
+	party_changed.emit()
+
 func add_to_enemy_party(character):
 	# Namerno: vojska sovražnikov RASTE, ko igralec napreduje globlje v isto mapo
 	# (vsaka bitka doda k prejšnjim, ne le k default_enemies). Ponastavi se samo

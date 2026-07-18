@@ -59,6 +59,11 @@ var is_capture_immune: bool = false
 # napačnega vnosa v trajni roster/dead_party (glej register_dead_character).
 var is_converted_ally: bool = false
 
+# Item "bloodhounds": prijazna figura (trenutno samo volk), ki deluje sama
+# po igralčevi potezi, kot AI (glej BattleController._move_autonomous_allies).
+# Privzeto false, da je get("is_autonomous") varen na vsaki figuri.
+var is_autonomous: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -193,8 +198,10 @@ func execute_move(target: Vector2i):
 
 
 func try_move(target: Vector2i) -> bool:
-	# Omogoči AI-ju premik brez preverjanja stanja battle_controllerja
-	if not is_enemy and not battle_controller.can_move():
+	# Omogoči AI-ju (in item "bloodhounds" avtonomnim zaveznikom) premik brez
+	# preverjanja proračuna premikov igralca - ta je že porabljen do konca
+	# igralčeve poteze.
+	if not is_enemy and not is_autonomous and not battle_controller.can_move():
 		return false
 	
 	# 1. Ali je tarča veljavna tarča za premik/zajetje?
