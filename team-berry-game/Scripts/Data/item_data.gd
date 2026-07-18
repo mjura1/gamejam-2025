@@ -11,6 +11,8 @@ const SHOP_CONFIG_PATH := "res://Data/shop_config.json"
 # enak pieces sistemu.
 const ITEM_SCRIPTS: Dictionary = {
 	"extra_move": preload("res://Scripts/Items/extra_move_item.gd"),
+	"barricade": preload("res://Scripts/Items/barricade_item.gd"),
+	"flare": preload("res://Scripts/Items/flare_item.gd"),
 }
 
 var _items: Dictionary = {}

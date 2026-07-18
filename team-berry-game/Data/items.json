@@ -1,5 +1,7 @@
 {
 	"extra_move":   {"name": "Extra Move", "description": "One use. Gives +1 move this turn in battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"barricade":    {"name": "Barricade", "description": "One use. Drop a wall on an empty tile to block enemy movement and line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"flare":        {"name": "Flare", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 
 	"spyglass":     {"name": "Spyglass", "description": "When selecting a piece, tiles the enemy could capture next turn are marked.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive"},
 	"bloodhounds":  {"name": "Bloodhounds", "description": "A friendly wolf joins each battle and hunts on its own after your turn.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive"},

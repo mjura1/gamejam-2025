@@ -133,6 +133,11 @@ check_script "smoke_item_use" "res://tests/smoke/smoke_item_use.gd" 4 \
 	"SMOKE TEST: extra_move item used cleanly, moves incremented, inventory decremented"
 echo
 
+echo "== Item: barricade + flare smoke test =="
+check_script "smoke_barricade_flare" "res://tests/smoke/smoke_barricade_flare.gd" 4 \
+	"SMOKE TEST: barricade + flare items work"
+echo
+
 echo "== Ability activation smoke test =="
 check_script "smoke_abilities" "res://tests/smoke/smoke_abilities.gd" 4 \
 	"SMOKE TEST: ability activated cleanly and use count decremented"
