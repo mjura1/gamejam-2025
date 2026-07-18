@@ -5,6 +5,12 @@ extends SceneTree
 # Run with: godot4 --headless --path . --script res://tests/run_unit_tests.gd --quit-after 1
 
 func _initialize():
+	# Autoloads (e.g. ItemData) don't run _ready() until the engine processes
+	# its first frame - _initialize() itself runs before that frame, so any
+	# test touching an autoload's loaded data would silently see empty
+	# dictionaries (falling back to hardcoded defaults) without this await.
+	await process_frame
+
 	var dir := DirAccess.open("res://tests/unit")
 	if dir == null:
 		printerr("run_unit_tests: could not open res://tests/unit")
