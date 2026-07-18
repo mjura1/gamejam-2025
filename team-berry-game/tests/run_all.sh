@@ -153,6 +153,11 @@ check_script "smoke_bounty" "res://tests/smoke/smoke_bounty.gd" 4 \
 	"SMOKE TEST: bounty mark + reward works"
 echo
 
+echo "== Item: spyglass risk tiles smoke test =="
+check_script "smoke_spyglass" "res://tests/smoke/smoke_spyglass.gd" 4 \
+	"SMOKE TEST: spyglass risk tiles work"
+echo
+
 echo "== Battle-end smoke tests (C7/T5.1, C8/T5.2) =="
 check_script "smoke_battle_end (WIN path)" "res://tests/smoke/smoke_battle_end.gd" 15 \
 	"SMOKE TEST: Battle scene left the tree - transition happened cleanly"

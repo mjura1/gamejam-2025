@@ -94,7 +94,31 @@ func _apply_selection(character: BaseCharacter):
 
 	var valid_moves = selected_character.calculate_valid_targets()
 	move_highlighter.show_moves(valid_moves)
+
+	# Item "spyglass": obarva podmnožico valid_moves, ki bi jo sovražnik
+	# lahko zajel naslednjo potezo.
+	if player_manager.has_passive("spyglass"):
+		move_highlighter.show_risk_tiles(_compute_risk_tiles(valid_moves))
+
 	selection_changed.emit(selected_character)
+
+# Item "spyglass": unija dosegljivih (praznih ALI zasedljivih) polj vsakega
+# živega sovražnika, presekana z valid_moves - v tej igri figura zajema
+# natanko vzdolž svojega premika, zato so sovražnikova dosegljiva polja
+# točno polja, ki bi jih lahko zajel naslednjo potezo. ZNANA POENOSTAVITEV:
+# ne simulira spremembe plošče zaradi lastne poteze igralca (figura se še
+# ni premaknila) - sprejemljivo, gre za opozorilni marker, ne za garancijo.
+func _compute_risk_tiles(valid_moves: Array[Vector2i]) -> Array[Vector2i]:
+	var risky: Array[Vector2i] = []
+	if not is_instance_valid(grid_manager):
+		return risky
+	for character in grid_manager.get_all_characters():
+		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
+			continue
+		for target in character.calculate_valid_targets():
+			if target in valid_moves and target not in risky:
+				risky.append(target)
+	return risky
 
 # Odstrani izbiro in počisti poudarke.
 func _clear_selection():
