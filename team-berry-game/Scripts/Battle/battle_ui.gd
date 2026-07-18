@@ -82,6 +82,7 @@ func _ready():
 	battle_controller.moves_changed.connect(_on_moves_changed)
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
 	battle_controller.bounty_marked.connect(func(character): _set_board_badge(character, "☠"))
+	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
 	auto_fill_button.pressed.connect(_on_auto_fill_pressed)

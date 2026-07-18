@@ -68,3 +68,37 @@ func test_on_enemy_died_only_resolves_once_per_battle():
 	bc.on_enemy_died(target) # target dies second - too late, already resolved
 	assert_eq(bc.player_manager.upgrade_items, before,
 		"only the FIRST enemy death in a battle should be able to resolve the bounty")
+
+# ----------------- Item "courier_package" -----------------
+
+func test_courier_reward_paid_when_courier_survives():
+	var bc = BattleControllerScript.new()
+	bc.player_manager = PlayerManagerScript.new()
+	bc.courier = BaseCharacterScript.new() # never freed - still is_instance_valid()
+
+	var before: int = bc.player_manager.upgrade_items
+	bc._maybe_pay_courier_reward()
+	assert_eq(bc.player_manager.upgrade_items, before + 1,
+		"a surviving courier should pay the reward (1x reward field, default 1)")
+
+func test_courier_reward_not_paid_when_courier_died():
+	var bc = BattleControllerScript.new()
+	bc.player_manager = PlayerManagerScript.new()
+	var courier := BaseCharacterScript.new()
+	bc.courier = courier
+	courier.free() # simulates die()'s queue_free() having already taken effect
+
+	var before: int = bc.player_manager.upgrade_items
+	bc._maybe_pay_courier_reward()
+	assert_eq(bc.player_manager.upgrade_items, before,
+		"a captured (freed) courier should not pay any reward")
+
+func test_courier_reward_not_paid_when_no_courier_was_marked():
+	var bc = BattleControllerScript.new()
+	bc.player_manager = PlayerManagerScript.new()
+	bc.courier = null
+
+	var before: int = bc.player_manager.upgrade_items
+	bc._maybe_pay_courier_reward()
+	assert_eq(bc.player_manager.upgrade_items, before,
+		"no reward should be paid when courier_package wasn't owned (courier never marked)")

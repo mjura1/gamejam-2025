@@ -407,7 +407,14 @@ test process (same pattern as `smoke_battle_end.gd`'s WIN path), but calling it 
 `test_*.gd` would run inside `run_unit_tests.gd`'s own shared SceneTree alongside every
 other unit test in that process, risking cross-test interference or a crash if
 `current_map_instance` isn't set up the way a real battle would set it up.
-- [ ] 5b courier_package + badge + test
+- [x] 5b courier_package + badge + test
+
+**Deviations:** extracted the reward payout into a `_maybe_pay_courier_reward()` helper
+(mirrors `on_enemy_died()` for bounty) instead of inlining it in `check_battle_end()`'s
+victory branch - lets the "surviving/died/no-courier" cases be pure-unit-tested directly,
+same reasoning as 5a's deviation (the victory branch itself calls `GF.call_deferred(...)`,
+unsafe to invoke from inside `run_unit_tests.gd`'s shared SceneTree). A smoke test still
+covers the real end-to-end wiring (mark -> badge -> survive -> victory -> reward).
 - [ ] 5c castle + test
 
 ## Phase 6 — Rare items

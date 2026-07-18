@@ -24,6 +24,10 @@ signal abilities_changed(remaining: int, max_abilities: int)
 # (battle_ui poveže to na _set_board_badge, glej start_player_turn()).
 signal bounty_marked(character: BaseCharacter)
 
+# Item "courier_package": enako kot bounty_marked, a za kurirja (glej
+# start_player_turn()).
+signal courier_marked(character: BaseCharacter)
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -56,6 +60,12 @@ var vicious_knight_used: bool = false
 # initialize_battle().
 var bounty_target: BaseCharacter = null
 var first_enemy_death_resolved: bool = false
+
+# Item "courier_package": naključen živ zaveznik je izbran ob začetku prve
+# poteze v bitki (izključuje volka - glej start_player_turn()); če preživi
+# bitko do zmage, igralec dobi nagrado (glej check_battle_end() victory
+# branch). Resetira se v initialize_battle().
+var courier: BaseCharacter = null
 
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
@@ -109,6 +119,7 @@ func _ready():
 func initialize_battle():
 	bounty_target = null
 	first_enemy_death_resolved = false
+	courier = null
 
 	# 1. Pridobimo trenutni napredek igralca
 	var current_floor = 0
@@ -198,6 +209,16 @@ func start_player_turn():
 
 		if player_manager.has_passive("bloodhounds"):
 			_spawn_bloodhound_wolf()
+
+		if player_manager.has_passive("courier_package"):
+			var allies: Array = []
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and not character.is_enemy \
+						and not character.is_obstacle and not character.is_converted_ally:
+					allies.append(character)
+			if not allies.is_empty():
+				courier = allies.pick_random()
+				courier_marked.emit(courier)
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
@@ -287,6 +308,15 @@ func on_enemy_died(character: BaseCharacter):
 	if character == bounty_target and is_instance_valid(player_manager):
 		player_manager.add_upgrade_items(ItemData.get_reward("bounty"))
 		print("BOUNTY: tarča je padla prva - nagrada izplačana")
+
+# Item "courier_package": kurir mora PREŽIVETI do zmage - die() ga
+# queue_free()-a, zaradi česar is_instance_valid() vrne false, torej zajeti
+# kurirji ne izplačajo ničesar. Ločena funkcija (namesto inline v
+# check_battle_end()), da je testljiva brez sprožitve GF.call_deferred().
+func _maybe_pay_courier_reward():
+	if is_instance_valid(courier) and is_instance_valid(player_manager):
+		player_manager.add_upgrade_items(ItemData.get_reward("courier_package"))
+		print("COURIER_PACKAGE: kurir je preživel - nagrada izplačana")
 
 func end_player_turn():
 	print("<<< KONEC POTEZE IGRALCA >>>")
@@ -386,6 +416,8 @@ func check_battle_end() -> bool:
 		else:
 			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_WIN)
 			GF.call_deferred("return_to_map")
+
+		_maybe_pay_courier_reward()
 		return true
 
 	if player_manager.activeGone():
