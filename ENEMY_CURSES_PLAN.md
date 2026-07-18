@@ -213,18 +213,41 @@ branched on `settings_manager.reduced_motion` — same accessibility pattern as
 - Marker is a child → moves and dies with the piece automatically.
 
 ### Phase 1 checklist
-- [ ] curses.json + CurseData autoload + registration
-- [ ] base_curse + 3 variants (frenzy functional, other two stubs)
-- [ ] `curse` var + `apply_curse` + battle.gd assignment (+ spawn_character returns instance)
-- [ ] curse_marker visual incl. reduced-motion + scale compensation
-- [ ] Unit test `tests/unit/test_curses.gd`: create each curse id, name/desc/color/params from
+- [x] curses.json + CurseData autoload + registration
+- [x] base_curse + 3 variants (frenzy functional, other two stubs)
+- [x] `curse` var + `apply_curse` + battle.gd assignment (+ spawn_character returns instance)
+- [x] curse_marker visual incl. reduced-motion + scale compensation
+- [x] Unit test `tests/unit/test_curses.gd`: create each curse id, name/desc/color/params from
       JSON; chance × difficulty multiplier math; min_floor respected (call `_maybe_curse`-logic
       with a stubbed floor value or factor the roll into a pure func
       `should_curse(floor, roll, difficulty) -> bool` for testability — prefer the pure func).
       For `roll_curse_for`: seeded RNG → deterministic assert; weight 0 curse never rolled; a
       piece named in every `excluded_pieces` → returns ""; a piece excluded from one curse
       only ever gets the others.
-- [ ] Headless import + `./tests/run_all.sh` green.
+- [x] Headless import + `./tests/run_all.sh` green.
+
+**DEVIATION (important, read before touching curse-related types again):** `CurseData` (and
+`ItemData`, `AbilityData`, ...) autoloads are NOT resolvable as bare global identifiers during
+the mandatory early "global class_name scan" that Godot runs before ANY headless `--script` run
+(this is a *stronger* version of the documented entry-script gotcha — it also applies
+transitively to *any* `class_name` script, not just the entry script). Concretely: `base_character.gd`
+declares `class_name BaseCharacter`, so it's swept by that scan; if it (or anything it forces to
+compile via a STATIC type reference — a class var, a function param, or even a local `var x:
+BaseCurse` inside a method body) points at `BaseCurse` (`class_name`, `extends RefCounted`,
+whose own methods read `CurseData.xxx`), the scan tries to fully compile `base_curse.gd` before
+`CurseData` is registered → `SCRIPT ERROR: Compile Error: Identifier not found: CurseData` on
+every single smoke test (they all transitively load a piece scene → `BaseCharacter`). Fix
+applied: `base_character.gd`'s `curse` var and `apply_curse(new_curse)` param are deliberately
+**untyped**, and `apply_curse` instantiates the marker via `load("res://Scripts/Curses/curse_marker.gd").new()`
+instead of the bare `CurseMarker` class_name identifier (dynamic `load()` defers resolution past
+the early scan, unlike a static type reference). `curse_marker.gd` itself is free to keep typed
+`BaseCurse` params/vars since nothing in the early-scanned graph statically references
+`CurseMarker` anymore. This is why `ItemData`/`BaseItem` never hit this: no `class_name` script
+in the codebase has a static type reference to `BaseItem` (the one place `BaseItem` is used as a
+type, in `battle_ui.gd`, is a local var in a script with no `class_name`, so it's compiled lazily
+at scene-instantiation time, well after autoloads are up). Keep this pattern (untyped +
+`load()`) for any FUTURE code that gives `BaseCharacter` (or any other early-scanned class_name
+script) a static reference to a `BaseCurse`-derived type.
 
 ## Phase 2 — Curse effects
 

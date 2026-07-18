@@ -76,6 +76,27 @@ var is_converted_ally: bool = false
 # po igralčevi potezi, kot AI (glej BattleController._move_autonomous_allies).
 var is_autonomous: bool = false
 
+# Prekletstvo sovražnika (od nadstropja 2 naprej, glej battle.gd._maybe_curse) -
+# null, če figura ni prekleta. Glej Scripts/Curses/base_curse.gd.
+# NAMERNO netipizirano (ne "var curse: BaseCurse", glej tudi apply_curse
+# spodaj): base_character.gd je del enega globalno skeniranih class_name
+# skriptov (BaseCharacter), ki se v --script/headless zagonih (VSI smoke
+# testi + run_unit_tests.gd) eagerly prevedejo PREDEN so avtoloadi (CurseData)
+# sploh registrirani kot globalni identifikatorji. Vsaka statična tipizacija
+# (class var, funkcijski parameter, celo lokalen typed var znotraj metode) na
+# BaseCurse tu prisili GDScript, da polno prevede base_curse.gd (ki bere
+# CurseData v svojih metodah) v tem zgodnjem koraku -> "Identifier not found:
+# CurseData" compile error. Zato ostane ne-tipizirano povsod v tej datoteki;
+# curse_marker.gd sam SME tipizirati na BaseCurse (glej apply_curse spodaj -
+# nalagamo ga z load(), ne z golim CurseMarker identifikatorjem, iz istega
+# razloga).
+var curse = null
+
+# Prekletstvo "stunning_gaze": koliko igralčevih potez ta figura še ne more
+# premikati/uporabljati sposobnosti (glej calculate_valid_targets/
+# activate_ability spodaj in BattleController.end_player_turn tick-down).
+var stunned_turns: int = 0
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -106,8 +127,21 @@ func on_grid_manager_registered():
 
 	# Za debug:
 	print("%s: Uspešno registriran in inicializiran na mreži %s." % [self.name, str(grid_pos)])
-		
-		
+
+# Dodeli prekletstvo tej figuri (glej battle.gd._maybe_curse) in doda njen
+# vizualni marker (delci/pulzirajoč tint ali statična oblika, glej
+# Scripts/Curses/curse_marker.gd - reduced_motion preklop). "new_curse"
+# NAMERNO netipiziran (glej opombo pri "var curse" zgoraj). Iz istega razloga
+# CurseMarker nalagamo z load() namesto z golim class_name identifikatorjem -
+# ta bi enako prisilil zgodnji compile base_curse.gd/CurseData.
+func apply_curse(new_curse) -> void:
+	curse = new_curse
+	var marker = load("res://Scripts/Curses/curse_marker.gd").new()
+	marker.name = "CurseMarker"
+	add_child(marker)
+	marker.setup(self, curse)
+
+
 # ----------------- GIBANJE IN CILJANJE -----------------
 
 func get_move_directions() -> Array[Vector2i]:

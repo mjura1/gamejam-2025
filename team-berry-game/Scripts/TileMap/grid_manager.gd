@@ -141,6 +141,11 @@ func spawn_character(characterScene: PackedScene, pos: Vector2):
 	# Registracija naj se zgodi takoj po dodajanju v tree
 	register_all_characters_in_scene()
 
+	# Vrnemo instanco, da lahko klicatelj takoj deluje na njej (npr. curse
+	# assignment v battle.gd._maybe_curse) - preverjeno, noben obstoječi
+	# klicatelj (vključno s King.Heal) tega ni uporabljal.
+	return character
+
 
 # FUNKCIJA ZA REGISTRACIJO FIGUR
 func register_all_characters_in_scene():
