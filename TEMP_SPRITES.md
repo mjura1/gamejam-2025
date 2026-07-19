@@ -17,3 +17,4 @@ real asset replaces it.
 | `team-berry-game/Assets/Sprites/item_fortress.png` | The `fortress` item's icon, e.g. crenellated battlements. | ImageMagick: 256x256, navy `#1a2a5a` background, pale blue "FTR" text, pale blue border. |
 | `team-berry-game/Assets/Sprites/item_mounted_hunters.png` | The `mounted_hunters` item's icon, e.g. a horse-mounted rider. | ImageMagick: 256x256, brown `#5a2a1a` background, tan "MH" text, tan border. |
 | `team-berry-game/Assets/Sprites/friendly_wolf.png` | The `bloodhounds` summoned wolf piece, matching the ally piece art style (see `friendly_pawn.png`). | ImageMagick: 256x256, gray `#555560` background, pale "W" letter, pale border. |
+| `team-berry-game/Assets/Sprites/ability_placeholder.png` | Shared placeholder icon for all 18 abilities in the battle UI ability rows (real per-ability icons TBD). | ImageMagick: 256x256, blue `#2a4a7a` background, pale "?" glyph, pale border. |
