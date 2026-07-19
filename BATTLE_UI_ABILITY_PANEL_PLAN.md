@@ -332,3 +332,34 @@ redundant given the structural guarantee above.
    needs a human pass. Steps 1-3 (baseline, targeted smoke tests, full
    `run_all.sh`) all ran clean with zero new failures beyond the same 6
    pre-existing ones. Miha is doing the manual pass himself.
+
+## Post-implementation revision (per Miha's sketch, after his manual pass)
+
+Miha tested the above and liked it, but asked for two follow-up changes to each
+ability row (same overall row width, just restyled):
+
+- Icon grows from 20x20 to 64x64, and the "Use Ability" button moves from a
+  separate row below to sit next to the icon, under the name/level/uses line
+  — i.e. `AbilityXRow` now contains `AbilityXIcon` + a new `AbilityXInfo`
+  VBox (`AbilityXHeader` HBox with Name/Level/Uses, then `AbilityXButton`
+  underneath), instead of the button being a DetailVBox sibling below the row.
+- Hover-for-description now also triggers over the "Use Ability" button, not
+  just the icon/name/level/uses — this falls out for free once the button is
+  nested inside `AbilityXRow`, since `mouse_entered`/`mouse_exited` fire on the
+  row's own bounding rect regardless of which descendant the cursor is over.
+- Locked rows now show "?" as the button text (was always "Use Ability",
+  just disabled) — matches Miha's sketch of the locked state.
+
+One non-obvious fix this required: a disabled `Button` still defaults to
+`mouse_filter = STOP`, which would silently swallow clicks landing on the
+button's own rect before they reached `AbilityXRow`'s `gui_input` handler —
+breaking click-to-reveal specifically when the click landed on the "?"
+button rather than the icon/name area. Fixed by toggling the button's
+`mouse_filter` alongside its `disabled` state in `_show_abilities()`/
+`_clear_ability_rows()`: `IGNORE` while locked (so clicks pass through to the
+row), `STOP` while unlocked (so its own `pressed` signal still fires).
+
+Verified with the same three targeted smoke tests
+(`smoke_battle`/`smoke_ability_ui_pipeline`/`smoke_inspect`) plus a full
+`run_all.sh` — identical results to the original implementation pass, same
+6 pre-existing `smoke_ability_ui_pipeline` failures, nothing new.

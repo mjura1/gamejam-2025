@@ -74,6 +74,8 @@ const ABILITY_ICON_LOCKED_TINT := Color(0.35, 0.35, 0.35)
 const ABILITY_ICON_UNLOCKED_TINT := Color(1, 1, 1)
 const ABILITY_BUBBLE_WIDTH := 260.0
 const ABILITY_BUBBLE_MARGIN := 8.0
+const ABILITY_BUTTON_TEXT_UNLOCKED := "Use Ability"
+const ABILITY_BUTTON_TEXT_LOCKED := "?"
 
 var placement_active: bool = false
 
@@ -852,6 +854,8 @@ func _clear_ability_rows():
 		w.level.text = ""
 		w.uses.text = ""
 		w.button.disabled = true
+		w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
+		w.button.mouse_filter = Control.MOUSE_FILTER_STOP
 	for slot in [1, 2, 3]:
 		_slot_bubble_state[slot] = {"locked": true, "text": ""}
 	_hide_ability_bubble()
@@ -907,6 +911,10 @@ func _show_abilities(character: BaseCharacter):
 			w.level.text = _level_text(info)
 			w.uses.text = "%d/%d" % [info.get("uses_remaining", 0), info.get("uses_max", 0)]
 			w.button.disabled = not (can_use_now and info.get("uses_remaining", 0) > 0)
+			w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
+			# Restore normal click handling (a prior locked state may have set
+			# this to IGNORE below - see the locked branch's comment).
+			w.button.mouse_filter = Control.MOUSE_FILTER_STOP
 			_slot_bubble_state[slot] = {"locked": false, "text": info.get("desc", "")}
 		else:
 			# Cena odklepa pride iz skill drevesa (aN_unlock vozlišče tega
@@ -917,6 +925,11 @@ func _show_abilities(character: BaseCharacter):
 			w.level.text = ""
 			w.uses.text = ""
 			w.button.disabled = true
+			w.button.text = ABILITY_BUTTON_TEXT_LOCKED
+			# Disabled + IGNORE so a click anywhere in the row - including on
+			# top of the button - reaches Row's gui_input and reveals the
+			# locked-slot bubble (see _on_ability_row_gui_input below).
+			w.button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			var locked_text := "Use %d upgrade item%s at a rest to unlock the %s ability." % [
 				unlock_cost, "" if unlock_cost == 1 else "s", _SLOT_ORDINAL[slot]
 			]

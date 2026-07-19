@@ -227,38 +227,50 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
+theme_override_constants/separation = 8
 
 [node name="Ability1Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Ability1Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
+[node name="Ability1Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Ability1Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Ability1Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 size_flags_horizontal = 3
 text = "-"
 
-[node name="Ability1Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
+[node name="Ability1Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 11
 text = ""
 
-[node name="Ability1Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
+[node name="Ability1Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = ""
 
-[node name="Ability1Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="Ability1Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 3
 disabled = true
 text = "Use Ability"
 
@@ -269,38 +281,50 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
+theme_override_constants/separation = 8
 
 [node name="Ability2Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Ability2Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
+[node name="Ability2Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Ability2Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Ability2Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 size_flags_horizontal = 3
 text = "-"
 
-[node name="Ability2Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
+[node name="Ability2Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 11
 text = ""
 
-[node name="Ability2Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
+[node name="Ability2Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = ""
 
-[node name="Ability2Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="Ability2Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 3
 disabled = true
 text = "Use Ability"
 
@@ -311,38 +335,50 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
+theme_override_constants/separation = 8
 
 [node name="Ability3Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Ability3Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
+[node name="Ability3Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Ability3Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Ability3Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 size_flags_horizontal = 3
 text = "-"
 
-[node name="Ability3Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
+[node name="Ability3Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 11
 text = ""
 
-[node name="Ability3Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
+[node name="Ability3Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = ""
 
-[node name="Ability3Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="Ability3Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 3
 disabled = true
 text = "Use Ability"
 
