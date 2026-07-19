@@ -304,6 +304,54 @@ theme_override_font_sizes/font_size = 11
 text = ""
 autowrap_mode = 3
 
+[node name="HSep3" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+layout_mode = 2
+
+[node name="Ability3Body" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Ability3Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Body"]
+layout_mode = 2
+
+[node name="Ability3Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Body/Ability3Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "-"
+
+[node name="Ability3Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Body/Ability3Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="Ability3Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Body/Ability3Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="Ability3Desc" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+autowrap_mode = 3
+
+[node name="Ability3Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Body"]
+unique_name_in_owner = true
+layout_mode = 2
+disabled = true
+text = "Use Ability"
+
+[node name="Ability3Locked" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = ""
+autowrap_mode = 3
+
 [node name="BudgetRow" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox"]
 layout_mode = 2
 alignment = 1

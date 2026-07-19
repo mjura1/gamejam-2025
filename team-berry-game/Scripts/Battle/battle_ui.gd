@@ -38,6 +38,13 @@ const MAX_PLACED := 5
 @onready var ability2_button: Button = %Ability2Button
 @onready var ability2_body: VBoxContainer = %Ability2Body
 @onready var ability2_locked: Label = %Ability2Locked
+@onready var ability3_name: Label = %Ability3Name
+@onready var ability3_level: Label = %Ability3Level
+@onready var ability3_uses: Label = %Ability3Uses
+@onready var ability3_desc: Label = %Ability3Desc
+@onready var ability3_button: Button = %Ability3Button
+@onready var ability3_body: VBoxContainer = %Ability3Body
+@onready var ability3_locked: Label = %Ability3Locked
 @onready var moves_label: Label = %MovesLabel
 @onready var abilities_label: Label = %AbilitiesLabel
 @onready var turn_label: Label = %TurnLabel
@@ -99,6 +106,7 @@ func _ready():
 	player_manager.items_changed.connect(_rebuild_item_drawer)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
+	ability3_button.pressed.connect(_on_ability_pressed.bind(3))
 	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
 	# sredi bitke) - značke slotov naj se takoj osvežijo.
 	KeybindManager.rebinds_changed.connect(_rebuild_rows)
@@ -132,6 +140,10 @@ func _unhandled_input(event):
 		return
 	if event.is_action_pressed("ability_2") and not ability2_button.disabled:
 		_on_ability_pressed(2)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ability_3") and not ability3_button.disabled:
+		_on_ability_pressed(3)
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_items") and item_drawer.visible:
@@ -811,6 +823,9 @@ func _clear_ability_rows():
 	ability2_body.visible = false
 	ability2_locked.visible = true
 	ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
+	ability3_body.visible = false
+	ability3_locked.visible = true
+	ability3_locked.text = "Unlock the third ability in this piece's skill tree at a rest."
 
 
 # "LV n" ali "LV MAX", ko je figura na najvišji stopnji (glej
@@ -821,7 +836,7 @@ func _level_text(info: Dictionary) -> String:
 	return "LV MAX" if level >= level_max else "LV %d" % level
 
 
-# Napolni obe vrstici sposobnosti iz character.get_ability_info(slot) in
+# Napolni vse tri vrstice sposobnosti iz character.get_ability_info(slot) in
 # nastavi gumbe glede na to, ali jih igralec sme trenutno uporabiti.
 func _show_abilities(character: BaseCharacter):
 	var can_use_now: bool = (
@@ -838,24 +853,39 @@ func _show_abilities(character: BaseCharacter):
 	ability1_desc.text = info1.get("desc", "")
 	ability1_button.disabled = not (can_use_now and info1.get("uses_remaining", 0) > 0)
 
-	if character.is_slot_unlocked(2):
-		var info2 := character.get_ability_info(2)
-		ability2_body.visible = true
-		ability2_locked.visible = false
-		ability2_name.text = info2.get("name", "-")
-		ability2_level.text = _level_text(info2)
-		ability2_uses.text = "%d/%d" % [info2.get("uses_remaining", 0), info2.get("uses_max", 0)]
-		ability2_desc.text = info2.get("desc", "")
-		ability2_button.disabled = not (can_use_now and info2.get("uses_remaining", 0) > 0)
-	else:
-		ability2_body.visible = false
-		ability2_locked.visible = true
-		# Cena odklepa pride iz skill drevesa (a2_unlock vozlišče tega tipa),
-		# ne več iz get_ability_info - glej SKILL_TREE_PLAN.md §5.1.
-		var unlock_cost: int = skill_tree_data.get_node_def(character.strName, "a2_unlock").get("cost", 1)
-		ability2_locked.text = "Use %d upgrade item%s at a rest to unlock the second ability." % [
-			unlock_cost, "" if unlock_cost == 1 else "s"
-		]
+	# Slota 2 in 3 delita isto "body/locked" strukturo (za razliko od slota 1,
+	# ki nima zaklenjenega stanja) - zberemo njune node reference v par
+	# slovarjev in ju obdelamo v isti zanki (isti vzorec kot unlocked_slots v
+	# base_character.gd _load_persistent_upgrades()).
+	var slot_widgets := {
+		2: {"name": ability2_name, "level": ability2_level, "uses": ability2_uses,
+			"desc": ability2_desc, "button": ability2_button, "body": ability2_body, "locked": ability2_locked},
+		3: {"name": ability3_name, "level": ability3_level, "uses": ability3_uses,
+			"desc": ability3_desc, "button": ability3_button, "body": ability3_body, "locked": ability3_locked},
+	}
+	for slot in [2, 3]:
+		var w: Dictionary = slot_widgets[slot]
+		if character.is_slot_unlocked(slot):
+			var info := character.get_ability_info(slot)
+			w.body.visible = true
+			w.locked.visible = false
+			w.name.text = info.get("name", "-")
+			w.level.text = _level_text(info)
+			w.uses.text = "%d/%d" % [info.get("uses_remaining", 0), info.get("uses_max", 0)]
+			w.desc.text = info.get("desc", "")
+			w.button.disabled = not (can_use_now and info.get("uses_remaining", 0) > 0)
+		else:
+			w.body.visible = false
+			w.locked.visible = true
+			if slot == 2:
+				# Cena odklepa pride iz skill drevesa (a2_unlock vozlišče tega
+				# tipa), ne več iz get_ability_info - glej SKILL_TREE_PLAN.md §5.1.
+				var unlock_cost: int = skill_tree_data.get_node_def(character.strName, "a2_unlock").get("cost", 1)
+				w.locked.text = "Use %d upgrade item%s at a rest to unlock the second ability." % [
+					unlock_cost, "" if unlock_cost == 1 else "s"
+				]
+			else:
+				w.locked.text = "Unlock the third ability in this piece's skill tree at a rest."
 
 
 func _on_ability_pressed(slot: int):

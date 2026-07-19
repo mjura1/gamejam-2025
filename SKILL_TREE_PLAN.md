@@ -523,6 +523,46 @@ and zero-errors ≠ pass — assert explicitly.
      `smoke_spyglass` is flaky (failed one run, passed the next, both
      unrelated to this diff).
 3. **Battle UI slot 3.** Scene block, script wiring, `ability_3` keybind.
+   **STATUS: DONE.** Deviations/notes:
+   - `ability_3` keybind is **`E`** (physical_keycode 69), not literal digit
+     `3` as the plan text said — digit `3` is already bound to `piece_slot_3`
+     (select roster slot 3 via `_unhandled_input`'s `piece_slot_%d` loop in
+     `battle_ui.gd`), so reusing it for `ability_3` would silently shadow that
+     shortcut any time the third ability button is enabled. `E` sits between
+     the existing `ability_1`=D / `ability_2`=F bindings (D/E/F are
+     consecutive `KEY_*` codes), consistent with the S/D/F/G home-row layout
+     already used for select/ability1/ability2/toggle-items.
+   - Scene: added an `HSep3` separator before `Ability3Body` (not in the
+     plan's literal Name/Level/Uses/Desc/Button/Body/Locked list) so ability 2
+     and 3 don't visually run together, matching `HSep2`'s role before
+     `Ability2Body`.
+   - Script: slots 2 and 3 share the body/locked pattern (unlike slot 1,
+     which has no locked state), so `_show_abilities()`/`_clear_ability_rows()`
+     handle them via a small `for slot in [2, 3]` loop over a node-ref lookup
+     dict, rather than a literal "loop slots 1–3" — slot 1 stays its own
+     explicit block since it has no body/locked wrapper to loop over. Mirrors
+     the `for slot in [2, 3]` / `for slot in [1, 2, 3]` pattern
+     `base_character.gd` already established in M2.
+   - Slot 3's locked text is the single fixed string from this plan ("Unlock
+     the third ability in this piece's skill tree at a rest.") used in both
+     `_clear_ability_rows()` and `_show_abilities()` — unlike slot 2, which
+     shows a generic default in the cleared state but a dynamic cost-derived
+     message in `_show_abilities()`. Slot 3's cost isn't in the string at all
+     per the plan's own wording, so there was no dynamic part to add.
+   - Correction to the M2 note above: re-ran `smoke_ability_ui_pipeline` on
+     this milestone's diff and, separately, on the stashed M2 baseline —
+     byte-identical failure set both times, confirming it's still pre-existing
+     and unrelated to skill-tree changes. But the actual failing assertions
+     are **Knight.Reposition, Bishop.Traps, Rook.Reinforce, Queen.Lure,
+     King.Cleanse, King.Heal** (6 total) — broader than M2's note ("6
+     Queen.Lure/King.Cleanse/King.Heal assertions"), which undercounted which
+     abilities were affected while getting the total right. Investigate
+     separately, per M2's note.
+   - Tests: unit suite 894/894 green (one higher than M2's recorded 893 —
+     count is stable across repeated runs on this branch; likely M2's note was
+     off by one rather than a real change). `smoke_battle` (scene-load sanity
+     check on the edited `battle_ui.tscn`, since no smoke test yet drives
+     slot 3 specifically — that lands with M4's abilities) passes cleanly.
 4. **New abilities.** Suggested order: royal_decree → sanctify → ambush →
    castling → command → promotion (easiest to hardest; promotion last since the
    temp-ally + not-a-death handling has the most edge cases). Smoke/unit test each.
