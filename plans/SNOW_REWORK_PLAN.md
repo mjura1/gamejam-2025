@@ -350,6 +350,8 @@ convention — other agents read it instead of re-running the suite).
       Deviation from plan: `reveal_area()`'s Slovenian doc-comment was a plain one-liner,
       not a multi-line block - expanded it in place rather than editing a nonexistent
       longer comment.
-- [ ] M2 single-tile clear: suite result:
+- [x] M2 single-tile clear: suite result: unit tests 942/942 pass. Smoke: all PASS
+      except the same pre-existing `smoke_ability_ui_pipeline` failure. No new failures.
+      `smoke_snow_freeze` single-tile-clear + fog-click-through cases pass.
 - [ ] M3 freeze mechanic: suite result:
 - [ ] M4 wrap-up: final suite result:

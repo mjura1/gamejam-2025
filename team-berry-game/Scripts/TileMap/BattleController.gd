@@ -600,7 +600,9 @@ func update_fog_after_turn_start():
 
 	var reveal_positions: Array[Vector2i] = []
 
-	# Zberemo pozicije vseh ŽIVIH zavezniških figur na mreži
+	# Zberemo pozicije vseh ŽIVIH zavezniških figur na mreži - snow rework:
+	# razkrijemo SAMO polje, na katerem figura stoji (ne več 3x3 okolico),
+	# glej isto spremembo v execute_move().
 	for character in grid_manager.get_all_characters():
 		if not is_instance_valid(character):
 			continue
@@ -609,14 +611,7 @@ func update_fog_after_turn_start():
 		if character.is_enemy or character.is_obstacle:
 			continue
 
-		var char_pos: Vector2i = character.grid_pos
-
-		# Razkrijemo 3x3 območje okoli figure
-		for x in range(-1, 2):
-			for y in range(-1, 2):
-				var new_pos = char_pos + Vector2i(x, y)
-				if new_pos not in reveal_positions:
-					reveal_positions.append(new_pos)
+		reveal_positions.append(character.grid_pos)
 
 	grid_manager.reveal_area(reveal_positions)
 

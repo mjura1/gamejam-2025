@@ -70,6 +70,8 @@ func _process(_delta: float) -> bool:
 
 		_run_bug_fix_case()
 		_run_scorched_earth_case()
+		_run_single_tile_clear_case()
+		_run_fog_tile_click_through_case()
 
 		reported = true
 		if fails == 0:
@@ -149,3 +151,54 @@ func _run_scorched_earth_case() -> void:
 	grid_manager.clear_all_fog()
 	grid_manager.clear_all_curse_fog()
 	queen.passives = []
+
+# Case 3: single-tile move clear (M2) - moving onto a snowed tile clears
+# ONLY the landing tile, neighbors stay snowed (no more 3x3 auto-clear).
+func _run_single_tile_clear_case() -> void:
+	var pawn: BaseCharacter = null
+	for c in grid_manager.get_all_characters():
+		if c is BaseCharacter and not c.is_enemy and not c.is_obstacle and c.strName != "queen":
+			pawn = c
+			break
+	if pawn == null:
+		print("SMOKE TEST FAIL: could not find a pawn ally for the single-tile clear case")
+		fails += 1
+		return
+
+	var target := Vector2i(4, 4)
+	_teleport(pawn, Vector2i(4, 5))
+
+	grid_manager.clear_all_fog()
+	grid_manager.clear_all_curse_fog()
+	grid_manager.cover_area([target]) # ambientna megla na ciljnem polju
+	var neighbors: Array[Vector2i] = [
+		target + Vector2i(1, 0), target + Vector2i(-1, 0),
+		target + Vector2i(0, 1), target + Vector2i(0, -1),
+	]
+	grid_manager.cover_area_curse(neighbors) # prekletstvena megla na vseh 4 sosedih
+
+	pawn.execute_move(target)
+
+	_check("landing tile is clear of ambient fog after the move",
+		not grid_manager.fog_nodes.has(target))
+	_check("landing tile is clear of curse fog after the move",
+		not grid_manager.curse_fog_nodes.has(target))
+	var all_neighbors_still_snowed := true
+	for n in neighbors:
+		if not grid_manager.curse_fog_nodes.has(n):
+			all_neighbors_still_snowed = false
+	_check("neighboring tiles remain snowed (no more 3x3 auto-clear)",
+		all_neighbors_still_snowed)
+
+	grid_manager.clear_all_fog()
+	grid_manager.clear_all_curse_fog()
+
+# Case 4: guards against the .tscn click-through edit being silently lost -
+# full click simulation isn't practical headless (see plan §5), so this just
+# asserts the ColorRect's mouse_filter stayed IGNORE.
+func _run_fog_tile_click_through_case() -> void:
+	var fog_node = GridManager.FOG_TILE_SCENE.instantiate()
+	var color_rect = fog_node.get_node_or_null("ColorRect")
+	_check("fog tile ColorRect is click-transparent (MOUSE_FILTER_IGNORE)",
+		is_instance_valid(color_rect) and color_rect.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	fog_node.queue_free()

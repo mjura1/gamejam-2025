@@ -471,3 +471,9 @@ func clear_all_curse_fog() -> void:
 		_remove_curse_fog_tile(pos)
 	curse_fog_nodes.clear()
 	curse_fog_stage.clear()
+
+# "Sneg" (snow) = katerikoli od obeh sistemov megle - uporabljeno tam, kjer
+# se pravila ne ozirajo na to, KATERA megla je na polju (klik-skozi guard,
+# freeze mehanika v M3).
+func has_snow_at(pos: Vector2i) -> bool:
+	return fog_nodes.has(pos) or curse_fog_nodes.has(pos)

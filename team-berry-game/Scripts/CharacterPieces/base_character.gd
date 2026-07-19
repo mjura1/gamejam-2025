@@ -317,18 +317,12 @@ func execute_move(target: Vector2i):
 	# FOG OF WAR (NOVO)
 	# ===============================================
 	
-	# Posodobitev megle okoli nove pozicije, samo za zaveznike!
+	# Snow rework: figura razkrije SAMO polje, na katerega stopi (ne več
+	# 3x3 okolico) - snežno odejo/prekletstveno meglo zdaj razkrivajo samo
+	# namenske sposobnosti/predmeti (rook/pawn/flare/pasive), premikanje pa
+	# je zdaj tvegano-nagradna mehanika (glej SNOW_REWORK_PLAN.md).
 	if not is_enemy and is_instance_valid(grid_manager):
-		
-		var positions_to_reveal: Array[Vector2i] = []
-		
-		# Vidni doseg: 3x3 območje okoli figure (x in y od -1 do 1)
-		for x in range(-1, 2):
-			for y in range(-1, 2):
-				positions_to_reveal.append(grid_pos + Vector2i(x, y))
-				
-		# Naročimo GridManagerju, da odstrani meglo na teh poljih
-		grid_manager.reveal_area(positions_to_reveal)
+		grid_manager.reveal_area([grid_pos])
 
 		# Pasiva "move_reveal" (skill tree): po zaključenem premiku dodatno
 		# razkrij (2r+1)² kvadrat okoli pristajalnega polja.
