@@ -141,3 +141,41 @@ func test_sanctify_returns_false_when_no_curse_in_range():
 
 	var ok: bool = bishop._execute_ability("sanctify", null)
 	assert_false(ok, "sanctify with no curses in range should report no valid use")
+
+# ----------------- Knight.Ambush -----------------
+
+func test_ambush_moves_knight_to_target_tile():
+	var gm := GridManager.new()
+	var knight := KnightScript.new()
+	knight.grid_pos = Vector2i(5, 5)
+	knight.grid_manager = gm
+	knight.settings_manager = SettingsManager
+	gm.occupy(knight.grid_pos, knight)
+
+	var target := Vector2i(7, 5) # within base radius 3, empty, no curse fog
+	var was_reduced_motion: bool = SettingsManager.reduced_motion
+	SettingsManager.reduced_motion = true # skip create_tween(), which needs a live scene tree
+	var ok: bool = knight._execute_ability("ambush", target)
+	SettingsManager.reduced_motion = was_reduced_motion
+
+	assert_true(ok, "ambush onto an empty tile should succeed")
+	assert_eq(knight.grid_pos, target, "the knight should land exactly on the ambush target tile")
+	assert_false(gm.is_occupied(Vector2i(5, 5)), "the knight's old tile should be vacated")
+	assert_true(gm.get_character_at(target) == knight, "the grid should track the knight at its new tile")
+
+func test_ambush_fails_onto_occupied_tile():
+	var gm := GridManager.new()
+	var knight := KnightScript.new()
+	knight.grid_pos = Vector2i(5, 5)
+	knight.grid_manager = gm
+	gm.occupy(knight.grid_pos, knight)
+
+	var blocker := KnightScript.new()
+	blocker.grid_pos = Vector2i(7, 5)
+	blocker.grid_manager = gm
+	gm.occupy(blocker.grid_pos, blocker)
+
+	var ok: bool = knight._execute_ability("ambush", Vector2i(7, 5))
+
+	assert_false(ok, "ambush onto an occupied tile should fail")
+	assert_eq(knight.grid_pos, Vector2i(5, 5), "a failed ambush should not move the knight")
