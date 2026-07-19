@@ -97,19 +97,38 @@ func _ready() -> void:
 		battle_controller.initialize_battle()
 
 
-# Prekletstva (Scripts/Curses/): od nadstropja CurseData.get_min_floor() naprej
-# vsaka bitka ZAGOTOVI vsaj CurseData.get_min_curse_count(current_floor)
+# Prekletstva (Scripts/Curses/): od nadstropja CurseData.get_min_floor(current_map_tier) naprej
+# vsaka bitka ZAGOTOVI vsaj CurseData.get_min_curse_count(current_floor, current_map_tier)
 # prekletih sovražnikov (naključno izbranih izmed spawnanih, glej
 # CurseData.roll_curse_for - excluded_pieces). Vsak PREOSTALI, še ne prekleti
 # sovražnik ima poleg tega še vedno CurseData.get_curse_chance() možnost
 # dodatnega naključnega prekletstva - verjetnost je odvisna od izbrane
-# težavnosti (SettingsManager.difficulty, glej Data/curses.json
+# težavnosti (SettingsManager.difficulty, glej GameParameters/curses.json
 # config.difficulty_chance_mult).
+#
+# get_min_floor() sam je zdaj PO MAPNEM NIVOJU (config.tier_min_floor, tier 0-2) -
+# višji tier => nižji prag => prekletstva se pojavijo PREJ (manjša globina sobe),
+# poleg tega, da jih je (spodaj) tudi VEČ.
+#
+# current_map_tier se v infinite načinu veča brez konca, tudi ko
+# MapGenerator.TIER_CONFIGS (samo 3 vnosi, tier 0-2) za mapo samo ne postane
+# nič težja (glej MapGenerator._configure_tier - clampi na zadnji vnos). Zato
+# get_min_floor/get_min_curse_count/get_curse_chance dodajo config.infinite_mode
+# bonus (min_floor_decrement_per_tier znižuje prag, curse_count_per_tier in
+# curse_chance_increment_per_tier zvišujeta količino/verjetnost) za vsak tier NAD
+# config.infinite_mode.base_tier - navzdol/navzgor omejeno z
+# min_floor_clamp/max_curse_count/max_curse_chance. tier_curse_chance_mult
+# (per-tier 0-2 uteži) skalira naključno možnost ločeno od te infinite-mode rasti.
+#
+# Boss/mini-boss bitke (PlayerManager.is_boss_floor/is_mini_boss_floor, glej
+# MapController._handle_event) preskočijo formulo po globini in namesto tega
+# zajamčijo FIKSNO število prekletstev iz config.boss_curse_count /
+# mini_boss_curse_count.
 #
 # Enemy king: "blizzard" (razpadajoča 3x3 megla, glej blizzard_curse.gd) je
 # kraljev lastni, zajamčeni prekletstveni mehanizem - močnejša, počasneje
 # razpadajoča različica navadne "snowfall" ("+"), ki je izločena iz
-# splošnega naključnega nabora (Data/curses.json weight=0) in je NI mogoče
+# splošnega naključnega nabora (GameParameters/curses.json weight=0) in je NI mogoče
 # naključno dobiti. Kralj dobi "blizzard" TUKAJ neposredno (šteje kot 1 od
 # get_min_curse_count() zajamčenih mest); preostali sovražniki se še vedno
 # potegujejo za snowfall/frenzy/stunning_gaze kot prej.
@@ -119,13 +138,21 @@ func _apply_curses(enemies: Array) -> void:
 		return
 
 	var current_floor: int = 0
+	var current_map_tier: int = 0
+	var is_boss_floor: bool = false
+	var is_mini_boss_floor: bool = false
 	if is_instance_valid(player_manager):
 		current_floor = player_manager.current_map_floor
+		current_map_tier = player_manager.current_map_tier
+		is_boss_floor = player_manager.is_boss_floor
+		is_mini_boss_floor = player_manager.is_mini_boss_floor
 	var difficulty := "normal"
 	if is_instance_valid(settings_manager):
 		difficulty = settings_manager.difficulty
 
-	var min_count: int = min(CurseData.get_min_curse_count(current_floor), valid_enemies.size())
+	var min_count: int = min(
+		CurseData.get_min_curse_count(current_floor, current_map_tier, is_boss_floor, is_mini_boss_floor),
+		valid_enemies.size())
 
 	var roll_pool: Array = valid_enemies.duplicate()
 	var king_matches: Array = roll_pool.filter(func(e): return e.strName == "king")
@@ -140,7 +167,7 @@ func _apply_curses(enemies: Array) -> void:
 		var enemy = roll_pool[i]
 		if i < min_count:
 			_curse_enemy(enemy) # zajamčeno mesto - prekletstvo ne glede na met
-		elif CurseData.should_curse(current_floor, randf(), difficulty):
+		elif CurseData.should_curse(current_floor, randf(), difficulty, current_map_tier):
 			_curse_enemy(enemy) # bonus met nad zajamčenim minimumom
 
 func _curse_enemy(enemy) -> bool:

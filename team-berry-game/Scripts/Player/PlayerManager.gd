@@ -46,7 +46,7 @@ const UPGRADE_ITEMS_PER_ITEM_ROOM := 2
 # Trajne nadgradnje PO TIPU figure (velja za vse figure istega tipa - roster
 # je seznam imen brez identitete posamezne figure, glej friendly_party).
 # strName ("pawn" ipd.) -> {"nodes": Array kupljenih node id-jev iz
-# Data/skill_trees.json}. Figure ob registraciji na mrežo preberejo izpeljano
+# GameParameters/skill_trees.json}. Figure ob registraciji na mrežo preberejo izpeljano
 # stanje (glej get_ability_level / is_slot_unlocked / get_passive_effects) -
 # poraba itemov je SAMO v try_buy_node.
 var piece_upgrades: Dictionary = {}
@@ -77,6 +77,9 @@ var current_map_tier: int = 0
 var game_mode: String = "classic"
 # NOVO: Ali je soba, ki je sprožila trenutno bitko, boss soba te mape
 var is_boss_floor: bool = false
+# NOVO: Ali je soba, ki je sprožila trenutno bitko, mini-boss soba te mape
+# (glej MapGenerator.mini_boss_floor/mini_boss_type - queen na tier 1-2)
+var is_mini_boss_floor: bool = false
 
 func _ready():
 	print("PlayerManager naložen. Party size: %d" % [active_party.size()])
@@ -128,7 +131,7 @@ func _get_owned_nodes(piece_type: String) -> Array:
 		piece_upgrades[piece_type] = {"nodes": []}
 	return piece_upgrades[piece_type]["nodes"]
 
-# Def-i kupljenih vozlišč (preskoči id-je, ki jih v Data/skill_trees.json ni).
+# Def-i kupljenih vozlišč (preskoči id-je, ki jih v GameParameters/skill_trees.json ni).
 func _owned_node_defs(piece_type: String) -> Array:
 	var defs: Array = []
 	for node_id in _get_owned_nodes(piece_type):

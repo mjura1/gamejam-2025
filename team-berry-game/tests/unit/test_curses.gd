@@ -1,6 +1,6 @@
 extends TestCase
 
-# Prekletstva (Scripts/Curses/, Data/curses.json): razred/data-loader logika.
+# Prekletstva (Scripts/Curses/, GameParameters/curses.json): razred/data-loader logika.
 # Glej ENEMY_CURSES_PLAN.md Phase 1.
 
 const ALL_CURSE_IDS := ["snowfall", "frenzy", "stunning_gaze", "blizzard",
@@ -32,6 +32,48 @@ func test_get_curse_chance_applies_difficulty_multiplier():
 	assert_eq(CurseData.get_curse_chance("normal"), base, "normal difficulty should be 1x base chance")
 	assert_eq(CurseData.get_curse_chance("easy"), base * 0.5, "easy difficulty should be 0.5x base chance")
 	assert_eq(CurseData.get_curse_chance("hard"), base * 1.5, "hard difficulty should be 1.5x base chance")
+
+func test_get_curse_chance_applies_tier_multiplier():
+	var mults: Array = CurseData._config.get("tier_curse_chance_mult", [1.0])
+	assert_true(mults.size() >= 2, "tier_curse_chance_mult should define at least tiers 0 and 1")
+	var base := CurseData.get_curse_chance_base()
+	assert_eq(CurseData.get_curse_chance("normal", 0), base * mults[0], "tier 0 should apply tier_curse_chance_mult[0]")
+	assert_eq(CurseData.get_curse_chance("normal", 1), base * mults[1], "tier 1 should apply tier_curse_chance_mult[1]")
+
+func test_get_infinite_curse_chance_bonus_zero_at_or_below_base_tier():
+	var base_tier: int = CurseData._config.get("infinite_mode", {}).get("base_tier", 2)
+	assert_eq(CurseData.get_infinite_curse_chance_bonus(0), 0.0, "tier 0 should add no infinite-mode chance bonus")
+	assert_eq(CurseData.get_infinite_curse_chance_bonus(base_tier), 0.0, "base_tier itself should add no infinite-mode chance bonus")
+
+func test_get_curse_chance_infinite_bonus_grows_past_base_tier_and_clamps():
+	var base_tier: int = CurseData._config.get("infinite_mode", {}).get("base_tier", 2)
+	var max_chance: float = CurseData._config.get("infinite_mode", {}).get("max_curse_chance", 1.0)
+	assert_true(CurseData.get_curse_chance("normal", base_tier + 1) > CurseData.get_curse_chance("normal", base_tier),
+		"1 tier past base_tier should raise the curse chance above the base-tier value")
+	assert_true(CurseData.get_curse_chance("normal", base_tier + 20) <= max_chance,
+		"curse chance should never exceed config.infinite_mode.max_curse_chance however far tier climbs")
+
+func test_get_min_floor_uses_tier_min_floor_array():
+	var tiers: Array = CurseData._config.get("tier_min_floor", [2])
+	assert_true(tiers.size() >= 3, "tier_min_floor should define tiers 0, 1 and 2")
+	assert_eq(CurseData.get_min_floor(0), tiers[0], "tier 0 should use tier_min_floor[0]")
+	assert_eq(CurseData.get_min_floor(1), tiers[1], "tier 1 should use tier_min_floor[1]")
+	assert_eq(CurseData.get_min_floor(2), tiers[2], "tier 2 should use tier_min_floor[2]")
+
+func test_get_min_floor_decreases_further_past_base_tier_in_infinite_mode():
+	var inf: Dictionary = CurseData._config.get("infinite_mode", {})
+	var base_tier: int = inf.get("base_tier", 2)
+	var decrement: int = inf.get("min_floor_decrement_per_tier", 0)
+	assert_true(decrement > 0, "min_floor_decrement_per_tier should be configured so infinite mode gets harder")
+	var floor_at_base := CurseData.get_min_floor(base_tier)
+	assert_eq(CurseData.get_min_floor(base_tier + 1), floor_at_base - decrement,
+		"1 tier past base_tier should lower min_floor by min_floor_decrement_per_tier")
+	assert_true(CurseData.get_min_floor(base_tier + 2) < CurseData.get_min_floor(base_tier + 1),
+		"min_floor should keep dropping the further past base_tier you go")
+
+func test_get_min_floor_clamps_at_min_floor_clamp():
+	var clamp_value: int = CurseData._config.get("infinite_mode", {}).get("min_floor_clamp", 0)
+	assert_eq(CurseData.get_min_floor(500), clamp_value, "min_floor should never drop below min_floor_clamp, however far tier climbs")
 
 func test_should_curse_respects_min_floor():
 	var min_floor := CurseData.get_min_floor()
@@ -76,11 +118,52 @@ func test_get_min_curse_count_below_min_floor_is_zero():
 	var min_floor := CurseData.get_min_floor()
 	assert_eq(CurseData.get_min_curse_count(min_floor - 1), 0, "floor below min_floor should guarantee 0 curses")
 
+func test_get_min_curse_count_boss_floor_uses_fixed_boss_count():
+	var min_floor := CurseData.get_min_floor()
+	assert_eq(CurseData.get_min_curse_count(min_floor - 1, 0, true, false), CurseData.get_boss_curse_count(),
+		"boss floor should guarantee config.boss_curse_count regardless of room depth, even below min_floor")
+
+func test_get_min_curse_count_mini_boss_floor_uses_fixed_mini_boss_count():
+	var min_floor := CurseData.get_min_floor()
+	assert_eq(CurseData.get_min_curse_count(min_floor - 1, 0, false, true), CurseData.get_mini_boss_curse_count(),
+		"mini-boss floor should guarantee config.mini_boss_curse_count regardless of room depth, even below min_floor")
+
+func test_get_min_curse_count_boss_takes_precedence_over_mini_boss():
+	var min_floor := CurseData.get_min_floor()
+	assert_eq(CurseData.get_min_curse_count(min_floor, 0, true, true), CurseData.get_boss_curse_count(),
+		"if both flags are somehow true, boss_curse_count should win")
+
 func test_get_min_curse_count_scales_by_one_per_floor_from_min_floor():
 	var min_floor := CurseData.get_min_floor()
 	assert_eq(CurseData.get_min_curse_count(min_floor), 1, "min_floor should guarantee 1 curse")
 	assert_eq(CurseData.get_min_curse_count(min_floor + 1), 2, "min_floor + 1 should guarantee 2 curses")
 	assert_eq(CurseData.get_min_curse_count(min_floor + 2), 3, "min_floor + 2 should guarantee 3 curses")
+
+func test_get_infinite_tier_curse_bonus_zero_at_or_below_base_tier():
+	assert_eq(CurseData.get_infinite_tier_curse_bonus(0), 0, "tier 0 should add no infinite-mode bonus")
+	assert_eq(CurseData.get_infinite_tier_curse_bonus(2), 0, "base_tier itself should add no infinite-mode bonus")
+
+func test_get_infinite_tier_curse_bonus_scales_past_base_tier():
+	assert_eq(CurseData.get_infinite_tier_curse_bonus(3), 1, "1 tier past base_tier should add 1 bonus curse")
+	assert_eq(CurseData.get_infinite_tier_curse_bonus(5), 3, "3 tiers past base_tier should add 3 bonus curses")
+
+func test_get_min_curse_count_increases_with_tier_past_base_tier():
+	# room depth relative to base_tier's OWN min_floor - avoids baking in the
+	# exact tier_min_floor/decrement numbers, since both the shrinking
+	# min_floor AND the tier count bonus push this up together now.
+	var base_tier: int = CurseData._config.get("infinite_mode", {}).get("base_tier", 2)
+	var current_floor := CurseData.get_min_floor(base_tier) + 2
+	var count_at_base_tier := CurseData.get_min_curse_count(current_floor, base_tier)
+	var count_one_tier_later := CurseData.get_min_curse_count(current_floor, base_tier + 1)
+	assert_true(count_one_tier_later > count_at_base_tier,
+		"1 tier past base_tier should guarantee strictly more curses (lower min_floor + tier count bonus combined)")
+
+func test_get_min_curse_count_clamps_to_max_curse_count():
+	var min_floor := CurseData.get_min_floor()
+	var max_count: int = CurseData._config.get("infinite_mode", {}).get("max_curse_count", -1)
+	assert_true(max_count >= 0, "infinite_mode.max_curse_count should be configured")
+	assert_eq(CurseData.get_min_curse_count(min_floor + 50, 50), max_count,
+		"guaranteed curse count should never exceed config.infinite_mode.max_curse_count")
 
 func test_roll_curse_for_piece_excluded_from_one_curse_only_gets_others():
 	var original: Array = CurseData._curses["frenzy"].get("excluded_pieces", []).duplicate()

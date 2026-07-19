@@ -11,7 +11,7 @@ const MAX_PLACED := 5
 
 @onready var player_manager = get_node("/root/PlayerManager")
 # Za ceno a2_unlock vozlišča v "locked" sporočilu (glej _show_abilities) -
-# cene ne živijo več v Data/abilities.json, ampak v Data/skill_trees.json.
+# cene ne živijo več v GameParameters/abilities.json, ampak v GameParameters/skill_trees.json.
 @onready var skill_tree_data = get_node("/root/SkillTreeData")
 @onready var grid_manager = get_node("../GridManager")
 @onready var map_behaviour = get_node("../Map")

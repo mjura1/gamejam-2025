@@ -369,7 +369,7 @@ var curse_fog_nodes: Dictionary = {}
 var curse_fog_stage: Dictionary = {}
 # grid_pos -> int (koliko tick_curse_fog_decay() klicev preteče med fazami -
 # npr. kraljev "blizzard" razpada počasneje kot navadni "snowfall", glej
-# Data/curses.json decay_ticks_per_stage)
+# GameParameters/curses.json decay_ticks_per_stage)
 var curse_fog_ticks_per_stage: Dictionary = {}
 # grid_pos -> int (koliko tickov je minilo od zadnje spremembe faze na tem polju)
 var curse_fog_tick_progress: Dictionary = {}

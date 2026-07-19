@@ -355,6 +355,7 @@ func _handle_event(room_data: Room):
 	print("Zagon %s..." % room_name)
 
 	PlayerManager.is_boss_floor = room_data.grid_position.x == generator.FLOORS - 1
+	PlayerManager.is_mini_boss_floor = generator.mini_boss_floor != -1 and room_data.grid_position.x == generator.mini_boss_floor
 
 	if room_name.begins_with("enemy_"):
 		PlayerManager.add_to_enemy_party(room_name)

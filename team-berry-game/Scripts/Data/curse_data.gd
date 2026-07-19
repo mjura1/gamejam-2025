@@ -1,14 +1,14 @@
 # res://Scripts/Data/curse_data.gd
-# Autoload. Prebere Data/curses.json (ogrodje prekletstev sovražnikov), po
+# Autoload. Prebere GameParameters/curses.json (ogrodje prekletstev sovražnikov), po
 # vzoru item_data.gd ("1 avtoload prebere JSON + registry razredov" vzorec).
-# Nosi TUDI Data/ai_config.json (splošni "enemy behavior" podatki - vrednosti
+# Nosi TUDI GameParameters/ai_config.json (splošni "enemy behavior" podatki - vrednosti
 # figur za value-aware capture in danger-avoidance verjetnosti po težavnosti,
 # glej base_character.calculate_best_move) - namerno v istem avtoloadu namesto
 # ločenega, da ne množimo majhnih JSON-loaderjev za tesno povezane AI podatke.
 extends Node
 
-const CURSES_PATH := "res://Data/curses.json"
-const AI_CONFIG_PATH := "res://Data/ai_config.json"
+const CURSES_PATH := "res://GameParameters/curses.json"
+const AI_CONFIG_PATH := "res://GameParameters/ai_config.json"
 
 # id -> razred (base_curse.gd variante) - "1 osnovni razred, variante" vzorec,
 # enak pieces/items sistemu.
@@ -72,34 +72,123 @@ func get_weight(id: String) -> float:
 func get_excluded_pieces(id: String) -> Array:
 	return _curses.get(id, {}).get("excluded_pieces", [])
 
-func get_min_floor() -> int:
-	return _config.get("min_floor", 2)
+# min_floor je zdaj PO MAPNEM NIVOJU (GameParameters/curses.json config.tier_min_floor -
+# array, indeksiran kot tier_curse_chance_mult/MapGenerator.TIER_CONFIGS: 0/1/2 = Tier 0/1/2).
+# Nižja vrednost = prekletstva se pojavijo prej (pri manjši globini sobe). Za tier NAD
+# zadnjim indeksom (infinite način) config.infinite_mode.min_floor_decrement_per_tier
+# učinkovit prag še naprej znižuje, navzdol omejeno z min_floor_clamp - tako se v
+# neskončnem napredovanju prekletstva pojavijo tudi vedno prej, ne samo vedno več.
+# current_map_tier privzeto 0, da klici brez njega (obstoječi klicatelji/testi)
+# ostanejo nespremenjeni.
+func get_min_floor(current_map_tier: int = 0) -> int:
+	var tiers: Array = _config.get("tier_min_floor", [2])
+	var base_floor: int = 2
+	if not tiers.is_empty():
+		base_floor = tiers[clampi(current_map_tier, 0, tiers.size() - 1)]
+
+	var inf: Dictionary = _config.get("infinite_mode", {})
+	var base_tier: int = inf.get("base_tier", 2)
+	var decrement: int = inf.get("min_floor_decrement_per_tier", 0)
+	var floor_clamp: int = inf.get("min_floor_clamp", 0)
+
+	var effective_floor := base_floor - maxi(0, current_map_tier - base_tier) * decrement
+	return maxi(floor_clamp, effective_floor)
 
 func get_curse_chance_base() -> float:
 	return _config.get("curse_chance", 0.25)
 
-# curse_chance (osnovna) * uteži za izbrano težavnost (Data/curses.json
-# config.difficulty_chance_mult, privzeto normal=1.0).
-func get_curse_chance(difficulty: String = "normal") -> float:
+# Uteži na naključno prekletstveno možnost PO MAPNEM NIVOJU (0-2, GameParameters/curses.json
+# config.tier_curse_chance_mult - array, indeksiran kot MapGenerator.TIER_CONFIGS).
+# current_map_tier nad zadnjim indeksom se sponi na zadnjega (glej get_infinite_curse_chance_bonus
+# za dejansko infinite-mode rast NAD tem).
+func get_tier_curse_chance_mult(current_map_tier: int) -> float:
+	var mults: Array = _config.get("tier_curse_chance_mult", [1.0])
+	if mults.is_empty():
+		return 1.0
+	var idx: int = clampi(current_map_tier, 0, mults.size() - 1)
+	return mults[idx]
+
+# Enak razlog kot get_infinite_tier_curse_bonus (glej spodaj) - v infinite načinu
+# current_map_tier raste brez konca, mapa pa se za tier > base_tier ne spremeni,
+# zato mora VERJETNOST prekletstva prav tako naprej rasti od nekod (GameParameters/curses.json
+# config.infinite_mode.curse_chance_increment_per_tier na tier nad base_tier).
+func get_infinite_curse_chance_bonus(current_map_tier: int) -> float:
+	var inf: Dictionary = _config.get("infinite_mode", {})
+	var base_tier: int = inf.get("base_tier", 2)
+	var per_tier: float = inf.get("curse_chance_increment_per_tier", 0.0)
+	return maxf(0.0, float(current_map_tier - base_tier)) * per_tier
+
+# curse_chance (osnovna) * uteži za izbrano težavnost (GameParameters/curses.json
+# config.difficulty_chance_mult, privzeto normal=1.0) * uteži za mapni nivo
+# (config.tier_curse_chance_mult), plus infinite-mode prirastek nad base_tier -
+# skupaj omejeno z config.infinite_mode.max_curse_chance (privzeto 1.0).
+func get_curse_chance(difficulty: String = "normal", current_map_tier: int = 0) -> float:
 	var mults: Dictionary = _config.get("difficulty_chance_mult", {})
 	var mult: float = mults.get(difficulty, 1.0)
-	return get_curse_chance_base() * mult
+	var chance := get_curse_chance_base() * mult * get_tier_curse_chance_mult(current_map_tier)
+	chance += get_infinite_curse_chance_bonus(current_map_tier)
+	var max_chance: float = _config.get("infinite_mode", {}).get("max_curse_chance", 1.0)
+	return minf(chance, max_chance)
 
 # Čista funkcija (testljiva brez RNG/autoload stanja odvisnosti na klicnem
 # mestu) - ali naj sovražnik na tem nadstropju sploh dobi met za prekletstvo.
-# roll: vnaprej izvlečen randf() [0,1).
-func should_curse(current_floor: int, roll: float, difficulty: String = "normal") -> bool:
-	if current_floor < get_min_floor():
+# roll: vnaprej izvlečen randf() [0,1). current_map_tier privzeto 0, da klici
+# brez njega (obstoječi klicatelji/testi) ostanejo nespremenjeni.
+func should_curse(current_floor: int, roll: float, difficulty: String = "normal", current_map_tier: int = 0) -> bool:
+	if current_floor < get_min_floor(current_map_tier):
 		return false
-	return roll < get_curse_chance(difficulty)
+	return roll < get_curse_chance(difficulty, current_map_tier)
+
+# Koliko dodatnih zajamčenih prekletstev prinese vsak nivo sobe (current_floor)
+# od get_min_floor() naprej (GameParameters/curses.json config.min_curse_count_per_room,
+# privzeto 1 - obnaša se enako kot prejšnja trdo kodirana "+1 na nadstropje").
+func get_min_curse_count_per_room() -> int:
+	return _config.get("min_curse_count_per_room", 1)
+
+# GameParameters/curses.json config.infinite_mode: MapGenerator.TIER_CONFIGS ima samo
+# vnose za tier 0-2 (glej _configure_tier - clampi na zadnji vnos), zato mapa sama
+# po sebi za tier > base_tier ne postane nič težja, čeprav current_map_tier v
+# infinite načinu še naprej narašča. To doda dodatna zajamčena prekletstva za
+# vsak tier NAD base_tier (privzeto 2), da igra ostane težja tudi v neskončnem
+# napredovanju - navzgor omejeno z max_curse_count (-1 = brez omejitve).
+func get_infinite_tier_curse_bonus(current_map_tier: int) -> int:
+	var inf: Dictionary = _config.get("infinite_mode", {})
+	var base_tier: int = inf.get("base_tier", 2)
+	var per_tier: int = inf.get("curse_count_per_tier", 0)
+	return maxi(0, current_map_tier - base_tier) * per_tier
 
 # Zajamčeno minimalno število prekletih sovražnikov na bitko, od get_min_floor()
-# naprej (min_floor => 1, min_floor+1 => 2, ... - linearno +1 na nadstropje).
+# naprej (min_floor => 1 * min_curse_count_per_room, min_floor+1 => 2 * ..., ...),
+# plus get_infinite_tier_curse_bonus() za current_map_tier (glej zgoraj) - skupaj
+# omejeno z config.infinite_mode.max_curse_count, če je nastavljen (>= 0).
 # Pod min_floor je 0 (garancije sploh ni, glej should_curse za enak prag).
-func get_min_curse_count(current_floor: int) -> int:
-	if current_floor < get_min_floor():
+# current_map_tier privzeto 0, is_boss_floor/is_mini_boss_floor privzeto false,
+# da klici brez njih (obstoječi klicatelji/testi) ostanejo nespremenjeni.
+#
+# Boss/mini-boss bitke so posebne, redke bitke (1 na mapo/tier) - namesto
+# izpeljanega števila po globini sobe uporabijo FIKSNO število iz
+# GameParameters/curses.json config.boss_curse_count / mini_boss_curse_count
+# (is_boss_floor ima prednost, če bi bila oba hkrati true).
+func get_min_curse_count(current_floor: int, current_map_tier: int = 0, is_boss_floor: bool = false, is_mini_boss_floor: bool = false) -> int:
+	if is_boss_floor:
+		return get_boss_curse_count()
+	if is_mini_boss_floor:
+		return get_mini_boss_curse_count()
+	var min_floor := get_min_floor(current_map_tier)
+	if current_floor < min_floor:
 		return 0
-	return current_floor - get_min_floor() + 1
+	var count := (current_floor - min_floor + 1) * get_min_curse_count_per_room()
+	count += get_infinite_tier_curse_bonus(current_map_tier)
+	var max_count: int = _config.get("infinite_mode", {}).get("max_curse_count", -1)
+	if max_count >= 0:
+		count = mini(count, max_count)
+	return count
+
+func get_boss_curse_count() -> int:
+	return _config.get("boss_curse_count", 1)
+
+func get_mini_boss_curse_count() -> int:
+	return _config.get("mini_boss_curse_count", 1)
 
 func create_curse(id: String) -> BaseCurse:
 	if not CURSE_SCRIPTS.has(id):
@@ -138,7 +227,7 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> St
 
 	return eligible[eligible.size() - 1]
 
-# ----------------- AI_CONFIG (Data/ai_config.json) -----------------
+# ----------------- AI_CONFIG (GameParameters/ai_config.json) -----------------
 
 # Relativna vrednost figure (strName) za value-aware capture (glej
 # base_character.calculate_best_move - korak 6, med več hkrati zajemljivimi

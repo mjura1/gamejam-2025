@@ -1,9 +1,9 @@
 # res://Scripts/Data/ability_data.gd
-# Autoload. Prebere Data/abilities.json (base_uses/max_uses po ability id-ju),
+# Autoload. Prebere GameParameters/abilities.json (base_uses/max_uses po ability id-ju),
 # da lahko balansiramo sposobnosti brez spreminjanja GDScript kode.
 extends Node
 
-const DATA_PATH := "res://Data/abilities.json"
+const DATA_PATH := "res://GameParameters/abilities.json"
 
 var _uses_by_id: Dictionary = {}
 

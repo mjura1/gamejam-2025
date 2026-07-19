@@ -1,11 +1,11 @@
 # res://Scripts/Data/item_data.gd
-# Autoload. Prebere Data/items.json (cene/opisi shop itemov) in
-# Data/piece_prices.json (prodajne cene figur), po vzoru ability_data.gd.
+# Autoload. Prebere GameParameters/items.json (cene/opisi shop itemov) in
+# GameParameters/piece_prices.json (prodajne cene figur), po vzoru ability_data.gd.
 extends Node
 
-const ITEMS_PATH := "res://Data/items.json"
-const PIECE_PRICES_PATH := "res://Data/piece_prices.json"
-const SHOP_CONFIG_PATH := "res://Data/shop_config.json"
+const ITEMS_PATH := "res://GameParameters/items.json"
+const PIECE_PRICES_PATH := "res://GameParameters/piece_prices.json"
+const SHOP_CONFIG_PATH := "res://GameParameters/shop_config.json"
 
 # id -> razred (base_item.gd variante) - "1 osnovni razred, variante" vzorec,
 # enak pieces sistemu.
