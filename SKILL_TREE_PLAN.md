@@ -566,9 +566,9 @@ and zero-errors ≠ pass — assert explicitly.
 4. **New abilities.** Suggested order: royal_decree → sanctify → ambush →
    castling → command → promotion (easiest to hardest; promotion last since the
    temp-ally + not-a-death handling has the most edge cases). Smoke/unit test each.
-   **STATUS: FIRST HALF DONE** (royal_decree, sanctify, ambush; branch
-   `features/skill-trees`, 3 separate commits). castling/command/promotion are
-   still open (next session). Deviations/notes:
+   **STATUS: DONE** (all 6 abilities; branch `features/skill-trees`, 6 separate
+   commits total - royal_decree/sanctify/ambush from the first session, then
+   castling/command/promotion this session). Deviations/notes:
    - Tests (`tests/unit/test_new_abilities.gd`, new file, built up across the
      3 commits): pieces are instantiated directly (`KingScript.new()` etc.,
      same `.new()`-without-scene-tree pattern as
@@ -601,6 +601,80 @@ and zero-errors ≠ pass — assert explicitly.
      still fails exactly the same pre-existing 6 assertions (Knight.Reposition,
      Bishop.Traps, Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) after
      each of the 3 commits - no new failures. `smoke_abilities` passes.
+   - **SECOND HALF (castling/command/promotion), this session:**
+   - Castling/Command both need LOS-restricted-to-allies targeting, the same
+     shape as `find_visible_enemies()` but flipped to `is_enemy == is_enemy`.
+     Rather than duplicate that walk in both `rook.gd` and `queen.gd`, added a
+     shared `BaseCharacter.find_visible_allies(max_view_range, directions)` in
+     `base_character.gd` (§5 wasn't touched by the plan for M4, but this
+     mirrors the existing `find_visible_enemies`/`get_empty_tiles_in_los`
+     precedent closely enough that duplicating it per-piece seemed worse).
+     `get_ability_targets(3)` for both pieces stays smoke-only per the
+     established convention (needs `tile_map`, unavailable off-tree).
+   - Command built exactly per the plan's **corrected** design:
+     `BattleController.free_move_character` + `consume_move_for(character)`
+     (skips `consume_move()` exactly once for that character, then clears the
+     flag), with both `map_behaviour.gd` call sites (`:234`/`:287` capture
+     branch/plain-move branch) switched from `consume_move()` to
+     `consume_move_for(mover)` / `consume_move_for(selected_character)`.
+     `free_move_character` is also cleared in `start_player_turn()` so an
+     unused grant can't leak into the next turn. `add_bonus_move()` (item
+     `extra_move`) is untouched, as specified.
+   - Castling's `_do_castling`/Command's `_do_command` both trust
+     `get_ability_targets(3)` already filtered the click (same "UI already
+     filtered it" convention as `_do_ambush`/`_do_reposition`) - the only
+     re-check is "is this actually a live ally, not self".
+     `grid_manager.swap_characters()` needed no changes at all - used exactly
+     as documented in §4.4.
+   - **Promotion was the hard one, but succeeded on the first real attempt**
+     (not the 2-attempts-then-stop fallback the task allowed for). Implementation
+     copies the King.Cleanse/bloodhound-wolf temp-ally pathway exactly:
+     `is_converted_ally = true` on the pawn *before* calling its own `die()`
+     (routes through `PlayerManager.remove_converted_ally()`, never
+     `register_dead_character()`, so `dead_party` never sees `friendly_pawn`),
+     THEN `grid_manager.spawn_character()` a fresh `promote_to` piece at the
+     vacated tile (world pos captured before `die()`), tagged
+     `is_converted_ally = true` and reported via
+     `player_manager.add_temporary_ally("friendly_" + promote_to)` - same
+     bookkeeping `BattleController._spawn_bloodhound_wolf()` already uses for
+     the `bloodhounds` item's wolf. Added `pawn.gd`'s own
+     `@onready var battle_root = get_node("..")` (mirroring `king.gd`) to read
+     `battle.gd`'s `friendly_pieces` dict for the scene to spawn.
+   - **Unit-testing promotion required breaking the file's established
+     off-tree convention**, because `grid_manager.spawn_character()` calls
+     `get_parent().add_child(...)` and `get_tree()`, neither of which works on
+     an unparented `GridManager.new()`. The promotion test builds a throwaway
+     `Node` under the real `SceneTree` root (`Engine.get_main_loop().root`),
+     parents a real `GridManager` under it, and lets `spawn_character()` run
+     for real (instantiating the actual `knight.tscn` etc.) - then tears the
+     scratch subtree down *synchronously* (`remove_child()` + `free()`, not
+     `queue_free()`) before returning. This matters because
+     `run_unit_tests.gd` never processes a frame between test methods or test
+     files in the same run, so a `queue_free()`'d node - and its
+     `"characters"` group membership - would still be visible to any later
+     `spawn_character()` call in the same process. Added two throwaway sibling
+     nodes (`BattleController`, `Map/TileMapLayer`) under the scratch root
+     purely to keep the spawned piece's unrelated `@onready` lookups from
+     printing console errors - cosmetic, not required for the assertions to
+     pass. `battle_root` in the test is a real
+     `preload("res://Scenes/Map/battle.gd").new()` (reads its `const
+     friendly_pieces` dict fine without ever entering a tree) rather than a
+     hand-rolled stub.
+   - Gotcha hit once and fixed: `pawn.player_manager.active_party = [...]`
+     with a bare array literal throws a runtime `SCRIPT ERROR` ("Invalid
+     assignment... Array... on Array[String]") because the literal is
+     untyped - GDScript only auto-types array literals from *static*
+     assignment context, not through a dynamically-typed intermediate
+     (`pawn.player_manager` is untyped on `BaseCharacter`). Fixed by binding
+     to an explicitly `Array[String]`-typed local first, then assigning that.
+   - Tests: unit suite green, 0 failed (938/938 on the run that landed the
+     promotion commit; the exact "N passed" total fluctuates run-to-run by a
+     handful because of an unrelated pre-existing randomized test elsewhere in
+     the suite - failure count is what was checked, and it was 0 on every run
+     across all 3 commits). `smoke_ability_ui_pipeline` still fails exactly
+     the same pre-existing 6 assertions (Knight.Reposition, Bishop.Traps,
+     Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) - no new failures.
+     `smoke_abilities` and `smoke_battle` both pass cleanly.
 5. **Campfire panel rewrite** + smoke test update; delete the old shim methods.
 6. **Balance pass** over costs and uses; update this file's numbers if changed.
 
