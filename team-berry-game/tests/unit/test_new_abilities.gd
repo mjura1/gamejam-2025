@@ -9,6 +9,7 @@ extends TestCase
 const KingScript = preload("res://Scripts/CharacterPieces/Ally/king.gd")
 const BishopScript = preload("res://Scripts/CharacterPieces/Ally/bishop.gd")
 const KnightScript = preload("res://Scripts/CharacterPieces/Ally/knight.gd")
+const RookScript = preload("res://Scripts/CharacterPieces/Ally/rook.gd")
 const BattleControllerScript = preload("res://Scripts/TileMap/BattleController.gd")
 
 # ----------------- King.Royal Decree -----------------
@@ -179,3 +180,48 @@ func test_ambush_fails_onto_occupied_tile():
 
 	assert_false(ok, "ambush onto an occupied tile should fail")
 	assert_eq(knight.grid_pos, Vector2i(5, 5), "a failed ambush should not move the knight")
+
+# ----------------- Rook.Castling -----------------
+
+func test_castling_swaps_positions_with_ally_target():
+	var gm := GridManager.new()
+	var rook := RookScript.new()
+	rook.grid_pos = Vector2i(5, 5)
+	rook.grid_manager = gm
+	rook.settings_manager = SettingsManager
+	gm.occupy(rook.grid_pos, rook)
+
+	var ally := KnightScript.new()
+	ally.grid_pos = Vector2i(5, 2)
+	ally.grid_manager = gm
+	ally.settings_manager = SettingsManager
+	gm.occupy(ally.grid_pos, ally)
+
+	var was_reduced_motion: bool = SettingsManager.reduced_motion
+	SettingsManager.reduced_motion = true # skip create_tween(), which needs a live scene tree
+	var ok: bool = rook._execute_ability("castling", ally.grid_pos)
+	SettingsManager.reduced_motion = was_reduced_motion
+
+	assert_true(ok, "castling with a valid ally target should succeed")
+	assert_eq(rook.grid_pos, Vector2i(5, 2), "the rook should land on the ally's former tile")
+	assert_eq(ally.grid_pos, Vector2i(5, 5), "the ally should land on the rook's former tile")
+	assert_true(gm.get_character_at(Vector2i(5, 2)) == rook, "grid should track the rook at its new tile after castling")
+	assert_true(gm.get_character_at(Vector2i(5, 5)) == ally, "grid should track the ally at its new tile after castling")
+
+func test_castling_fails_against_enemy_target():
+	var gm := GridManager.new()
+	var rook := RookScript.new()
+	rook.grid_pos = Vector2i(5, 5)
+	rook.grid_manager = gm
+	gm.occupy(rook.grid_pos, rook)
+
+	var enemy := KnightScript.new()
+	enemy.is_enemy = true
+	enemy.grid_pos = Vector2i(5, 2)
+	enemy.grid_manager = gm
+	gm.occupy(enemy.grid_pos, enemy)
+
+	var ok: bool = rook._execute_ability("castling", enemy.grid_pos)
+
+	assert_false(ok, "castling should never swap positions with an enemy piece")
+	assert_eq(rook.grid_pos, Vector2i(5, 5), "a failed castling attempt should not move the rook")

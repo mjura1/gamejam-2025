@@ -461,6 +461,31 @@ func find_visible_enemies(max_view_range: int, directions: Array[Vector2i] = [])
 
 	return found
 
+# Enak sprehod kot find_visible_enemies, a zbira PRVEGA ZAVEZNIKA (ne
+# sovražnika) na vsaki poti - Rook.Castling in Queen.Command potrebujeta LOS
+# do zaveznika, ki ga lahko izbereta kot tarčo, ne do sovražnika za zajetje.
+# Isto "prva figura na poti blokira pogled" obnašanje (glej find_visible_enemies).
+func find_visible_allies(max_view_range: int, directions: Array[Vector2i] = []) -> Array[BaseCharacter]:
+	var found: Array[BaseCharacter] = []
+	var search_directions := directions if not directions.is_empty() else get_move_directions()
+
+	for dir in search_directions:
+		for step in range(1, max_view_range + 1):
+			var check_pos = grid_pos + dir * step
+
+			if not grid_manager.is_inside_boundary(check_pos, tile_map.get_used_rect()):
+				break
+
+			if grid_manager.is_occupied(check_pos):
+				var seen_char = grid_manager.get_character_at(check_pos)
+
+				if seen_char and seen_char.is_enemy == is_enemy and not seen_char.is_obstacle and seen_char != self:
+					found.append(seen_char)
+
+				break
+
+	return found
+
 # Enak sprehod kot find_visible_enemies, a zbira PRAZNA polja (za King.Heal -
 # kam lahko postavimo oživljene figure). Vsaka smer se ustavi pri prvi
 # zasedeni celici, da ne razkrije mest "za" blokado.
