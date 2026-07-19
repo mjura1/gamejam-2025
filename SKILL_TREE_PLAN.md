@@ -676,6 +676,50 @@ and zero-errors ≠ pass — assert explicitly.
      Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) - no new failures.
      `smoke_abilities` and `smoke_battle` both pass cleanly.
 5. **Campfire panel rewrite** + smoke test update; delete the old shim methods.
+   **STATUS: DONE.** Deviations/notes:
+   - No `.tscn` change was needed: `%TypeList` was already wrapped in a
+     `ScrollContainer` (`TypeScroll`) from the original panel, so the
+     "wrap in a ScrollContainer if width is a problem" fallback in §6 never
+     triggered.
+   - Row shape ended up flatter than §6's literal "icon + HBox of 4 VBoxes"
+     wording: the row itself is one `HBoxContainer` with the icon plus the 4
+     column `VBoxContainer`s as direct children (no extra nesting HBox) -
+     functionally identical, one fewer container.
+   - Button state precedence follows §6 exactly: owned > excluded (path
+     closed) > requirements missing (locked) > can't afford > buyable. Tooltip
+     rule also followed literally - only `a*_lv*` nodes and `a3_unlock` get a
+     second line appended (next tier / base ability desc); `a2_unlock`'s own
+     JSON desc already spells out what it does, so it gets no append, per the
+     plan's precise wording ("for a3_unlock append the base desc" - not
+     a2_unlock).
+   - Shim removal: grep for `get_piece_upgrades|try_unlock_slot2|
+     try_level_up_ability` across `team-berry-game` now returns zero
+     functional hits (one comment in `test_player_manager.gd` names them for
+     context, not a call site). The panel had already been switched to
+     `try_buy_node` in the same commit that added the new row-builder, so no
+     second panel edit was needed in the shim-deletion commit.
+   - `test_player_manager.gd`'s upgrade-section tests were rewritten against
+     `try_buy_node`/`has_tree_node`/`get_ability_level` rather than deleted -
+     kept the same three behaviors the old shim tests protected (spend exact
+     cost, per-type isolation, `setStarting()` reset), just phrased against
+     the new API. Full purchase-rule/schema coverage (requires/excludes,
+     passives, debug_max) already lived in `test_skill_tree.gd` from M1, so
+     nothing new was needed there beyond deleting
+     `test_legacy_view_matches_derived_state`.
+   - `smoke_upgrade_panel.gd` rewritten to click real node buttons: buys
+     `a1_lv2` -> `a2_unlock` -> `a2_lv2` (costs 2+1+2=5, matching the smoke
+     test's granted 5 items exactly, same "spend to zero" shape as the
+     original test) and asserts the bought button flips to `"✔ <name>"` +
+     disabled, plus a final "still shows a price, but disabled" check once
+     items run out. Final confirmation string unchanged, so `run_all.sh`'s
+     `expect_str` needed no edit.
+   - Tests: unit suite 922/922 green (0 failed). `smoke_upgrade_panel` and
+     `smoke_campfire_flow` both pass. `smoke_ability_ui_pipeline` still fails
+     the same pre-existing 6 assertions (Knight.Reposition, Bishop.Traps,
+     Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) noted since M2/M3 -
+     unrelated to this milestone, not investigated per the task's
+     instructions. `smoke_spyglass` passed on this run (still flaky per
+     earlier notes).
 6. **Balance pass** over costs and uses; update this file's numbers if changed.
 
 ## 9. Out of scope (explicitly)
