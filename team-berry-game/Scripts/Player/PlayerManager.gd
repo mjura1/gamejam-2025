@@ -202,29 +202,6 @@ func get_passive_effects(piece_type: String) -> Array:
 			effects.append(effect)
 	return effects
 
-# ----------------- ZAČASNE LEGACY ŠIME (odstrani v M5, glej SKILL_TREE_PLAN.md) -----------------
-
-# Stara oblika {"slot2_unlocked", "levels"}, IZPELJANA iz kupljenih vozlišč,
-# da stari CampfireUpgradePanel in BaseCharacter._load_persistent_upgrades
-# delujeta nespremenjena do M2/M5. Vrnjeni slovar NI živa referenca -
-# spreminjanje nima učinka (kupuj prek try_buy_node).
-func get_piece_upgrades(piece_type: String) -> Dictionary:
-	return {
-		"slot2_unlocked": is_slot_unlocked(piece_type, 2),
-		"levels": {
-			1: get_ability_level(piece_type, 1),
-			2: get_ability_level(piece_type, 2),
-		},
-	}
-
-# cost parameter se ignorira - cena pride iz Data/skill_trees.json.
-func try_unlock_slot2(piece_type: String, _cost: int) -> bool:
-	return try_buy_node(piece_type, "a2_unlock")
-
-func try_level_up_ability(piece_type: String, slot: int, _cost: int) -> bool:
-	var next_level := get_ability_level(piece_type, slot) + 1
-	return try_buy_node(piece_type, "a%d_lv%d" % [slot, next_level])
-
 # SAMO za teste in dev sandbox scene (test_sandbox, piece_test, smoke testi):
 # vsem tipom figur podari vsa vozlišča drevesa razen spec_b (specializaciji
 # se izključujeta - izbrana je spec_a), brez porabe itemov.

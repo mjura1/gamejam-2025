@@ -82,13 +82,13 @@ func test_add_to_friendly_party_overflows_into_reserve_instead_of_dropping():
 	assert_eq(pm.reserve_party, ["friendly_bishop"], "a piece collected once the active roster is full should be kept in reserve_party, not lost")
 
 # ----------------- upgrade itemi in nadgradnje po tipu figure -----------------
-
-func test_get_piece_upgrades_defaults_to_level_1_locked_slot2():
-	var pm = PlayerManagerScript.new()
-	var up = pm.get_piece_upgrades("pawn")
-	assert_false(up["slot2_unlocked"], "a fresh piece type should start with ability slot 2 locked")
-	assert_eq(up["levels"][1], 1, "a fresh piece type should start with ability 1 at level 1")
-	assert_eq(up["levels"][2], 1, "a fresh piece type should start with ability 2 at level 1")
+# Šima try_unlock_slot2/try_level_up_ability/get_piece_upgrades je odstranjena
+# (glej SKILL_TREE_PLAN.md M5) - spodnji testi pokrivajo iste vedenjske
+# lastnosti (poraba točno cene, izolacija po tipu figure, reset ob
+# setStarting()) prek novega try_buy_node/izpeljanih getterjev API-ja. Shema
+# skill_trees.json in celoten nakupni sistem (requires/excludes/passives) je
+# pokrit v test_skill_tree.gd - tu ostane samo spend/reset vedenje, ki je
+# specifično za PlayerManager.
 
 func test_add_upgrade_items_accumulates():
 	var pm = PlayerManagerScript.new()
@@ -96,58 +96,36 @@ func test_add_upgrade_items_accumulates():
 	pm.add_upgrade_items(3)
 	assert_eq(pm.upgrade_items, 5, "add_upgrade_items should accumulate across battles/rooms")
 
-func test_try_level_up_spends_items_and_raises_level():
+func test_try_buy_node_spends_exact_cost():
 	var pm = PlayerManagerScript.new()
 	pm.add_upgrade_items(5)
-	assert_true(pm.try_level_up_ability("pawn", 1, 2), "level up should succeed with enough items")
-	assert_eq(pm.upgrade_items, 3, "level up should spend exactly the passed cost")
-	assert_eq(pm.get_piece_upgrades("pawn")["levels"][1], 2, "level up should raise the slot's level by 1")
+	var cost: int = SkillTreeData.get_node_def("pawn", "a1_lv2").get("cost", 0)
+	assert_true(pm.try_buy_node("pawn", "a1_lv2"), "buy should succeed with enough items")
+	assert_eq(pm.upgrade_items, 5 - cost, "buy should spend exactly the node's cost")
+	assert_eq(pm.get_ability_level("pawn", 1), 2, "buying a1_lv2 should raise slot 1's derived level")
 
-func test_try_level_up_fails_without_enough_items():
+func test_try_buy_node_fails_without_enough_items():
 	var pm = PlayerManagerScript.new()
 	pm.add_upgrade_items(1)
-	assert_false(pm.try_level_up_ability("pawn", 1, 2), "level up should fail when items < cost")
-	assert_eq(pm.upgrade_items, 1, "a failed level up should not spend any items")
-	assert_eq(pm.get_piece_upgrades("pawn")["levels"][1], 1, "a failed level up should not change the level")
-
-func test_try_level_up_caps_at_max_level():
-	var pm = PlayerManagerScript.new()
-	pm.add_upgrade_items(100)
-	assert_true(pm.try_level_up_ability("pawn", 1, 2), "level up 1 -> 2 should succeed")
-	assert_true(pm.try_level_up_ability("pawn", 1, 2), "level up 2 -> 3 should succeed")
-	assert_false(pm.try_level_up_ability("pawn", 1, 2), "level up past ABILITY_LEVEL_MAX should fail")
-	assert_eq(pm.get_piece_upgrades("pawn")["levels"][1], BaseCharacter.ABILITY_LEVEL_MAX, "level should cap at ABILITY_LEVEL_MAX")
-	assert_eq(pm.upgrade_items, 96, "the capped attempt should not spend items")
-
-func test_try_level_up_slot2_requires_unlock_first():
-	var pm = PlayerManagerScript.new()
-	pm.add_upgrade_items(10)
-	assert_false(pm.try_level_up_ability("pawn", 2, 2), "slot 2 must be unlocked before it can be leveled")
-	assert_true(pm.try_unlock_slot2("pawn", 1), "unlock should succeed with enough items")
-	assert_eq(pm.upgrade_items, 9, "unlock should spend the unlock cost")
-	assert_true(pm.try_level_up_ability("pawn", 2, 2), "slot 2 should be levelable once unlocked")
-
-func test_try_unlock_slot2_fails_when_poor_or_already_unlocked():
-	var pm = PlayerManagerScript.new()
-	assert_false(pm.try_unlock_slot2("pawn", 1), "unlock should fail with 0 items")
-	pm.add_upgrade_items(2)
-	assert_true(pm.try_unlock_slot2("pawn", 1), "unlock should succeed with enough items")
-	assert_false(pm.try_unlock_slot2("pawn", 1), "a second unlock of the same type should fail")
-	assert_eq(pm.upgrade_items, 1, "a failed unlock should not spend items")
+	assert_false(pm.try_buy_node("pawn", "a1_lv2"), "buy should fail when items < cost")
+	assert_eq(pm.upgrade_items, 1, "a failed buy should not spend any items")
+	assert_eq(pm.get_ability_level("pawn", 1), 1, "a failed buy should not change the derived level")
 
 func test_upgrades_are_per_type_not_shared():
 	var pm = PlayerManagerScript.new()
 	pm.add_upgrade_items(2)
-	assert_true(pm.try_level_up_ability("pawn", 1, 2), "level up should succeed with enough items")
-	assert_eq(pm.get_piece_upgrades("rook")["levels"][1], 1, "upgrading one type should not touch another type")
+	assert_true(pm.try_buy_node("pawn", "a1_lv2"), "buy should succeed with enough items")
+	assert_eq(pm.get_ability_level("rook", 1), 1, "upgrading one type should not touch another type")
+	assert_false(pm.has_tree_node("rook", "a1_lv2"), "upgrading one type should not mark another type as owning the node")
 
 func test_set_starting_resets_upgrades_and_items():
 	var pm = PlayerManagerScript.new()
 	pm.add_upgrade_items(5)
-	pm.try_level_up_ability("pawn", 1, 2)
+	pm.try_buy_node("pawn", "a1_lv2")
 	pm.setStarting()
 	assert_eq(pm.upgrade_items, 0, "a new run should start with 0 upgrade items")
-	assert_eq(pm.get_piece_upgrades("pawn")["levels"][1], 1, "a new run should reset all piece upgrades to level 1")
+	assert_eq(pm.get_ability_level("pawn", 1), 1, "a new run should reset all piece upgrades to level 1")
+	assert_false(pm.has_tree_node("pawn", "a1_lv2"), "a new run should forget previously purchased nodes")
 
 func test_has_passive_false_when_not_owned():
 	var pm = PlayerManagerScript.new()

@@ -1,8 +1,7 @@
 extends TestCase
 
 # Testi za Data/skill_trees.json shemo in PlayerManager nakup vozlišč
-# (glej SKILL_TREE_PLAN.md §2 in §7). Stare try_unlock_slot2/try_level_up_ability
-# šime pokriva test_player_manager.gd - tu je novi try_buy_node API.
+# (glej SKILL_TREE_PLAN.md §2 in §7).
 
 const PlayerManagerScript = preload("res://Scripts/Player/PlayerManager.gd")
 
@@ -143,15 +142,3 @@ func test_debug_max_grants_all_but_spec_b():
 		assert_true(pm.is_slot_unlocked(piece_type, 3), "%s slot 3 should be unlocked" % piece_type)
 		assert_true(pm.has_tree_node(piece_type, "spec_a"), "%s should own spec_a" % piece_type)
 		assert_false(pm.has_tree_node(piece_type, "spec_b"), "%s should NOT own spec_b (excluded by spec_a)" % piece_type)
-
-# ----------------- legacy pogled (šima do M5) -----------------
-
-func test_legacy_view_matches_derived_state():
-	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
-	pm.try_buy_node("pawn", "a1_lv2")
-	pm.try_buy_node("pawn", "a2_unlock")
-	var up: Dictionary = pm.get_piece_upgrades("pawn")
-	assert_true(up["slot2_unlocked"], "legacy view should reflect a2_unlock")
-	assert_eq(up["levels"][1], 2, "legacy view should reflect slot 1 level")
-	assert_eq(up["levels"][2], 1, "legacy view should reflect slot 2 level")
