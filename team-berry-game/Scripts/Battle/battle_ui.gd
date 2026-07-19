@@ -66,6 +66,7 @@ const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
 const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
 const STATUS_STUNNED_COLOR := Color(0.8, 0.5, 1.0)
 const STATUS_ROOTED_COLOR := Color(0.45, 0.65, 0.25)
+const STATUS_FROZEN_COLOR := Color(0.55, 0.8, 1.0)
 
 const ABILITY_ICON_PLACEHOLDER := preload("res://Assets/Sprites/ability_placeholder.png")
 # Isti "sivi" ton kot PieceIcon.COLOR_DEAD, da je "nedosegljivo" vizualno
@@ -116,6 +117,7 @@ func _ready():
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
 	battle_controller.piece_stunned.connect(_on_piece_stunned)
 	battle_controller.piece_rooted.connect(_on_piece_rooted)
+	battle_controller.piece_frozen.connect(_on_piece_frozen)
 	board_area.gui_input.connect(_on_board_area_input)
 	action_button.pressed.connect(_on_action_button_pressed)
 	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
@@ -235,6 +237,7 @@ func _on_battle_state_changed(new_state):
 			# zanesljivo pojavi/izgine, tudi če je bilo vmes več sprememb.
 			_refresh_stun_badges()
 			_refresh_root_badges()
+			_refresh_frozen_badges()
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
@@ -266,10 +269,15 @@ func _on_action_button_pressed():
 
 func _on_moves_changed(remaining: int, max_moves: int):
 	moves_label.text = "MOVES: %d/%d" % [remaining, max_moves]
+	# Snow rework: a mid-turn rescue (another piece moving next to a frozen
+	# ally) thaws it the SAME turn - moves_changed fires right after that
+	# move, so the badge/status update without waiting for next turn start.
+	_refresh_frozen_badges()
 
 
 func _on_abilities_changed(remaining: int, max_abilities: int):
 	abilities_label.text = "ABILITIES: %d/%d" % [remaining, max_abilities]
+	_refresh_frozen_badges()
 
 
 # ===============================================
@@ -644,6 +652,37 @@ func _refresh_root_badges():
 		_set_root_badge(character, character.rooted_turns > 0)
 
 
+# Snow rework: ločena značka ("FrozenBadge", zamaknjena POD RootBadge -
+# Vector2(2, 17) - da se figura, ki je hkrati ROOTED IN FROZEN, ne izgubi
+# nobene od značk (glej RootBadge komentar zgoraj za isti vzorec).
+func _set_frozen_badge(character: BaseCharacter, frozen: bool):
+	_set_named_badge(character, "FrozenBadge", "FROZE" if frozen else "", STATUS_FROZEN_COLOR, Vector2(2, 25))
+
+
+# Snow rework: character je bil pravkar zamrznjen (sproženo iz
+# BattleController.piece_frozen, glej _ready). Takoj osveži značko na plošči
+# in, če je ta figura trenutno prikazana v detail panelu, tudi njega.
+func _on_piece_frozen(character):
+	_set_frozen_badge(character, true)
+	if is_instance_valid(character) and character == _shown_character:
+		_show_character(character)
+
+
+# Snow rework: enak razlog kot _refresh_stun_badges/_refresh_root_badges
+# zgoraj, PLUS klic is_snow_frozen_now() namesto gole "snow_frozen" branja -
+# to je hkrati mesto, ki odmrzne "postano" stanje (obroč snega se je vmes
+# prekinil), preden se karkoli prikaže.
+func _refresh_frozen_badges():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or character.is_enemy or character.is_obstacle:
+			continue
+		_set_frozen_badge(character, character.is_snow_frozen_now())
+
+
 # ===============================================
 # VRSTICI Z IKONAMI (roster + aktivne)
 # ===============================================
@@ -779,13 +818,18 @@ func _on_selection_changed(character):
 
 func _show_character(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/friendly_%s.png" % character.strName)
-	# Prekletstvo "stunning_gaze"/"entangle": prizadeta zavezniška figura kaže
-	# STUNNED/ROOTED namesto ALIVE (glej stunned_turns/rooted_turns tick-down v
-	# BattleController.end_player_turn). STUNNED ima prednost, če je figura
-	# hkrati oboje - popolnoma onesposobljena je "hujše" stanje od ROOTED.
+	# Prekletstvo "stunning_gaze"/"entangle" + snow rework "FROZEN": prizadeta
+	# zavezniška figura kaže STUNNED/FROZEN/ROOTED namesto ALIVE (glej
+	# stunned_turns/rooted_turns tick-down v BattleController.end_player_turn
+	# in is_snow_frozen_now() za FROZEN). Prioriteta STUNNED > FROZEN > ROOTED -
+	# FROZEN pomeni popolnoma onesposobljeno gibanje, "hujše" stanje od ROOTED
+	# (ki še dovoli zajetja), a STUNNED onemogoča tudi sposobnosti.
 	if character.stunned_turns > 0:
 		status_value.text = "STUNNED"
 		status_value.add_theme_color_override("font_color", STATUS_STUNNED_COLOR)
+	elif character.is_snow_frozen_now():
+		status_value.text = "FROZEN"
+		status_value.add_theme_color_override("font_color", STATUS_FROZEN_COLOR)
 	elif character.rooted_turns > 0:
 		status_value.text = "ROOTED"
 		status_value.add_theme_color_override("font_color", STATUS_ROOTED_COLOR)

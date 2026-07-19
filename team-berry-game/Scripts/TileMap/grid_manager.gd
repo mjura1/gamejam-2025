@@ -304,11 +304,14 @@ func _remove_fog_tile(grid_pos: Vector2i):
 		return true
 	return false
 
-# Klicano s strani BattleControllerja za razkrivanje območja
+# Klicano s strani BattleControllerja za razkrivanje območja - odstrani OBA
+# sistema megle (ambientno in prekletstveno), da so vsa "clear snow" mesta
+# (figure, predmeti, pasivke) resnično dosledna z opisi, ki jih obljubljajo.
 func reveal_area(positions_to_reveal):
 	for pos in positions_to_reveal:
 		# Odstrani vozlišče megle, če obstaja
 		_remove_fog_tile(pos)
+		_remove_curse_fog_tile(pos)
 
 # Prekletstvo "snowfall": zrcalno reveal_area - PONOVNO pokrije polja z
 # meglo. Klicatelj (snowfall_curse.gd) polja že filtrira na mejo plošče, zato
@@ -463,14 +466,27 @@ func _remove_curse_fog_tile(pos: Vector2i) -> void:
 	curse_fog_tick_progress.erase(pos)
 	curse_fog_spread.erase(pos)
 
-# Aktivno "razkritje" prekletstvene megle na danih poljih (npr. Rook.Lookout) -
-# za razliko od tick_curse_fog_decay, ki polja stopi postopoma.
-func clear_curse_fog_area(positions_to_reveal) -> void:
-	for pos in positions_to_reveal:
-		_remove_curse_fog_tile(pos)
-
 func clear_all_curse_fog() -> void:
 	for pos in curse_fog_nodes.keys():
 		_remove_curse_fog_tile(pos)
 	curse_fog_nodes.clear()
 	curse_fog_stage.clear()
+
+# "Sneg" (snow) = katerikoli od obeh sistemov megle - uporabljeno tam, kjer
+# se pravila ne ozirajo na to, KATERA megla je na polju (klik-skozi guard,
+# freeze mehanika spodaj).
+func has_snow_at(pos: Vector2i) -> bool:
+	return fog_nodes.has(pos) or curse_fog_nodes.has(pos)
+
+# Snow rework: "obkrožena s snegom" = vsak od 4 ortogonalnih sosedov je BODISI
+# zunaj plošče BODISI ima sneg (robne figure lahko zamrznejo - polja zunaj
+# plošče štejejo kot obkrožujoča).
+func is_snow_surrounded(pos: Vector2i) -> bool:
+	if not is_instance_valid(tile_map):
+		return false
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = pos + offset
+		if is_inside_boundary(n, used_rect) and not has_snow_at(n):
+			return false
+	return true

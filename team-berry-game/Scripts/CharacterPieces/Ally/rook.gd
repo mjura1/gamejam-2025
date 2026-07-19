@@ -102,7 +102,6 @@ func _do_lookout(tier: Dictionary) -> bool:
 
 	var area: Array[Vector2i] = _area_tiles(tier, closest.grid_pos)
 	grid_manager.reveal_area(area)
-	grid_manager.clear_curse_fog_area(area)
 	return true
 
 # Postavi (ali obnovi) cono, ki sovražnikom prepove premik na polja znotraj nje.

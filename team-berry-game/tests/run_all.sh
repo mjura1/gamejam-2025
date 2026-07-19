@@ -239,6 +239,11 @@ check_script "smoke_curses" "res://tests/smoke/smoke_curses.gd" 400 \
 	"SMOKE_CURSES_OK"
 echo
 
+echo "== Snow rework smoke test (bug fix / single-tile clear / freeze-death) =="
+check_script "smoke_snow_freeze" "res://tests/smoke/smoke_snow_freeze.gd" 400 \
+	"SMOKE_SNOW_FREEZE_OK"
+echo
+
 echo "== Enemy inspection smoke test (red preview + status panel) =="
 check_script "smoke_inspect" "res://tests/smoke/smoke_inspect.gd" 4 \
 	"SMOKE_INSPECT_OK"

@@ -268,6 +268,13 @@ func _unhandled_input(event):
 			else:
 				# Klik na sovražnika, ko ni izbrana nobena figura: inšpekcija
 				# (prikaz dosega + statusa/prekletstva - glej _inspect_enemy zgoraj).
+				# Snow rework: če sovražnik stoji na zasneženem polju, ga NE
+				# razkrijemo z inšpekcijo - to bi razkrilo, kaj se skriva pod
+				# snegom, brez tveganja premika nanj (glej SNOW_REWORK_PLAN.md
+				# odločitev 8). Premik/zajetje (LOGIKA 1.B/2 zgoraj) ostane
+				# nespremenjeno - presenečeno zajetje je namerno.
+				if grid_manager.has_snow_at(clicked_grid):
+					return
 				_inspect_enemy(clicked_character)
 				return
 	
