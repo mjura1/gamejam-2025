@@ -116,12 +116,13 @@ Mirror `ability_data.gd` style (load JSON in `_ready`, `push_error` on missing/i
 API:
 
 ```gdscript
-func get_tree(piece_type: String) -> Array          # node defs in display order
+func get_tree_nodes(piece_type: String) -> Array    # node defs in display order
 func get_node_def(piece_type: String, node_id: String) -> Dictionary  # {} if missing
 ```
 
 Register in `project.godot` under `[autoload]` next to `AbilityData`.
-(Name the getter `get_node_def`, NOT `get_node` — that would shadow `Node.get_node`.)
+(Names avoid `get_tree`/`get_node` — those would override the native `Node`
+methods and fail to compile. Implemented as `get_tree_nodes`/`get_node_def`.)
 
 ### 2.3 `PlayerManager` — replace the upgrade struct
 
@@ -491,6 +492,12 @@ and zero-errors ≠ pass — assert explicitly.
    `test_skill_tree.gd`. (Old panel temporarily broken is NOT acceptable — do
    milestone 2 in the same commit if needed, or keep old methods as thin shims
    over `try_buy_node` until milestone 5.)
+   **STATUS: DONE** (branch `features/skill-trees`). Notes for the next
+   milestone: legacy shims live in PlayerManager under "ZAČASNE LEGACY ŠIME"
+   (`get_piece_upgrades` is now a DERIVED read-only view, `try_unlock_slot2`/
+   `try_level_up_ability` delegate to `try_buy_node`; remove all three in M5).
+   The §4 `abilities.json` entries were already added in this milestone (skip
+   that step in M4). Unit suite 890/890 green + `smoke_upgrade_panel` passes.
 2. **BaseCharacter generalization.** 3-slot `ability_levels`, `unlocked_slots`,
    passive loading, `extra_uses` in `_ability_uses_max`, curse immunity,
    `move_range`/`move_reveal` hooks; `battle_start_reveal` in BattleController.

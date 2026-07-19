@@ -10,5 +10,11 @@
 	"exterminate": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
 	"lure": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1},
 	"cleanse": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2},
-	"heal": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1}
+	"heal": {"base_uses": 1, "mid_uses": 1, "max_uses": 1, "level_up_cost": 2, "unlock_cost": 1},
+	"promotion": {"base_uses": 1, "mid_uses": 1, "max_uses": 1},
+	"ambush": {"base_uses": 1, "mid_uses": 1, "max_uses": 2},
+	"sanctify": {"base_uses": 1, "mid_uses": 1, "max_uses": 2},
+	"castling": {"base_uses": 1, "mid_uses": 1, "max_uses": 2},
+	"command": {"base_uses": 1, "mid_uses": 1, "max_uses": 2},
+	"royal_decree": {"base_uses": 1, "mid_uses": 1, "max_uses": 1}
 }

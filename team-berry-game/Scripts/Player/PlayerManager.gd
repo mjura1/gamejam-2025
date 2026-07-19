@@ -5,7 +5,7 @@ extends Node
 signal party_changed
 
 # Sproži se ob vsaki spremembi števila itemov ALI nadgradenj figur
-# (add_upgrade_items / try_unlock_slot2 / try_level_up_ability).
+# (add_upgrade_items / try_buy_node).
 signal items_changed
 
 # Party Management
@@ -45,9 +45,10 @@ const UPGRADE_ITEMS_PER_ITEM_ROOM := 2
 
 # Trajne nadgradnje PO TIPU figure (velja za vse figure istega tipa - roster
 # je seznam imen brez identitete posamezne figure, glej friendly_party).
-# strName ("pawn" ipd.) -> {"slot2_unlocked": bool, "levels": {1: int, 2: int}}
-# Figure ob registraciji na mrežo preberejo svoj vnos (glej
-# BaseCharacter._load_persistent_upgrades) - poraba itemov je SAMO tu.
+# strName ("pawn" ipd.) -> {"nodes": Array kupljenih node id-jev iz
+# Data/skill_trees.json}. Figure ob registraciji na mrežo preberejo izpeljano
+# stanje (glej get_ability_level / is_slot_unlocked / get_passive_effects) -
+# poraba itemov je SAMO v try_buy_node.
 var piece_upgrades: Dictionary = {}
 
 # Koliko premikov/zajetij in koliko sposobnosti lahko igralec izvede v ENI
@@ -120,61 +121,121 @@ func move_reserve_to_active(index: int) -> bool:
 
 # ----------------- UPGRADE ITEMI IN NADGRADNJE FIGUR -----------------
 
-# Vrne (in po potrebi ustvari) vnos nadgradenj za dani tip figure ("pawn").
-# Vrnjen slovar je ŽIVA referenca v piece_upgrades - klicatelji naj ga berejo,
-# spreminja pa naj ga samo try_unlock_slot2/try_level_up_ability.
-func get_piece_upgrades(piece_type: String) -> Dictionary:
+# Interno: ŽIV seznam kupljenih node id-jev za dani tip figure (po potrebi
+# ustvari prazen vnos). Spreminja naj ga samo try_buy_node/debug_max_all_upgrades.
+func _get_owned_nodes(piece_type: String) -> Array:
 	if not piece_upgrades.has(piece_type):
-		piece_upgrades[piece_type] = {
-			"slot2_unlocked": false,
-			"levels": {1: 1, 2: 1},
-		}
-	return piece_upgrades[piece_type]
+		piece_upgrades[piece_type] = {"nodes": []}
+	return piece_upgrades[piece_type]["nodes"]
+
+# Def-i kupljenih vozlišč (preskoči id-je, ki jih v Data/skill_trees.json ni).
+func _owned_node_defs(piece_type: String) -> Array:
+	var defs: Array = []
+	for node_id in _get_owned_nodes(piece_type):
+		var node_def: Dictionary = SkillTreeData.get_node_def(piece_type, node_id)
+		if not node_def.is_empty():
+			defs.append(node_def)
+	return defs
 
 func add_upgrade_items(amount: int):
 	upgrade_items += amount
 	print("PlayerManager: +%d upgrade item(ov). Skupaj: %d" % [amount, upgrade_items])
 	items_changed.emit()
 
-# Odklene 2. sposobnostni slot za CEL tip figure, če je dovolj itemov.
-# cost pride iz AbilityData.get_unlock_cost(id) - klicatelj (upgrade panel)
-# pozna ability id, PlayerManager ne.
-func try_unlock_slot2(piece_type: String, cost: int) -> bool:
-	var up := get_piece_upgrades(piece_type)
-	if up["slot2_unlocked"] or upgrade_items < cost:
+func has_tree_node(piece_type: String, node_id: String) -> bool:
+	return _get_owned_nodes(piece_type).has(node_id)
+
+# false, če: je vozlišče že kupljeno, manjka kakšen "requires", je kupljen
+# kakšen "excludes" (izbrana druga specializacija), ali ni dovolj itemov.
+func can_buy_node(piece_type: String, node_def: Dictionary) -> bool:
+	var node_id: String = node_def.get("id", "")
+	if node_id == "" or has_tree_node(piece_type, node_id):
 		return false
-	upgrade_items -= cost
-	up["slot2_unlocked"] = true
+	for req in node_def.get("requires", []):
+		if not has_tree_node(piece_type, req):
+			return false
+	for excl in node_def.get("excludes", []):
+		if has_tree_node(piece_type, excl):
+			return false
+	return upgrade_items >= int(node_def.get("cost", 0))
+
+# Kupi vozlišče drevesa za CEL tip figure. Edino mesto porabe upgrade itemov
+# za nadgradnje figur.
+func try_buy_node(piece_type: String, node_id: String) -> bool:
+	var node_def: Dictionary = SkillTreeData.get_node_def(piece_type, node_id)
+	if node_def.is_empty() or not can_buy_node(piece_type, node_def):
+		return false
+	upgrade_items -= int(node_def.get("cost", 0))
+	_get_owned_nodes(piece_type).append(node_id)
 	items_changed.emit()
 	return true
 
-# Dvigne sposobnost danega slota za CEL tip figure za 1 nivo, če je dovolj
-# itemov. Slot 2 mora biti prej odklenjen. cost pride iz
-# AbilityData.get_level_up_cost(id).
-func try_level_up_ability(piece_type: String, slot: int, cost: int) -> bool:
-	var up := get_piece_upgrades(piece_type)
-	if slot == 2 and not up["slot2_unlocked"]:
-		return false
-	if not up["levels"].has(slot):
-		return false
-	if up["levels"][slot] >= BaseCharacter.ABILITY_LEVEL_MAX:
-		return false
-	if upgrade_items < cost:
-		return false
-	upgrade_items -= cost
-	up["levels"][slot] += 1
-	items_changed.emit()
-	return true
+# ----------------- IZPELJANO STANJE DREVESA (bere BaseCharacter) -----------------
+
+# 1 + število kupljenih {"type":"ability_level","slot":slot} vozlišč.
+func get_ability_level(piece_type: String, slot: int) -> int:
+	var level := 1
+	for node_def in _owned_node_defs(piece_type):
+		var effect: Dictionary = node_def.get("effect", {})
+		if effect.get("type", "") == "ability_level" and int(effect.get("slot", 0)) == slot:
+			level += 1
+	return level
+
+# Slot 1 je vedno odklenjen; slota 2/3 odklene {"type":"ability_unlock"} vozlišče.
+func is_slot_unlocked(piece_type: String, slot: int) -> bool:
+	if slot <= 1:
+		return true
+	for node_def in _owned_node_defs(piece_type):
+		var effect: Dictionary = node_def.get("effect", {})
+		if effect.get("type", "") == "ability_unlock" and int(effect.get("slot", 0)) == slot:
+			return true
+	return false
+
+# Effect slovarji vseh kupljenih PASIVNIH vozlišč (vse razen
+# ability_level/ability_unlock - glej vocabulary v SKILL_TREE_PLAN.md §2.1).
+func get_passive_effects(piece_type: String) -> Array:
+	var effects: Array = []
+	for node_def in _owned_node_defs(piece_type):
+		var effect: Dictionary = node_def.get("effect", {})
+		var effect_type: String = effect.get("type", "")
+		if effect_type != "" and effect_type != "ability_level" and effect_type != "ability_unlock":
+			effects.append(effect)
+	return effects
+
+# ----------------- ZAČASNE LEGACY ŠIME (odstrani v M5, glej SKILL_TREE_PLAN.md) -----------------
+
+# Stara oblika {"slot2_unlocked", "levels"}, IZPELJANA iz kupljenih vozlišč,
+# da stari CampfireUpgradePanel in BaseCharacter._load_persistent_upgrades
+# delujeta nespremenjena do M2/M5. Vrnjeni slovar NI živa referenca -
+# spreminjanje nima učinka (kupuj prek try_buy_node).
+func get_piece_upgrades(piece_type: String) -> Dictionary:
+	return {
+		"slot2_unlocked": is_slot_unlocked(piece_type, 2),
+		"levels": {
+			1: get_ability_level(piece_type, 1),
+			2: get_ability_level(piece_type, 2),
+		},
+	}
+
+# cost parameter se ignorira - cena pride iz Data/skill_trees.json.
+func try_unlock_slot2(piece_type: String, _cost: int) -> bool:
+	return try_buy_node(piece_type, "a2_unlock")
+
+func try_level_up_ability(piece_type: String, slot: int, _cost: int) -> bool:
+	var next_level := get_ability_level(piece_type, slot) + 1
+	return try_buy_node(piece_type, "a%d_lv%d" % [slot, next_level])
 
 # SAMO za teste in dev sandbox scene (test_sandbox, piece_test, smoke testi):
-# vse tipe figur postavi na max nivo z odklenjenim slotom 2, da so vse
-# stopnje vseh sposobnosti dosegljive brez klikanja po upgrade panelu.
+# vsem tipom figur podari vsa vozlišča drevesa razen spec_b (specializaciji
+# se izključujeta - izbrana je spec_a), brez porabe itemov.
 func debug_max_all_upgrades():
 	for piece_type in ["pawn", "knight", "rook", "bishop", "queen", "king"]:
-		piece_upgrades[piece_type] = {
-			"slot2_unlocked": true,
-			"levels": {1: BaseCharacter.ABILITY_LEVEL_MAX, 2: BaseCharacter.ABILITY_LEVEL_MAX},
-		}
+		var owned: Array = []
+		for node_def in SkillTreeData.get_tree_nodes(piece_type):
+			var node_id: String = node_def.get("id", "")
+			if node_id != "" and node_id != "spec_b":
+				owned.append(node_id)
+		piece_upgrades[piece_type] = {"nodes": owned}
 	items_changed.emit()
 
 # ----------------- SMRT IN OŽIVITEV (Revive) -----------------
