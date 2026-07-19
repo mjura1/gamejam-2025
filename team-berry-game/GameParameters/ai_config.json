@@ -1,4 +1,3 @@
 {
-	"piece_values": {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 10, "wolf": 2},
-	"danger_avoid_prob": {"easy": 0.0, "normal": 0.5, "hard": 1.0}
+	"piece_values": {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9, "king": 10, "wolf": 2}
 }

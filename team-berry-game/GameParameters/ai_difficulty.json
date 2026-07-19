@@ -1,0 +1,16 @@
+{
+	"_comment": "AI-difficulty tiers for the enemy DECISION strategy (Scripts/AI/enemy_ai_strategy.gd, loaded by Scripts/Data/ai_strategy_data.gd). Independent axis from curse difficulty (GameParameters/curses.json) - see plans/AI_DIFFICULTY_PLAN.md. Strictly additive: impossible = every flag on, each lower tier is a subset. All four keys-per-tier are required for all four tiers (no implicit defaults across tiers).",
+
+	"normal":     {"danger_avoid_prob": 0.5, "avoid_hanging_pieces": false, "static_exchange_evaluation": false, "threat_creation": false, "min_max": false, "minimax_depth": 0, "curse_synergy": false},
+	"hard":       {"danger_avoid_prob": 1.0, "avoid_hanging_pieces": true,  "static_exchange_evaluation": false, "threat_creation": false, "min_max": false, "minimax_depth": 0, "curse_synergy": false},
+	"extreme":    {"danger_avoid_prob": 1.0, "avoid_hanging_pieces": true,  "static_exchange_evaluation": true,  "threat_creation": true,  "min_max": true,  "minimax_depth": 1, "curse_synergy": false},
+	"impossible": {"danger_avoid_prob": 1.0, "avoid_hanging_pieces": true,  "static_exchange_evaluation": true,  "threat_creation": true,  "min_max": true,  "minimax_depth": 2, "curse_synergy": true},
+
+	"_comment_danger_avoid_prob": "Probability the chase step (heuristic path) prefers a candidate not reachable by any ally next turn. Was GameParameters/ai_config.json's per-CURSE-difficulty danger_avoid_prob (easy/normal/hard) - now per-AI-difficulty (normal/hard/extreme/impossible), see base_character.calculate_best_move + enemy_ai_strategy.gd.",
+	"_comment_avoid_hanging_pieces": "Generalizes danger_avoid_prob from the chase step to EVERY candidate (captures included) - value-aware, never leaves zero moves.",
+	"_comment_static_exchange_evaluation": "SEE - before committing to a capture, checks whether the destination square is itself defended and whether the recapture would lose more material than the capture gained.",
+	"_comment_threat_creation": "Fork bonus - small evaluation bump for candidates that threaten 2+ player pieces simultaneously next turn.",
+	"_comment_min_max": "Switches the strategy from the heuristic ladder (value-aware capture then chase) to minimax search over all valid_targets (captures included).",
+	"_comment_minimax_depth": "Adversarial-reply plies for minimax (0 = min_max off). See enemy_ai_strategy.gd _minimax() - radius-bounded opponent move generation, alpha-beta required.",
+	"_comment_curse_synergy": "Enables BaseCurse.ai_positioning_bonus() scoring inside the minimax evaluation function - only meaningful when min_max is also true."
+}

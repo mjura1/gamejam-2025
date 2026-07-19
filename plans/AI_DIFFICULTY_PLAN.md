@@ -427,22 +427,22 @@ per §0/§2.1 — this is settings plumbing only).
 
 ### M2 — Strategy scaffolding + NORMAL tier (regression milestone)
 
-- [ ] `GameParameters/ai_difficulty.json` (§3.2).
-- [ ] `Scripts/Data/ai_strategy_data.gd` new autoload, registered in `project.godot`:
+- [x] `GameParameters/ai_difficulty.json` (§3.2).
+- [x] `Scripts/Data/ai_strategy_data.gd` new autoload, registered in `project.godot`:
       loads the JSON, `get_strategy(tier) -> EnemyAIStrategy`, caches one instance per
       tier name.
-- [ ] `Scripts/AI/enemy_ai_strategy.gd` (`class_name EnemyAIStrategy`, `extends
+- [x] `Scripts/AI/enemy_ai_strategy.gd` (`class_name EnemyAIStrategy`, `extends
       RefCounted` — same base as `BaseCurse`): constructor takes the tier's param
       dict; `choose_action(character, context) -> Dictionary` entry point (§2.3).
       For this milestone, implement ONLY the `min_max == false` heuristic path,
       reproducing steps 6–7 of today's `calculate_best_move()` verbatim (value-aware
       capture always-on, `danger_avoid_prob`-gated chase). `avoid_hanging_pieces` stub
       returns unfiltered for now (wired in M3).
-- [ ] `base_character.gd::calculate_best_move()`: replace steps 6–8 with the
+- [x] `base_character.gd::calculate_best_move()`: replace steps 6–8 with the
       strategy call + the panic-randomness wrapper shown in §2.3. Steps 1–5 untouched.
-- [ ] Remove `danger_avoid_prob` from `ai_config.json` + `get_ai_param()` if unused
+- [x] Remove `danger_avoid_prob` from `ai_config.json` + `get_ai_param()` if unused
       elsewhere (§3.3).
-- [ ] `smoke_ai.gd`: change `settings_manager.difficulty = "hard"/"easy"` to
+- [x] `smoke_ai.gd`: change `settings_manager.difficulty = "hard"/"easy"` to
       `settings_manager.ai_difficulty = "hard"/"normal"` for the danger-avoidance
       assertions (HARD → `danger_avoid_prob = 1.0` deterministic, same expected tile;
       NORMAL → `0.5`, same probabilistic-but-seedable-by-tile-tie test as today's
@@ -450,8 +450,54 @@ per §0/§2.1 — this is settings plumbing only).
       case keep a `normal` assertion but adjust the expected probability/behavior
       description, don't just rename the string). Value-aware capture assertions are
       unaffected either way.
-- [ ] `./tests/run_all.sh` green. This milestone should be a **behavior no-op** for
+- [x] `./tests/run_all.sh` green. This milestone should be a **behavior no-op** for
       `ai_difficulty = "normal"` vs. today's `difficulty = "normal"` AI.
+
+**DEVIATION (typing safety):** §2.3's sample code types the local strategy var as
+`var strategy: EnemyAIStrategy = ...` inside `base_character.gd`. Per the file's own
+documented gotcha (see the `curse` field comment ~l.99–114: any static typing to a
+custom `class_name` type *inside `base_character.gd` itself* forces GDScript to fully
+compile that dependency early, before autoloads are registered in headless
+`--script`/smoke-test runs → `Identifier not found` crashes), `strategy` is left
+**untyped** (`var strategy = ai_strategy_data.get_strategy(...)`), matching the
+existing untyped `var curse = null` pattern. `EnemyAIStrategy` itself is typed freely
+everywhere else (its own file, `ai_strategy_data.gd`'s `get_strategy() -> EnemyAIStrategy`
+return type) — the restriction is specific to `base_character.gd`'s own file body, not
+the class in general. Confirmed this file's `curse_data`/`ai_strategy_data` follow the
+same `get_node()`-not-bare-identifier convention already established there.
+
+**DEVIATION (interim minimax stub):** `ai_difficulty.json` ships all four tiers in
+this milestone (per §3.2), including EXTREME/IMPOSSIBLE's `min_max: true` — but
+`_choose_minimax()` isn't implemented until M3. Added a temporary passthrough
+(`_choose_minimax()` calls `_choose_heuristic()`) so selecting EXTREME/IMPOSSIBLE
+between M2 and M3 still returns a legal move instead of erroring. Not called out
+explicitly in the plan text; noted here so it isn't mistaken for the real M3
+implementation.
+
+**DEVIATION (smoke_ai.gd NORMAL assertion, as flagged in the M2 checklist item
+above):** the old EASY case asserted `danger_avoid_prob == 0.0` deterministically —
+there is no AI-difficulty EASY rung (§6), and NORMAL's `danger_avoid_prob = 0.5` is
+inherently probabilistic, so a single-call deterministic assertion isn't possible.
+Replaced it with a 200-trial loop from the same tied position asserting BOTH outcomes
+appear with a roughly balanced split (≥25% each) — proves danger-avoidance is
+live-but-probabilistic at NORMAL, distinct from HARD's deterministic 100% and from a
+silently-broken 0%/100%. Extremely low false-fail rate at p=0.5, n=200 (~7 std devs
+from either bound).
+
+**Ran:** `./tests/run_all.sh` — green except two **pre-existing, unrelated** flakes,
+both confirmed present identically on baseline `develop` before any of this plan's
+changes existed (via `git stash`):
+  - `smoke_ability_ui_pipeline` (Queen.Lure/King.Cleanse/King.Heal UI-pipeline
+    assertions) — fails the same way on baseline `develop`.
+  - `smoke_spyglass` — intermittent (~4/15 ≈ 27% on baseline `develop` across 15
+    runs, and similarly on this branch); root cause looks like a latent bug in the
+    test's own random-obstacle column-picker (`smoke_spyglass.gd` only checks the
+    ally/contested/enemy tiles themselves for obstacles when picking a free column,
+    not the in-between tile the ally's sliding move must pass through) combined with
+    unseeded `randi_range` house placement in `battle.gd` — unrelated to AI
+    difficulty, out of scope for this plan, not touched.
+`smoke_ai.gd` (all 8 assertions, incl. the new NORMAL-probabilistic pair above) and
+every other check green on every run.
 
 ### M3 — HARD + EXTREME tiers
 

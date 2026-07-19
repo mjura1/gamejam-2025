@@ -1,10 +1,13 @@
 # res://Scripts/Data/curse_data.gd
 # Autoload. Prebere GameParameters/curses.json (ogrodje prekletstev sovražnikov), po
 # vzoru item_data.gd ("1 avtoload prebere JSON + registry razredov" vzorec).
-# Nosi TUDI GameParameters/ai_config.json (splošni "enemy behavior" podatki - vrednosti
-# figur za value-aware capture in danger-avoidance verjetnosti po težavnosti,
-# glej base_character.calculate_best_move) - namerno v istem avtoloadu namesto
-# ločenega, da ne množimo majhnih JSON-loaderjev za tesno povezane AI podatke.
+# Nosi TUDI GameParameters/ai_config.json (figur vrednosti za value-aware capture,
+# glej base_character.calculate_best_move in Scripts/AI/enemy_ai_strategy.gd) -
+# namerno v istem avtoloadu namesto ločenega, da ne množimo majhnih JSON-loaderjev
+# za tesno povezane AI podatke. Difficulty-gated AI PARAMETRI (danger_avoid_prob
+# ipd.) so se preselili v Scripts/Data/ai_strategy_data.gd + GameParameters/
+# ai_difficulty.json (SettingsManager.ai_difficulty - ločena os od curse-difficulty,
+# glej plans/AI_DIFFICULTY_PLAN.md).
 extends Node
 
 const CURSES_PATH := "res://GameParameters/curses.json"
@@ -234,9 +237,3 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> St
 # tarčami izbere najvrednejšo). Privzeto 1, če piece_values nima vnosa.
 func get_piece_value(piece_name: String) -> int:
 	return _ai_config.get("piece_values", {}).get(piece_name, 1)
-
-# Splošen getter za ai_config.json vrednosti po težavnosti (trenutno samo
-# "danger_avoid_prob" - verjetnost, da sovražnik pri "chase" koraku raje
-# izbere polje izven zavezniškega dosega, glej calculate_best_move korak 7).
-func get_ai_param(difficulty: String, key: String, default: float = 0.0) -> float:
-	return _ai_config.get(key, {}).get(difficulty, default)
