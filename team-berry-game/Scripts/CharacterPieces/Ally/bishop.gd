@@ -57,6 +57,12 @@ const ABILITY_DEFS = [
 		"mid": {"shape": "plus", "desc": "Until this bishop moves, enemies within a 3x3 + cross-shaped area of this tile cannot move at all."},
 		"upgraded": {"shape": "square", "radius": 2, "desc": "Until this bishop moves, enemies within 5x5 of this tile cannot move at all."},
 	},
+	{
+		"id": "sanctify", "name": "Sanctify", "needs_target": false,
+		"base": {"shape": "square", "radius": 1, "desc": "Remove curses from all allied pieces within 3x3 of this bishop."},
+		"mid": {"shape": "plus", "desc": "Remove curses from all allied pieces within a 3x3 + cross-shaped area of this bishop."},
+		"upgraded": {"shape": "square", "radius": 2, "desc": "Remove curses from all allied pieces within 5x5 of this bishop."},
+	},
 ]
 
 func get_ability_defs() -> Array:
@@ -84,6 +90,8 @@ func _execute_ability(id: String, target) -> bool:
 			return _do_longshot(target)
 		"traps":
 			return _do_traps(_tier_data(2))
+		"sanctify":
+			return _do_sanctify(_tier_data(3))
 	return false
 
 # Zajame vidnega sovražnika, ne da bi se lovec premaknil (mimo capture(), ki
@@ -107,3 +115,15 @@ func _do_traps(tier: Dictionary) -> bool:
 		shape_offsets = _area_offsets(tier)
 	owned_zone_id = grid_manager.add_zone("freeze", grid_pos, tier.get("radius", 1), is_enemy, shape_offsets)
 	return true
+
+# Počisti prekletstvo vsem zavezniškim figuram znotraj _area_tiles(tier,
+# grid_pos) - glej BaseCharacter.clear_curse (King.Cleanse uporablja isto
+# metodo). false = ni bilo nobene prekletstvene figure v dosegu.
+func _do_sanctify(tier: Dictionary) -> bool:
+	var cleared := false
+	for pos in _area_tiles(tier, grid_pos):
+		var target = grid_manager.get_character_at(pos)
+		if target is BaseCharacter and target.is_enemy == is_enemy and target.curse != null:
+			target.clear_curse()
+			cleared = true
+	return cleared

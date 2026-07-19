@@ -36,6 +36,12 @@ const ABILITY_DEFS = [
 		"mid": {"revive_count": 3, "desc": "Revive up to 3 of the most recently fallen allies onto empty tiles within this king's line of sight."},
 		"upgraded": {"revive_count": -1, "desc": "Revive every fallen ally onto empty tiles within this king's line of sight."},
 	},
+	{
+		"id": "royal_decree", "name": "Royal Decree", "needs_target": false,
+		"base": {"shape": "square", "radius": 1, "desc": "Allies within 3x3 of the king cannot be captured until your next turn."},
+		"mid": {"shape": "plus", "desc": "Allies within a 3x3 + cross-shaped area of the king cannot be captured until your next turn."},
+		"upgraded": {"all": true, "desc": "No ally can be captured until your next turn."},
+	},
 ]
 
 func get_ability_defs() -> Array:
@@ -47,6 +53,8 @@ func _execute_ability(id: String, _target) -> bool:
 			return _do_cleanse(_tier_data(1).get("enemy_count", -1))
 		"heal":
 			return _do_heal(_tier_data(2).get("revive_count", 1))
+		"royal_decree":
+			return _do_royal_decree(_tier_data(3))
 	return false
 
 # Obrne najbližjih "enemy_count" vidnih sovražnikov na svojo stran - samo za
@@ -98,3 +106,23 @@ func _do_heal(revive_count: int) -> bool:
 		revived_any = true
 
 	return revived_any
+
+# Zaščiti zaveznike pred zajetjem do začetka igralčeve naslednje poteze
+# (is_capture_immune - generično preverjen ob zajetju, počiščen v
+# BattleController._clear_expired_evade, glej Knight.Evade za isti mehanizem).
+# tier.all == true (upgraded nivo) pomeni "vsi zavezniki", sicer samo tisti
+# znotraj _area_tiles(tier, grid_pos) okoli kralja.
+func _do_royal_decree(tier: Dictionary) -> bool:
+	var affected := false
+	if tier.get("all", false):
+		for character in grid_manager.get_all_characters():
+			if character is BaseCharacter and not character.is_enemy and not character.is_obstacle:
+				character.is_capture_immune = true
+				affected = true
+	else:
+		for pos in _area_tiles(tier, grid_pos):
+			var target = grid_manager.get_character_at(pos)
+			if target is BaseCharacter and not target.is_enemy and not target.is_obstacle:
+				target.is_capture_immune = true
+				affected = true
+	return affected

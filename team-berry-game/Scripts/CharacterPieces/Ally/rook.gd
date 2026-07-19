@@ -29,17 +29,53 @@ const ABILITY_DEFS = [
 		"mid": {"shape": "plus", "desc": "Until this rook moves, no enemy can move onto any tile within a 3x3 + cross-shaped area of this tile."},
 		"upgraded": {"shape": "square", "radius": 2, "desc": "Until this rook moves, no enemy can move onto any tile within 5x5 of this tile."},
 	},
+	{
+		"id": "castling", "name": "Castling", "needs_target": true,
+		"base": {"who": "king", "los": true, "desc": "Swap positions with your king if he is in this rook's line of sight."},
+		"mid": {"who": "any", "los": true, "desc": "Swap positions with any ally in this rook's line of sight."},
+		"upgraded": {"who": "any", "los": false, "desc": "Swap positions with any allied piece anywhere."},
+	},
 ]
 
 func get_ability_defs() -> Array:
 	return ABILITY_DEFS
 
-func _execute_ability(id: String, _target) -> bool:
+func get_ability_targets(slot: int) -> Array[Vector2i]:
+	if slot == 3:
+		return _castling_targets(_tier_data(3))
+	return []
+
+# Zbere zaveznike, ki so veljavne Castling tarče: LOS-omejeno (find_visible_allies,
+# glej base_character.gd) ali celotna plošča, glede na tier.los, nato po
+# potrebi filtrira na samo kralja (tier.who == "king").
+func _castling_targets(tier: Dictionary) -> Array[Vector2i]:
+	var who: String = tier.get("who", "king")
+	var candidates: Array[BaseCharacter] = []
+	if tier.get("los", true):
+		candidates = find_visible_allies(move_range)
+	else:
+		for character in grid_manager.get_all_characters():
+			if not is_instance_valid(character) or not (character is BaseCharacter):
+				continue
+			if character == self or character.is_enemy != is_enemy or character.is_obstacle:
+				continue
+			candidates.append(character)
+
+	var targets: Array[Vector2i] = []
+	for ally in candidates:
+		if who == "king" and ally.strName != "king":
+			continue
+		targets.append(ally.grid_pos)
+	return targets
+
+func _execute_ability(id: String, target) -> bool:
 	match id:
 		"lookout":
 			return _do_lookout(_tier_data(1))
 		"reinforce":
 			return _do_reinforce(_tier_data(2))
+		"castling":
+			return _do_castling(target)
 	return false
 
 # Poišče najbližjega sovražnika, ki stoji na trenutno zamegljenem polju, in
@@ -77,4 +113,16 @@ func _do_reinforce(tier: Dictionary) -> bool:
 	if tier.get("shape", "square") == "plus":
 		shape_offsets = _area_offsets(tier)
 	owned_zone_id = grid_manager.add_zone("deny_entry", grid_pos, tier.get("radius", 1), is_enemy, shape_offsets)
+	return true
+
+# Zamenja polji s ciljnim zaveznikom - grid_manager.swap_characters() že
+# opravi vse (vakacija/okupacija obeh polj + drsenje), glej SKILL_TREE_PLAN.md
+# §4.4. Cilj je bil že filtriran skozi get_ability_targets(3) (glej
+# Knight._do_ambush za isti "UI že filtrirala klik" vzorec) - tu samo minimalna
+# zaščita, da je na polju res zaveznik.
+func _do_castling(target: Vector2i) -> bool:
+	var ally = grid_manager.get_character_at(target)
+	if not (ally is BaseCharacter) or ally.is_enemy != is_enemy or ally == self:
+		return false
+	grid_manager.swap_characters(self, ally)
 	return true

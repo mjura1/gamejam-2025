@@ -53,18 +53,29 @@ var grid_manager
 @export var strName: String
 
 # ----------------- ABILITIES -----------------
-# Ali je 2. sposobnostni slot odklenjen. Trajno stanje živi v
-# PlayerManager.piece_upgrades (po TIPU figure) - figura ga prebere ob
-# registraciji na mrežo (glej _load_persistent_upgrades).
-@export var ability2_unlocked: bool = false
+# Odklenjeni sposobnostni sloti (slot 1 je vedno odklenjen). Trajno stanje
+# živi v PlayerManager.piece_upgrades (po TIPU figure, kupljena vozlišča
+# drevesa iz Data/skill_trees.json) - figura ga prebere ob registraciji na
+# mrežo (glej _load_persistent_upgrades in is_slot_unlocked).
+var unlocked_slots: Array[int] = [1]
 
-# slot (1|2) -> trenutni nivo TE sposobnosti (1=base, 2=mid, ABILITY_LEVEL_MAX=upgraded).
-# Vsak slot se dviguje NEODVISNO (glej AbilityData.get_level_up_cost) - ločeno
-# od ability2_unlocked, ki samo odklene sam slot 2 (glej get_unlock_cost).
+# slot (1|2|3) -> trenutni nivo TE sposobnosti (1=base, 2=mid, ABILITY_LEVEL_MAX=upgraded).
+# Vsak slot se dviguje NEODVISNO (kupljena a*_lv* vozlišča drevesa) - ločeno
+# od unlocked_slots, ki samo odklene slot.
 # Tudi to je samo bitki-lokalna kopija stanja iz PlayerManager.piece_upgrades.
 const ABILITY_LEVEL_MAX := 3
 const ABILITY_TIER_KEYS := ["base", "mid", "upgraded"]
-var ability_levels: Dictionary = {1: 1, 2: 1}
+var ability_levels: Dictionary = {1: 1, 2: 1, 3: 1}
+
+# Effect slovarji kupljenih PASIVNIH vozlišč drevesa za ta tip figure (vse
+# razen ability_level/ability_unlock - glej SKILL_TREE_PLAN.md §2.1). Napolni
+# jih _load_persistent_upgrades; beri prek has_passive/get_passive/has_flag.
+var passives: Array = []
+
+# Osnovni move_range iz scene - _load_persistent_upgrades ga zajame ob prvem
+# klicu, da "move_range" pasiva ob morebitni ponovni registraciji iste
+# instance ne prišteje bonusa dvakrat.
+var _base_move_range: int = -1
 
 # slot (1|2) -> preostalo število uporab v tej bitki.
 var ability_uses_remaining: Dictionary = {}
@@ -135,8 +146,8 @@ func on_grid_manager_registered():
 	# 3. Registriramo figuro v slovar zasedenosti
 	grid_manager.occupy(grid_pos, self)
 
-	# 4. Preberemo trajne nadgradnje tipa (nivoji + odklep slota 2) in
-	# napolnimo sposobnosti (velja tudi za figure, ki se pojavijo sredi
+	# 4. Preberemo trajne nadgradnje tipa (nivoji + odklenjeni sloti + pasive)
+	# in napolnimo sposobnosti (velja tudi za figure, ki se pojavijo sredi
 	# bitke - npr. King.Heal - in za test_sandbox figure).
 	_load_persistent_upgrades()
 	reset_ability_uses()
@@ -151,6 +162,10 @@ func on_grid_manager_registered():
 # CurseMarker nalagamo z load() namesto z golim class_name identifikatorjem -
 # ta bi enako prisilil zgodnji compile base_curse.gd/CurseData.
 func apply_curse(new_curse) -> void:
+	# Pasiva "curse_immune" (skill tree): prekletstva se te figure ne primejo -
+	# brez stanja IN brez vizualnega markerja.
+	if has_passive("curse_immune"):
+		return
 	curse = new_curse
 	var marker = load("res://Scripts/Curses/curse_marker.gd").new()
 	marker.name = "CurseMarker"
@@ -309,6 +324,12 @@ func execute_move(target: Vector2i):
 		# Naročimo GridManagerju, da odstrani meglo na teh poljih
 		grid_manager.reveal_area(positions_to_reveal)
 
+		# Pasiva "move_reveal" (skill tree): po zaključenem premiku dodatno
+		# razkrij (2r+1)² kvadrat okoli pristajalnega polja.
+		if has_passive("move_reveal"):
+			var reveal_radius: int = int(get_passive("move_reveal").get("radius", 1))
+			grid_manager.reveal_area(GridManager.square_radius_tiles(grid_pos, reveal_radius))
+
 	# Queen.Lure: ta figura je s premikom "ubogala" vabo - status se sprosti.
 	if is_instance_valid(battle_controller) and self in battle_controller.lured_enemies:
 		battle_controller.lured_enemies.erase(self)
@@ -440,6 +461,31 @@ func find_visible_enemies(max_view_range: int, directions: Array[Vector2i] = [])
 
 	return found
 
+# Enak sprehod kot find_visible_enemies, a zbira PRVEGA ZAVEZNIKA (ne
+# sovražnika) na vsaki poti - Rook.Castling in Queen.Command potrebujeta LOS
+# do zaveznika, ki ga lahko izbereta kot tarčo, ne do sovražnika za zajetje.
+# Isto "prva figura na poti blokira pogled" obnašanje (glej find_visible_enemies).
+func find_visible_allies(max_view_range: int, directions: Array[Vector2i] = []) -> Array[BaseCharacter]:
+	var found: Array[BaseCharacter] = []
+	var search_directions := directions if not directions.is_empty() else get_move_directions()
+
+	for dir in search_directions:
+		for step in range(1, max_view_range + 1):
+			var check_pos = grid_pos + dir * step
+
+			if not grid_manager.is_inside_boundary(check_pos, tile_map.get_used_rect()):
+				break
+
+			if grid_manager.is_occupied(check_pos):
+				var seen_char = grid_manager.get_character_at(check_pos)
+
+				if seen_char and seen_char.is_enemy == is_enemy and not seen_char.is_obstacle and seen_char != self:
+					found.append(seen_char)
+
+				break
+
+	return found
+
 # Enak sprehod kot find_visible_enemies, a zbira PRAZNA polja (za King.Heal -
 # kam lahko postavimo oživljene figure). Vsaka smer se ustavi pri prvi
 # zasedeni celici, da ne razkrije mest "za" blokado.
@@ -504,28 +550,72 @@ func _area_tiles(tier: Dictionary, center: Vector2i) -> Array[Vector2i]:
 	return tiles
 
 # Vrne max. število uporab za dani slot iz AbilityData (Data/abilities.json),
-# glede na trenutni nivo TEGA slota (ability_levels[slot]).
+# glede na trenutni nivo TEGA slota (ability_levels[slot]), plus morebitne
+# "extra_uses" pasive drevesa za ta slot.
 func _ability_uses_max(slot: int) -> int:
 	var defs := get_ability_defs()
 	if slot < 1 or slot > defs.size():
 		return 0
 	var id: String = defs[slot - 1].get("id", "")
+	var uses: int
 	match clampi(ability_levels.get(slot, 1), 1, ABILITY_LEVEL_MAX):
-		1: return ability_data.get_base_uses(id)
-		2: return ability_data.get_mid_uses(id)
-		_: return ability_data.get_max_uses(id)
+		1: uses = ability_data.get_base_uses(id)
+		2: uses = ability_data.get_mid_uses(id)
+		_: uses = ability_data.get_max_uses(id)
+	for effect in passives:
+		if effect.get("type", "") == "extra_uses" and int(effect.get("slot", 0)) == slot:
+			uses += int(effect.get("amount", 0))
+	return uses
 
-# Prepiše ability2_unlocked/ability_levels iz trajnega stanja po tipu figure
-# (PlayerManager.piece_upgrades). Samo za igralčeve figure - sovražniki in
-# ovire sposobnosti ne uporabljajo in obdržijo privzete vrednosti.
+# Ali je dani sposobnostni slot odklenjen za to figuro (slot 1 vedno).
+func is_slot_unlocked(slot: int) -> bool:
+	return slot in unlocked_slots
+
+# ----------------- SKILL TREE PASIVE -----------------
+
+func has_passive(effect_type: String) -> bool:
+	return not get_passive(effect_type).is_empty()
+
+# Prvi effect slovar danega tipa ali {}, če ga figura nima.
+func get_passive(effect_type: String) -> Dictionary:
+	for effect in passives:
+		if effect.get("type", "") == effect_type:
+			return effect
+	return {}
+
+# "flag" pasive - prosti markerji, ki jih berejo skripte figur
+# (npr. queen spec_a "blast_clears_snow").
+func has_flag(flag_name: String) -> bool:
+	for effect in passives:
+		if effect.get("type", "") == "flag" and effect.get("flag", "") == flag_name:
+			return true
+	return false
+
+# Prepiše unlocked_slots/ability_levels/passives iz trajnega stanja po tipu
+# figure (PlayerManager izpeljanke iz kupljenih vozlišč drevesa). Samo za
+# igralčeve figure - sovražniki in ovire sposobnosti ne uporabljajo in
+# obdržijo privzete vrednosti.
 func _load_persistent_upgrades():
 	if is_enemy or is_obstacle:
 		return
 	if not is_instance_valid(player_manager):
 		return
-	var up: Dictionary = player_manager.get_piece_upgrades(strName)
-	ability2_unlocked = up["slot2_unlocked"]
-	ability_levels = {1: up["levels"][1], 2: up["levels"][2]}
+	unlocked_slots = [1]
+	for slot in [2, 3]:
+		if player_manager.is_slot_unlocked(strName, slot):
+			unlocked_slots.append(slot)
+	for slot in [1, 2, 3]:
+		ability_levels[slot] = player_manager.get_ability_level(strName, slot)
+	passives = player_manager.get_passive_effects(strName)
+
+	# Takojšnje pasive: move_range. Izhajamo iz zajete osnovne vrednosti
+	# (glej _base_move_range), ne iz trenutne, da je klic idempotenten.
+	if _base_move_range == -1:
+		_base_move_range = move_range
+	move_range = _base_move_range
+	for effect in passives:
+		if effect.get("type", "") == "move_range":
+			move_range += int(effect.get("amount", 0))
 
 # Napolni ability_uses_remaining iz get_ability_defs(). Kliče se ob vsaki
 # (re)registraciji na mreži (placement, King.Heal spawn, test_sandbox).
@@ -543,17 +633,14 @@ func get_ability_info(slot: int) -> Dictionary:
 		return {}
 	var def: Dictionary = defs[slot - 1]
 	var tier := _tier_data(slot)
-	var id: String = def.get("id", "")
 	return {
 		"name": def.get("name", "-"),
 		"desc": tier.get("desc", ""),
 		"uses_remaining": ability_uses_remaining.get(slot, 0),
 		"uses_max": _ability_uses_max(slot),
-		"locked": slot == 2 and not ability2_unlocked,
+		"locked": slot >= 2 and not is_slot_unlocked(slot),
 		"level": ability_levels.get(slot, 1),
 		"level_max": ABILITY_LEVEL_MAX,
-		"unlock_cost": ability_data.get_unlock_cost(id),
-		"level_up_cost": ability_data.get_level_up_cost(id),
 	}
 
 # Sledi tarčam, ki jih mora igralec izbrati PO kliku na gumb (glej
@@ -575,7 +662,7 @@ func activate_ability(slot: int, target = null) -> bool:
 	var defs := get_ability_defs()
 	if slot < 1 or slot > defs.size():
 		return false
-	if slot == 2 and not ability2_unlocked:
+	if not is_slot_unlocked(slot):
 		return false
 	if ability_uses_remaining.get(slot, 0) <= 0:
 		return false

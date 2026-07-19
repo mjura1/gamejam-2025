@@ -116,12 +116,13 @@ Mirror `ability_data.gd` style (load JSON in `_ready`, `push_error` on missing/i
 API:
 
 ```gdscript
-func get_tree(piece_type: String) -> Array          # node defs in display order
+func get_tree_nodes(piece_type: String) -> Array    # node defs in display order
 func get_node_def(piece_type: String, node_id: String) -> Dictionary  # {} if missing
 ```
 
 Register in `project.godot` under `[autoload]` next to `AbilityData`.
-(Name the getter `get_node_def`, NOT `get_node` — that would shadow `Node.get_node`.)
+(Names avoid `get_tree`/`get_node` — those would override the native `Node`
+methods and fail to compile. Implemented as `get_tree_nodes`/`get_node_def`.)
 
 ### 2.3 `PlayerManager` — replace the upgrade struct
 
@@ -491,14 +492,234 @@ and zero-errors ≠ pass — assert explicitly.
    `test_skill_tree.gd`. (Old panel temporarily broken is NOT acceptable — do
    milestone 2 in the same commit if needed, or keep old methods as thin shims
    over `try_buy_node` until milestone 5.)
+   **STATUS: DONE** (branch `features/skill-trees`). Notes for the next
+   milestone: legacy shims live in PlayerManager under "ZAČASNE LEGACY ŠIME"
+   (`get_piece_upgrades` is now a DERIVED read-only view, `try_unlock_slot2`/
+   `try_level_up_ability` delegate to `try_buy_node`; remove all three in M5).
+   The §4 `abilities.json` entries were already added in this milestone (skip
+   that step in M4). Unit suite 890/890 green + `smoke_upgrade_panel` passes.
 2. **BaseCharacter generalization.** 3-slot `ability_levels`, `unlocked_slots`,
    passive loading, `extra_uses` in `_ability_uses_max`, curse immunity,
    `move_range`/`move_reveal` hooks; `battle_start_reveal` in BattleController.
+   **STATUS: DONE.** Deviations/notes:
+   - `move_range` passives are applied idempotently: `_load_persistent_upgrades`
+     captures the scene's base value in `_base_move_range` on first call and
+     recomputes `move_range = base + bonuses` (plain `+=` per the plan text
+     would stack on any re-registration of the same instance).
+   - battle_ui.gd had a SECOND reader beyond the `unlock_cost` one flagged in
+     §5.1: `character.ability2_unlocked` at the top of `_show_abilities` —
+     repointed to `character.is_slot_unlocked(2)` in the same commit.
+   - `battle_start_reveal` hook lives in `start_player_turn()` inside a
+     `turn_count == 1` block (same spot as the bounty/courier first-turn
+     logic), NOT `initialize_battle()` — pieces are only on the board after
+     the placement phase.
+   - §5.2 checklist item verified, no change needed: `_clear_expired_evade()`
+     already loops ALL allied pieces (not just knights), so Royal Decree's
+     `is_capture_immune` will expire correctly in M4.
+   - Tests: unit suite 893/893 green; `smoke_upgrade_panel` passes.
+     `smoke_ability_ui_pipeline` fails PRE-EXISTINGLY on this branch (6
+     Queen.Lure/King.Cleanse/King.Heal assertions — verified byte-identical
+     with M2 stashed, so unrelated to skill trees; investigate separately).
+     `smoke_spyglass` is flaky (failed one run, passed the next, both
+     unrelated to this diff).
 3. **Battle UI slot 3.** Scene block, script wiring, `ability_3` keybind.
+   **STATUS: DONE.** Deviations/notes:
+   - `ability_3` keybind is **`E`** (physical_keycode 69), not literal digit
+     `3` as the plan text said — digit `3` is already bound to `piece_slot_3`
+     (select roster slot 3 via `_unhandled_input`'s `piece_slot_%d` loop in
+     `battle_ui.gd`), so reusing it for `ability_3` would silently shadow that
+     shortcut any time the third ability button is enabled. `E` sits between
+     the existing `ability_1`=D / `ability_2`=F bindings (D/E/F are
+     consecutive `KEY_*` codes), consistent with the S/D/F/G home-row layout
+     already used for select/ability1/ability2/toggle-items.
+   - Scene: added an `HSep3` separator before `Ability3Body` (not in the
+     plan's literal Name/Level/Uses/Desc/Button/Body/Locked list) so ability 2
+     and 3 don't visually run together, matching `HSep2`'s role before
+     `Ability2Body`.
+   - Script: slots 2 and 3 share the body/locked pattern (unlike slot 1,
+     which has no locked state), so `_show_abilities()`/`_clear_ability_rows()`
+     handle them via a small `for slot in [2, 3]` loop over a node-ref lookup
+     dict, rather than a literal "loop slots 1–3" — slot 1 stays its own
+     explicit block since it has no body/locked wrapper to loop over. Mirrors
+     the `for slot in [2, 3]` / `for slot in [1, 2, 3]` pattern
+     `base_character.gd` already established in M2.
+   - Slot 3's locked text is the single fixed string from this plan ("Unlock
+     the third ability in this piece's skill tree at a rest.") used in both
+     `_clear_ability_rows()` and `_show_abilities()` — unlike slot 2, which
+     shows a generic default in the cleared state but a dynamic cost-derived
+     message in `_show_abilities()`. Slot 3's cost isn't in the string at all
+     per the plan's own wording, so there was no dynamic part to add.
+   - Correction to the M2 note above: re-ran `smoke_ability_ui_pipeline` on
+     this milestone's diff and, separately, on the stashed M2 baseline —
+     byte-identical failure set both times, confirming it's still pre-existing
+     and unrelated to skill-tree changes. But the actual failing assertions
+     are **Knight.Reposition, Bishop.Traps, Rook.Reinforce, Queen.Lure,
+     King.Cleanse, King.Heal** (6 total) — broader than M2's note ("6
+     Queen.Lure/King.Cleanse/King.Heal assertions"), which undercounted which
+     abilities were affected while getting the total right. Investigate
+     separately, per M2's note.
+   - Tests: unit suite 894/894 green (one higher than M2's recorded 893 —
+     count is stable across repeated runs on this branch; likely M2's note was
+     off by one rather than a real change). `smoke_battle` (scene-load sanity
+     check on the edited `battle_ui.tscn`, since no smoke test yet drives
+     slot 3 specifically — that lands with M4's abilities) passes cleanly.
 4. **New abilities.** Suggested order: royal_decree → sanctify → ambush →
    castling → command → promotion (easiest to hardest; promotion last since the
    temp-ally + not-a-death handling has the most edge cases). Smoke/unit test each.
+   **STATUS: DONE** (all 6 abilities; branch `features/skill-trees`, 6 separate
+   commits total - royal_decree/sanctify/ambush from the first session, then
+   castling/command/promotion this session). Deviations/notes:
+   - Tests (`tests/unit/test_new_abilities.gd`, new file, built up across the
+     3 commits): pieces are instantiated directly (`KingScript.new()` etc.,
+     same `.new()`-without-scene-tree pattern as
+     `test_battle_controller_path.gd`) with `grid_manager`/`grid_pos` wired
+     manually - `_execute_ability(id, target)` is called directly, bypassing
+     `activate_ability`'s `battle_controller`/`player_manager` gate (neither
+     is initialized off-tree). This only exercises the ability-execution
+     logic, not targeting/UI - `get_ability_targets` for the new abilities
+     stays smoke-test-only coverage (existing repo convention: no unit test
+     touches `get_ability_targets` for any piece).
+   - **Ambush's `execute_move` needed a scene-tree workaround:**
+     `BaseCharacter.slide_to()` reads `settings_manager.reduced_motion` to
+     decide between an instant jump and `create_tween()` - the latter errors
+     on a node that was never added to the tree. The test temporarily flips
+     the real `SettingsManager` autoload's `reduced_motion` to `true` around
+     the call (save/restore, same temporary-global-mutation pattern
+     `test_curses.gd` already uses for `CurseData._curses`), rather than
+     stubbing a fake settings object.
+   - Ambush's own validation is intentionally minimal (`_do_ambush` only
+     re-checks `is_occupied`, not curse-fog or boundary) - it trusts
+     `get_ability_targets(3)` already filtered the click, matching the
+     existing "UI already filtered it" convention `_do_reposition`/
+     `_do_longshot` use (neither re-validates against their own targets list
+     either).
+   - Royal Decree's expiry needed no new code: confirmed (again, by direct
+     `BattleController._clear_expired_evade()` call in the test) that it's
+     still ally-loop-only per M2's note - unaffected by M3/M4.
+   - Tests: unit suite 914/914 green (16 new asserts across 7 test methods
+     added incrementally, 1 per commit's worth). `smoke_ability_ui_pipeline`
+     still fails exactly the same pre-existing 6 assertions (Knight.Reposition,
+     Bishop.Traps, Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) after
+     each of the 3 commits - no new failures. `smoke_abilities` passes.
+   - **SECOND HALF (castling/command/promotion), this session:**
+   - Castling/Command both need LOS-restricted-to-allies targeting, the same
+     shape as `find_visible_enemies()` but flipped to `is_enemy == is_enemy`.
+     Rather than duplicate that walk in both `rook.gd` and `queen.gd`, added a
+     shared `BaseCharacter.find_visible_allies(max_view_range, directions)` in
+     `base_character.gd` (§5 wasn't touched by the plan for M4, but this
+     mirrors the existing `find_visible_enemies`/`get_empty_tiles_in_los`
+     precedent closely enough that duplicating it per-piece seemed worse).
+     `get_ability_targets(3)` for both pieces stays smoke-only per the
+     established convention (needs `tile_map`, unavailable off-tree).
+   - Command built exactly per the plan's **corrected** design:
+     `BattleController.free_move_character` + `consume_move_for(character)`
+     (skips `consume_move()` exactly once for that character, then clears the
+     flag), with both `map_behaviour.gd` call sites (`:234`/`:287` capture
+     branch/plain-move branch) switched from `consume_move()` to
+     `consume_move_for(mover)` / `consume_move_for(selected_character)`.
+     `free_move_character` is also cleared in `start_player_turn()` so an
+     unused grant can't leak into the next turn. `add_bonus_move()` (item
+     `extra_move`) is untouched, as specified.
+   - Castling's `_do_castling`/Command's `_do_command` both trust
+     `get_ability_targets(3)` already filtered the click (same "UI already
+     filtered it" convention as `_do_ambush`/`_do_reposition`) - the only
+     re-check is "is this actually a live ally, not self".
+     `grid_manager.swap_characters()` needed no changes at all - used exactly
+     as documented in §4.4.
+   - **Promotion was the hard one, but succeeded on the first real attempt**
+     (not the 2-attempts-then-stop fallback the task allowed for). Implementation
+     copies the King.Cleanse/bloodhound-wolf temp-ally pathway exactly:
+     `is_converted_ally = true` on the pawn *before* calling its own `die()`
+     (routes through `PlayerManager.remove_converted_ally()`, never
+     `register_dead_character()`, so `dead_party` never sees `friendly_pawn`),
+     THEN `grid_manager.spawn_character()` a fresh `promote_to` piece at the
+     vacated tile (world pos captured before `die()`), tagged
+     `is_converted_ally = true` and reported via
+     `player_manager.add_temporary_ally("friendly_" + promote_to)` - same
+     bookkeeping `BattleController._spawn_bloodhound_wolf()` already uses for
+     the `bloodhounds` item's wolf. Added `pawn.gd`'s own
+     `@onready var battle_root = get_node("..")` (mirroring `king.gd`) to read
+     `battle.gd`'s `friendly_pieces` dict for the scene to spawn.
+   - **Unit-testing promotion required breaking the file's established
+     off-tree convention**, because `grid_manager.spawn_character()` calls
+     `get_parent().add_child(...)` and `get_tree()`, neither of which works on
+     an unparented `GridManager.new()`. The promotion test builds a throwaway
+     `Node` under the real `SceneTree` root (`Engine.get_main_loop().root`),
+     parents a real `GridManager` under it, and lets `spawn_character()` run
+     for real (instantiating the actual `knight.tscn` etc.) - then tears the
+     scratch subtree down *synchronously* (`remove_child()` + `free()`, not
+     `queue_free()`) before returning. This matters because
+     `run_unit_tests.gd` never processes a frame between test methods or test
+     files in the same run, so a `queue_free()`'d node - and its
+     `"characters"` group membership - would still be visible to any later
+     `spawn_character()` call in the same process. Added two throwaway sibling
+     nodes (`BattleController`, `Map/TileMapLayer`) under the scratch root
+     purely to keep the spawned piece's unrelated `@onready` lookups from
+     printing console errors - cosmetic, not required for the assertions to
+     pass. `battle_root` in the test is a real
+     `preload("res://Scenes/Map/battle.gd").new()` (reads its `const
+     friendly_pieces` dict fine without ever entering a tree) rather than a
+     hand-rolled stub.
+   - Gotcha hit once and fixed: `pawn.player_manager.active_party = [...]`
+     with a bare array literal throws a runtime `SCRIPT ERROR` ("Invalid
+     assignment... Array... on Array[String]") because the literal is
+     untyped - GDScript only auto-types array literals from *static*
+     assignment context, not through a dynamically-typed intermediate
+     (`pawn.player_manager` is untyped on `BaseCharacter`). Fixed by binding
+     to an explicitly `Array[String]`-typed local first, then assigning that.
+   - Tests: unit suite green, 0 failed (938/938 on the run that landed the
+     promotion commit; the exact "N passed" total fluctuates run-to-run by a
+     handful because of an unrelated pre-existing randomized test elsewhere in
+     the suite - failure count is what was checked, and it was 0 on every run
+     across all 3 commits). `smoke_ability_ui_pipeline` still fails exactly
+     the same pre-existing 6 assertions (Knight.Reposition, Bishop.Traps,
+     Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) - no new failures.
+     `smoke_abilities` and `smoke_battle` both pass cleanly.
 5. **Campfire panel rewrite** + smoke test update; delete the old shim methods.
+   **STATUS: DONE.** Deviations/notes:
+   - No `.tscn` change was needed: `%TypeList` was already wrapped in a
+     `ScrollContainer` (`TypeScroll`) from the original panel, so the
+     "wrap in a ScrollContainer if width is a problem" fallback in §6 never
+     triggered.
+   - Row shape ended up flatter than §6's literal "icon + HBox of 4 VBoxes"
+     wording: the row itself is one `HBoxContainer` with the icon plus the 4
+     column `VBoxContainer`s as direct children (no extra nesting HBox) -
+     functionally identical, one fewer container.
+   - Button state precedence follows §6 exactly: owned > excluded (path
+     closed) > requirements missing (locked) > can't afford > buyable. Tooltip
+     rule also followed literally - only `a*_lv*` nodes and `a3_unlock` get a
+     second line appended (next tier / base ability desc); `a2_unlock`'s own
+     JSON desc already spells out what it does, so it gets no append, per the
+     plan's precise wording ("for a3_unlock append the base desc" - not
+     a2_unlock).
+   - Shim removal: grep for `get_piece_upgrades|try_unlock_slot2|
+     try_level_up_ability` across `team-berry-game` now returns zero
+     functional hits (one comment in `test_player_manager.gd` names them for
+     context, not a call site). The panel had already been switched to
+     `try_buy_node` in the same commit that added the new row-builder, so no
+     second panel edit was needed in the shim-deletion commit.
+   - `test_player_manager.gd`'s upgrade-section tests were rewritten against
+     `try_buy_node`/`has_tree_node`/`get_ability_level` rather than deleted -
+     kept the same three behaviors the old shim tests protected (spend exact
+     cost, per-type isolation, `setStarting()` reset), just phrased against
+     the new API. Full purchase-rule/schema coverage (requires/excludes,
+     passives, debug_max) already lived in `test_skill_tree.gd` from M1, so
+     nothing new was needed there beyond deleting
+     `test_legacy_view_matches_derived_state`.
+   - `smoke_upgrade_panel.gd` rewritten to click real node buttons: buys
+     `a1_lv2` -> `a2_unlock` -> `a2_lv2` (costs 2+1+2=5, matching the smoke
+     test's granted 5 items exactly, same "spend to zero" shape as the
+     original test) and asserts the bought button flips to `"✔ <name>"` +
+     disabled, plus a final "still shows a price, but disabled" check once
+     items run out. Final confirmation string unchanged, so `run_all.sh`'s
+     `expect_str` needed no edit.
+   - Tests: unit suite 922/922 green (0 failed). `smoke_upgrade_panel` and
+     `smoke_campfire_flow` both pass. `smoke_ability_ui_pipeline` still fails
+     the same pre-existing 6 assertions (Knight.Reposition, Bishop.Traps,
+     Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) noted since M2/M3 -
+     unrelated to this milestone, not investigated per the task's
+     instructions. `smoke_spyglass` passed on this run (still flaky per
+     earlier notes).
 6. **Balance pass** over costs and uses; update this file's numbers if changed.
 
 ## 9. Out of scope (explicitly)

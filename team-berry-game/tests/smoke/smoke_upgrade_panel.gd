@@ -1,15 +1,15 @@
 extends SceneTree
 
-# Drives the campfire upgrade panel (CampfireUpgradePanel.tscn) headlessly:
-# grants upgrade items, presses the real LEVEL UP / UNLOCK buttons and checks
-# that PlayerManager.piece_upgrades and the item count change accordingly.
+# Drives the real campfire upgrade panel (CampfireUpgradePanel.tscn) headlessly:
+# grants upgrade items, presses the real skill-tree node buttons and checks
+# that PlayerManager's derived getters + the item count change accordingly.
 # The panel rebuilds its rows on every items_changed signal, so each button
 # press happens in its own frame (old rows are queue_free()d and only
 # actually gone on the next frame).
 # Run with: godot4 --headless --path . --script res://tests/smoke/smoke_upgrade_panel.gd --quit-after 8
 
 var player_manager
-var ability_data
+var skill_tree_data
 var panel
 var step := 0
 var fails := 0
@@ -19,7 +19,7 @@ func _initialize():
 	print(">>> SMOKE TEST: campfire upgrade panel spend flow <<<")
 
 	player_manager = root.get_node("PlayerManager")
-	ability_data = root.get_node("AbilityData")
+	skill_tree_data = root.get_node("SkillTreeData")
 	player_manager.setStarting() # roster: 3x friendly_pawn -> ena vrstica (pawn)
 	player_manager.add_upgrade_items(5)
 	expected_items = 5
@@ -36,16 +36,23 @@ func _check(label: String, ok: bool):
 		print("FAIL: %s" % label)
 		fails += 1
 
-# Vrstica za pawn: [TextureRect ikona, VBox slot 1, VBox slot 2];
-# gumb je drugi otrok slot-boxa (za name_label).
-func _slot_button(slot: int) -> Button:
+# Vrstica za pawn: [TextureRect ikona, VBox stolpec1 (ABILITY 1), stolpec2
+# (ABILITY 2), stolpec3 (ABILITY 3), stolpec4 (PERKS)]. V vsakem stolpcu je
+# prvi otrok naslovni Label, gumbi sledijo v vrstnem redu iz node_ids.
+func _node_button(column: int, index_in_column: int) -> Button:
 	var rows: Array = panel.type_list.get_children()
 	if rows.is_empty():
 		return null
 	var row = rows[0]
-	if row.get_child_count() < slot + 1:
+	if row.get_child_count() <= column:
 		return null
-	return row.get_child(slot).get_child(1)
+	var col = row.get_child(column)
+	if col.get_child_count() <= index_in_column + 1:
+		return null
+	return col.get_child(index_in_column + 1)
+
+func _cost(piece_type: String, node_id: String) -> int:
+	return int(skill_tree_data.get_node_def(piece_type, node_id).get("cost", 0))
 
 func _process(_delta: float) -> bool:
 	if not is_instance_valid(panel):
@@ -56,35 +63,49 @@ func _process(_delta: float) -> bool:
 			_check("panel shows one row for the all-pawn roster", panel.type_list.get_child_count() == 1)
 			_check("items label shows granted item count", panel.items_label.text.contains("x5"))
 
-			var b1 := _slot_button(1)
-			var cost: int = ability_data.get_level_up_cost("rally")
-			_check("slot 1 button offers LEVEL UP with rally's cost", b1 != null and b1.text == "LEVEL UP (%d)" % cost and not b1.disabled)
+			# column 1 = ABILITY 1 (a1_lv2, a1_lv3), index 0 = a1_lv2
+			var b1 := _node_button(1, 0)
+			var cost := _cost("pawn", "a1_lv2")
+			_check("a1_lv2 button offers purchase with its cost", b1 != null and b1.text == "Rally II (%d)" % cost and not b1.disabled)
 			expected_items -= cost
 			b1.pressed.emit()
 		1:
-			_check("rally leveled 1 -> 2", player_manager.get_piece_upgrades("pawn")["levels"][1] == 2)
-			_check("level up spent the cost", player_manager.upgrade_items == expected_items)
+			_check("a1_lv2 bought", player_manager.has_tree_node("pawn", "a1_lv2"))
+			_check("ability level derived from purchase", player_manager.get_ability_level("pawn", 1) == 2)
+			_check("buy spent the cost", player_manager.upgrade_items == expected_items)
 
-			var b2 := _slot_button(2)
-			var cost: int = ability_data.get_unlock_cost("lantern_signal")
-			_check("slot 2 button offers UNLOCK with lantern_signal's cost", b2 != null and b2.text == "UNLOCK (%d)" % cost and not b2.disabled)
+			var b1 := _node_button(1, 0)
+			_check("bought node flips to owned and disables", b1 != null and b1.text == "✔ Rally II" and b1.disabled)
+
+			# column 2 = ABILITY 2 (a2_unlock, a2_lv2, a2_lv3), index 0 = a2_unlock
+			var b2 := _node_button(2, 0)
+			var cost := _cost("pawn", "a2_unlock")
+			_check("a2_unlock button offers purchase with its cost", b2 != null and b2.text == "Lantern Signal (%d)" % cost and not b2.disabled)
 			expected_items -= cost
 			b2.pressed.emit()
 		2:
-			_check("slot 2 unlocked", player_manager.get_piece_upgrades("pawn")["slot2_unlocked"])
+			_check("slot 2 unlocked", player_manager.is_slot_unlocked("pawn", 2))
 			_check("unlock spent the cost", player_manager.upgrade_items == expected_items)
 
-			var b2 := _slot_button(2)
-			var cost: int = ability_data.get_level_up_cost("lantern_signal")
-			_check("unlocked slot 2 button now offers LEVEL UP", b2 != null and b2.text == "LEVEL UP (%d)" % cost)
+			var b2 := _node_button(2, 0)
+			_check("unlocked node flips to owned", b2 != null and b2.text == "✔ Lantern Signal" and b2.disabled)
+
+			# now-unlocked a2_lv2 (column 2, index 1)
+			var b2lv2 := _node_button(2, 1)
+			var cost := _cost("pawn", "a2_lv2")
+			_check("a2_lv2 offers purchase now that a2_unlock is owned", b2lv2 != null and b2lv2.text == "Lantern Signal II (%d)" % cost and not b2lv2.disabled)
 			expected_items -= cost
-			b2.pressed.emit()
+			b2lv2.pressed.emit()
 		3:
-			_check("lantern_signal leveled 1 -> 2", player_manager.get_piece_upgrades("pawn")["levels"][2] == 2)
+			_check("a2_lv2 bought", player_manager.has_tree_node("pawn", "a2_lv2"))
+			_check("ability level derived from purchase", player_manager.get_ability_level("pawn", 2) == 2)
 			_check("all items spent", player_manager.upgrade_items == 0 and expected_items == 0)
 
-			var b1 := _slot_button(1)
+			var b1 := _node_button(1, 1) # a1_lv3
 			_check("buttons disabled once items run out", b1 != null and b1.disabled)
+
+			var bp := _node_button(4, 0) # p1, never bought
+			_check("p1 still shows a purchasable price format even though items ran out", bp != null and bp.text.begins_with("Long March (") and bp.disabled)
 
 			panel.close_menu()
 			if fails == 0:

@@ -54,17 +54,47 @@ const ABILITY_DEFS = [
 		"mid": {"enemy_count": 3, "desc": "Forces the 3 closest enemies to move toward this queen on their next move, but they cannot capture her."},
 		"upgraded": {"enemy_count": -1, "desc": "Every enemy is forced to move toward this queen on their next move, but cannot capture her."},
 	},
+	{
+		"id": "command", "name": "Command", "needs_target": true,
+		"base": {"los": true, "desc": "A chosen ally in this queen's line of sight may immediately make a free move."},
+		"mid": {"los": false, "desc": "Any chosen ally may immediately make a free move."},
+		"upgraded": {"los": false, "desc": "Any chosen ally may immediately make a free move."},
+	},
 ]
 
 func get_ability_defs() -> Array:
 	return ABILITY_DEFS
 
-func _execute_ability(id: String, _target) -> bool:
+func get_ability_targets(slot: int) -> Array[Vector2i]:
+	if slot == 3:
+		return _command_targets(_tier_data(3))
+	return []
+
+func _command_targets(tier: Dictionary) -> Array[Vector2i]:
+	var candidates: Array[BaseCharacter] = []
+	if tier.get("los", true):
+		candidates = find_visible_allies(move_range)
+	else:
+		for character in grid_manager.get_all_characters():
+			if not is_instance_valid(character) or not (character is BaseCharacter):
+				continue
+			if character == self or character.is_enemy != is_enemy or character.is_obstacle:
+				continue
+			candidates.append(character)
+
+	var targets: Array[Vector2i] = []
+	for ally in candidates:
+		targets.append(ally.grid_pos)
+	return targets
+
+func _execute_ability(id: String, target) -> bool:
 	match id:
 		"exterminate":
 			return _do_exterminate(_tier_data(1))
 		"lure":
 			return _do_lure(_tier_data(2).get("enemy_count", -1))
+		"command":
+			return _do_command(target)
 	return false
 
 func _do_exterminate(tier: Dictionary) -> bool:
@@ -96,4 +126,18 @@ func _do_lure(enemy_count: int) -> bool:
 
 	battle_controller.lured_enemies = chosen
 	battle_controller.lure_source = self
+	return true
+
+# Podeli tarčnemu zavezniku brezplačen premik za TO potezo - naslednjič, ko se
+# ta zaveznik premakne/zajame, map_behaviour.gd's consume_move_for() (glej
+# BattleController.free_move_character) preskoči porabo proračuna premikov.
+# NAMERNO ne mirroring Reposition (glej SKILL_TREE_PLAN.md §4.5 popravek): ne
+# premakne nikogar sama, samo označi, kdo dobi brezplačen premik.
+func _do_command(target: Vector2i) -> bool:
+	if not is_instance_valid(battle_controller):
+		return false
+	var ally = grid_manager.get_character_at(target)
+	if not (ally is BaseCharacter) or ally.is_enemy != is_enemy or ally == self:
+		return false
+	battle_controller.free_move_character = ally
 	return true
