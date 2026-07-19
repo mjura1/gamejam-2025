@@ -149,22 +149,11 @@ func _is_excluded(piece_type: String, node_def: Dictionary) -> bool:
 	return false
 
 
-# desc + (za a*_lv* vozlišča) opis naslednjega nivoja sposobnosti, ki ga
-# odklene (iz ABILITY_DEFS mid/upgraded); za a3_unlock opis base nivoja.
-func _node_tooltip(node_def: Dictionary, defs: Array) -> String:
-	var text: String = node_def.get("desc", "")
-	var tier_desc := ""
-	match node_def.get("id", ""):
-		"a1_lv2": tier_desc = defs[0].get("mid", {}).get("desc", "")
-		"a1_lv3": tier_desc = defs[0].get("upgraded", {}).get("desc", "")
-		"a2_lv2": tier_desc = defs[1].get("mid", {}).get("desc", "")
-		"a2_lv3": tier_desc = defs[1].get("upgraded", {}).get("desc", "")
-		"a3_unlock": tier_desc = defs[2].get("base", {}).get("desc", "")
-		"a3_lv2": tier_desc = defs[2].get("mid", {}).get("desc", "")
-		"a3_lv3": tier_desc = defs[2].get("upgraded", {}).get("desc", "")
-	if tier_desc != "":
-		text += "\n" + tier_desc
-	return text
+# node_def.desc v skill_trees.json je že poln opis učinka (glej npr. pawn
+# a2_lv2 vs. pawn.gd ABILITY_DEFS[1].mid.desc - isti stavek), zato se tu ne
+# dodaja še opis iz ABILITY_DEFS - to bi podvojilo isto besedilo v tooltipu.
+func _node_tooltip(node_def: Dictionary, _defs: Array) -> String:
+	return node_def.get("desc", "")
 
 
 func close_menu():
