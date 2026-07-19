@@ -79,16 +79,12 @@ const ABILITY_BUTTON_TEXT_LOCKED := "?"
 
 var placement_active: bool = false
 
-# Slot (1-3) -> {"locked": bool, "text": String} - vir resnice za hover/click
-# bubble, napolnjen iz _show_abilities()/_clear_ability_rows()/_show_enemy(),
-# bran samo iz hover/click handlerjev spodaj. To omogoča, da tudi prekletstvo
+# Slot (1-3) -> hover bubble text ("" = no bubble on hover), napolnjen iz
+# _show_abilities()/_clear_ability_rows()/_show_enemy(), bran samo iz
+# _on_ability_row_mouse_entered spodaj. To omogoča, da tudi prekletstvo
 # sovražnika (repurposed slot 1 v _show_enemy) deluje skozi isti generični
-# mehanizem brez posebnih primerov v handlerjih.
-var _slot_bubble_state: Dictionary = {
-	1: {"locked": true, "text": ""},
-	2: {"locked": true, "text": ""},
-	3: {"locked": true, "text": ""},
-}
+# mehanizem brez posebnih primerov v handlerju.
+var _slot_bubble_state: Dictionary = {1: "", 2: "", 3: ""}
 
 # Stanje drag & dropa med placement fazo. drag_source_character je nastavljen,
 # ko premikamo že postavljeno figuro; sicer postavljamo novo iz rosterja.
@@ -134,7 +130,6 @@ func _ready():
 		var row: HBoxContainer = slot_row[1]
 		row.mouse_entered.connect(_on_ability_row_mouse_entered.bind(slot, row))
 		row.mouse_exited.connect(_hide_ability_bubble)
-		row.gui_input.connect(_on_ability_row_gui_input.bind(slot, row))
 	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
 	# sredi bitke) - značke slotov naj se takoj osvežijo.
 	KeybindManager.rebinds_changed.connect(_rebuild_rows)
@@ -817,7 +812,7 @@ func _show_enemy(character: BaseCharacter):
 		status_value.text = character.curse.status_text()
 		status_value.add_theme_color_override("font_color", character.curse.color())
 		ability1_name.text = character.curse.display_name()
-		_slot_bubble_state[1] = {"locked": false, "text": character.curse.description()}
+		_slot_bubble_state[1] = character.curse.description()
 	else:
 		status_value.text = "ENEMY"
 		status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
@@ -857,7 +852,7 @@ func _clear_ability_rows():
 		w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
 		w.button.mouse_filter = Control.MOUSE_FILTER_STOP
 	for slot in [1, 2, 3]:
-		_slot_bubble_state[slot] = {"locked": true, "text": ""}
+		_slot_bubble_state[slot] = ""
 	_hide_ability_bubble()
 
 
@@ -912,28 +907,30 @@ func _show_abilities(character: BaseCharacter):
 			w.uses.text = "%d/%d" % [info.get("uses_remaining", 0), info.get("uses_max", 0)]
 			w.button.disabled = not (can_use_now and info.get("uses_remaining", 0) > 0)
 			w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
-			# Restore normal click handling (a prior locked state may have set
-			# this to IGNORE below - see the locked branch's comment).
-			w.button.mouse_filter = Control.MOUSE_FILTER_STOP
-			_slot_bubble_state[slot] = {"locked": false, "text": info.get("desc", "")}
+			_slot_bubble_state[slot] = info.get("desc", "")
 		else:
 			# Cena odklepa pride iz skill drevesa (aN_unlock vozlišče tega
 			# tipa), ne iz get_ability_info - glej SKILL_TREE_PLAN.md §5.1.
-			var unlock_cost: int = skill_tree_data.get_node_def(character.strName, "a%d_unlock" % slot).get("cost", 1)
+			var unlock_def: Dictionary = skill_tree_data.get_node_def(character.strName, "a%d_unlock" % slot)
+			var unlock_cost: int = unlock_def.get("cost", 1)
 			w.icon.modulate = ABILITY_ICON_LOCKED_TINT
 			w.name.text = "???"
 			w.level.text = ""
 			w.uses.text = ""
 			w.button.disabled = true
 			w.button.text = ABILITY_BUTTON_TEXT_LOCKED
-			# Disabled + IGNORE so a click anywhere in the row - including on
-			# top of the button - reaches Row's gui_input and reveals the
-			# locked-slot bubble (see _on_ability_row_gui_input below).
-			w.button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			var locked_text := "Use %d upgrade item%s at a rest to unlock the %s ability." % [
 				unlock_cost, "" if unlock_cost == 1 else "s", _SLOT_ORDINAL[slot]
 			]
-			_slot_bubble_state[slot] = {"locked": true, "text": locked_text}
+			# "requires" is empty for every a2_unlock node but names a passive
+			# for every a3_unlock node - read dynamically instead of hardcoding
+			# "only slot 3" so a future balance pass can't silently desync this.
+			var passive_names: Array[String] = []
+			for req_id in unlock_def.get("requires", []):
+				passive_names.append(skill_tree_data.get_node_def(character.strName, req_id).get("name", req_id))
+			if not passive_names.is_empty():
+				locked_text += " Also requires the %s passive." % ", ".join(passive_names)
+			_slot_bubble_state[slot] = locked_text
 
 
 func _on_ability_pressed(slot: int):
@@ -1003,22 +1000,10 @@ func _hide_ability_bubble() -> void:
 	ability_bubble.visible = false
 
 
+# Hover razkrije bubble za VSAK slot enako, ne glede na locked/unlocked -
+# locked prikaže unlock-cost besedilo, unlocked prikaže opis sposobnosti.
 func _on_ability_row_mouse_entered(slot: int, row: Control) -> void:
-	var state: Dictionary = _slot_bubble_state.get(slot, {})
-	if state.get("locked", true):
-		return # Hover nima učinka na zaklenjene slote (odklene se šele s klikom).
-	var text: String = state.get("text", "")
-	if text != "":
-		_show_ability_bubble(row, text)
-
-
-func _on_ability_row_gui_input(event: InputEvent, slot: int, row: Control) -> void:
-	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
-		return
-	var state: Dictionary = _slot_bubble_state.get(slot, {})
-	if not state.get("locked", true):
-		return # Klik nima učinka na odklenjene slote (opis se že kaže na hover).
-	var text: String = state.get("text", "")
+	var text: String = _slot_bubble_state.get(slot, "")
 	if text != "":
 		_show_ability_bubble(row, text)
 

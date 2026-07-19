@@ -363,3 +363,43 @@ Verified with the same three targeted smoke tests
 (`smoke_battle`/`smoke_ability_ui_pipeline`/`smoke_inspect`) plus a full
 `run_all.sh` — identical results to the original implementation pass, same
 6 pre-existing `smoke_ability_ui_pipeline` failures, nothing new.
+
+## Second round of feedback, same day
+
+After trying the bigger-icon layout, Miha reported two more things:
+
+1. **Hover was inconsistent between locked and unlocked rows.** Unlocked rows
+   revealed the bubble on hover (as designed); locked rows only revealed it
+   on click, requiring a click to see the unlock-cost text. Comparing the
+   two, this was working exactly as the original plan's "confirmed decision"
+   specified ("Locked-slot text appears on click... not on hover") - but in
+   actual play it just reads as broken/inconsistent, so Miha asked for both
+   to behave the same way. **This supersedes that earlier confirmed
+   decision.** Fix: `_on_ability_row_mouse_entered` no longer branches on
+   locked/unlocked - hover always shows whatever text is in
+   `_slot_bubble_state[slot]`. This made the whole click path
+   (`_on_ability_row_gui_input`, its `row.gui_input` wiring, and the
+   locked-only `button.mouse_filter = IGNORE` click-passthrough trick) dead
+   code, so it was deleted rather than left as an unused alternate path.
+   `_slot_bubble_state` was simplified at the same time from
+   `{"locked": bool, "text": String}` per slot down to a plain `slot -> text`
+   String map, since "locked" had no remaining reader.
+2. **Bubble needed a border for visibility** - it was sharing
+   `StyleBoxFlat_inner` with every other panel (DetailPanel, RosterPanel,
+   ItemPanel, etc.), so it couldn't get its own border without changing
+   all of them. Gave it a dedicated `StyleBoxFlat_bubble` sub-resource
+   (same colors/corners/margins, plus a 1px light-grey `Color(0.85, 0.85,
+   0.85, 0.9)` border).
+3. **Slot 3's locked bubble should mention the passive prerequisite.**
+   `Data/skill_trees.json` confirms every piece type's `a3_unlock` node has a
+   `requires: ["p1"]` entry (the passive's actual name varies per piece -
+   "Long March" for pawn, "Pathfinder" for knight, etc.) while every
+   `a2_unlock` node has `requires: []`. Read this dynamically off the node's
+   `requires` field (not hardcoded to "slot 3 only") and append
+   `" Also requires the <passive name> passive."` when non-empty.
+
+Re-verified with the same three targeted smoke tests + full `run_all.sh`:
+identical to baseline. One full-suite-only flake appeared once
+(`smoke_ai_ignores_obstacles`, unrelated to battle_ui.gd/tscn) but passed
+3/3 in isolation - same "known-flaky under full-suite load" category as
+`smoke_spyglass`/`smoke_ability_ui_pipeline`, not a regression.
