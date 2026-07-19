@@ -15,6 +15,13 @@
 class_name EnemyAIStrategy
 extends RefCounted
 
+# Placeholder weights (Miha's to balance by playtest, see plan §6 - "not something to
+# hard-code a fairness cap for"). Kept as named constants per §2.5.1's suggestion.
+const BOARD_CONTROL_WEIGHT := 0.05
+const MOBILITY_WEIGHT := 0.1
+const THREAT_CREATION_BONUS := 1.5
+const SEE_ORDERING_WEIGHT := 0.5
+
 var _params: Dictionary
 
 func _init(params: Dictionary):
@@ -36,19 +43,26 @@ func choose_action(character: BaseCharacter, context: Dictionary) -> Dictionary:
 
 	return _choose_heuristic(character, context)
 
-# NORMAL/HARD path: value-aware capture priority (always on - "captures stay
-# aggressive", never gated by any tier flag), then chase-with-danger-avoidance.
-# Mirrors calculate_best_move()'s old steps 6-7 verbatim for the case where every
-# flag below is off (regression-safety anchor for NORMAL, see M2 in the plan).
+# =====================================================================
+# NORMAL/HARD: heuristic ladder (§2.3) - value-aware capture priority (always on -
+# "captures stay aggressive", never gated by any tier flag), then
+# chase-with-danger-avoidance. Mirrors calculate_best_move()'s old steps 6-7
+# verbatim for the case where every flag below is off (NORMAL - regression-safety
+# anchor, see M2). `avoid_hanging_pieces` (HARD+) is the one addition on top.
+# =====================================================================
 func _choose_heuristic(character: BaseCharacter, context: Dictionary) -> Dictionary:
 	var valid_targets: Array[Vector2i] = context.get("valid_targets", [])
 	var capture_candidates: Array[Vector2i] = context.get("capture_candidates", [])
 	var last_known_player_pos: Vector2i = context.get("last_known_player_pos", Vector2i.ZERO)
+	var avoid_hanging: bool = _params.get("avoid_hanging_pieces", false)
 
 	if not capture_candidates.is_empty():
-		var best_capture: Vector2i = capture_candidates[0]
+		var safe_captures: Array[Vector2i] = capture_candidates
+		if avoid_hanging:
+			safe_captures = _filter_hanging_pieces(character, capture_candidates)
+		var best_capture: Vector2i = safe_captures[0]
 		var best_value := -1
-		for pos in capture_candidates:
+		for pos in safe_captures:
 			var target_char = character.grid_manager.get_character_at(pos)
 			var value: int = character.curse_data.get_piece_value(target_char.strName)
 			if value > best_value:
@@ -57,7 +71,7 @@ func _choose_heuristic(character: BaseCharacter, context: Dictionary) -> Diction
 		return {"move_type": "CAPTURE", "target_pos": best_capture}
 
 	var chase_candidates: Array[Vector2i] = valid_targets
-	if _params.get("avoid_hanging_pieces", false):
+	if avoid_hanging:
 		chase_candidates = _filter_hanging_pieces(character, chase_candidates)
 
 	var best_move: Vector2i = chase_candidates[0]
@@ -87,15 +101,244 @@ func _choose_heuristic(character: BaseCharacter, context: Dictionary) -> Diction
 
 	return {"move_type": "MOVE", "target_pos": best_move}
 
-# `avoid_hanging_pieces` (HARD+): wired in M3 (§2.4 of the plan) - value-aware danger
-# filter applied to every candidate, captures included. No-op passthrough for now so
-# selecting HARD/EXTREME/IMPOSSIBLE mid-plan doesn't change chase behavior yet.
-func _filter_hanging_pieces(_character: BaseCharacter, candidates: Array[Vector2i]) -> Array[Vector2i]:
-	return candidates
+# `avoid_hanging_pieces` (HARD+, §2.4): generalizes danger-avoidance from the chase
+# step to EVERY candidate, captures included (pre-refactor code explicitly never
+# filtered captures - "captures stay aggressive"; this tier flag is what changes
+# that). For each candidate in the ally-reachable ("danger") set, keeps it only if
+# what we'd gain (captured piece's value, 0 for a plain move) isn't clearly less than
+# what we'd risk (this piece's own value) - i.e. drops candidates that are a bad
+# trade. Never leaves zero candidates - falls back to the unfiltered set if every
+# candidate looks dangerous (same "never paralyze" rule as the pre-refactor code).
+func _filter_hanging_pieces(character: BaseCharacter, candidates: Array[Vector2i]) -> Array[Vector2i]:
+	var danger_tiles: Array[Vector2i] = character.grid_manager.tiles_reachable_by(false)
+	var own_value: int = character.curse_data.get_piece_value(character.strName)
+	var safe: Array[Vector2i] = []
+	for pos in candidates:
+		if pos not in danger_tiles:
+			safe.append(pos)
+			continue
+		var target_char = character.grid_manager.get_character_at(pos)
+		var gain: int = character.curse_data.get_piece_value(target_char.strName) if target_char else 0
+		if gain > own_value:
+			safe.append(pos)
+	if safe.is_empty():
+		return candidates
+	return safe
 
-# EXTREME/IMPOSSIBLE path (`min_max`): wired in M3 (§2.5 of the plan) - minimax with
-# alpha-beta over a board snapshot. Falls back to the heuristic path for now so
-# selecting EXTREME/IMPOSSIBLE mid-plan still produces a legal move instead of a
-# missing-method error.
+# =====================================================================
+# EXTREME/IMPOSSIBLE: minimax over a board snapshot (§2.5). NOTE: `min_max` tiers
+# do NOT also run `_filter_hanging_pieces` - that heuristic-path filter is a cheap
+# stand-in for what real search-based safety (minimax's own recursive evaluation)
+# does more accurately here. avoid_hanging_pieces stays "true" for these tiers in
+# ai_difficulty.json for the ladder's additive/superset property (§2.4), but this
+# path intentionally doesn't read it - minimax subsumes it.
+# =====================================================================
 func _choose_minimax(character: BaseCharacter, context: Dictionary) -> Dictionary:
-	return _choose_heuristic(character, context)
+	var valid_targets: Array[Vector2i] = context.get("valid_targets", [])
+	var bounds: Rect2i = character.tile_map.get_used_rect()
+	var snapshot: Dictionary = _build_snapshot(character)
+	var depth: int = _params.get("minimax_depth", 0)
+	var use_see: bool = _params.get("static_exchange_evaluation", false)
+	var use_threats: bool = _params.get("threat_creation", false)
+
+	var candidates: Array[Vector2i] = valid_targets.duplicate()
+	if use_see:
+		# Move ordering (§2.5: "alpha-beta pruning required") - a cheap static
+		# (non-recursive) estimate searched first prunes more of the tree once the
+		# real minimax search below finds a strong alpha early.
+		candidates.sort_custom(func(a, b):
+			return _static_exchange_score(character, snapshot, a, bounds) \
+				> _static_exchange_score(character, snapshot, b, bounds))
+
+	var best_pos: Vector2i = candidates[0]
+	var best_value := -INF
+	var alpha := -INF
+	var beta := INF
+	for pos in candidates:
+		var child: Dictionary = _simulate_move(snapshot, character.grid_pos, pos)
+		var value: float = _minimax(child, depth, false, alpha, beta, character.is_enemy, pos, bounds)
+		if use_see:
+			value += SEE_ORDERING_WEIGHT * _static_exchange_score(character, snapshot, pos, bounds)
+		if use_threats:
+			value += _threat_bonus(character, snapshot, pos, bounds)
+		if value > best_value:
+			best_value = value
+			best_pos = pos
+		alpha = maxf(alpha, value)
+
+	var move_type := "CAPTURE" if snapshot.has(best_pos) else "MOVE"
+	return {"move_type": move_type, "target_pos": best_pos}
+
+# Lightweight, pure board snapshot (§2.5) - Vector2i -> piece data, cloned once from
+# live state. Never mutated in place (see _simulate_move) and never holds live
+# BaseCharacter references, so search below can never touch grid_manager/scene-tree
+# state (fog, visuals, curse hooks) no matter how deep it recurses. move_directions +
+# move_range are captured per-piece here so the pure move-generator below can reuse
+# each piece's real movement geometry without needing a live BaseCharacter reference
+# (get_move_directions() is a pure per-subclass override, see knight.gd/bishop.gd/...).
+func _build_snapshot(character: BaseCharacter) -> Dictionary:
+	var snapshot: Dictionary = {}
+	for c in character.grid_manager.get_all_characters():
+		if not is_instance_valid(c) or not (c is BaseCharacter):
+			continue
+		snapshot[c.grid_pos] = {
+			"is_enemy": c.is_enemy,
+			"is_obstacle": c.is_obstacle,
+			"value": character.curse_data.get_piece_value(c.strName),
+			"move_directions": c.get_move_directions(),
+			"move_range": c.move_range,
+		}
+	return snapshot
+
+# Returns a NEW snapshot with the piece at from_pos relocated to to_pos (capturing
+# whatever was there, if anything) - never mutates the input.
+func _simulate_move(snapshot: Dictionary, from_pos: Vector2i, to_pos: Vector2i) -> Dictionary:
+	var next_snapshot: Dictionary = snapshot.duplicate(true)
+	var mover: Dictionary = next_snapshot.get(from_pos, {})
+	next_snapshot.erase(from_pos)
+	next_snapshot[to_pos] = mover
+	return next_snapshot
+
+func _in_bounds(pos: Vector2i, bounds: Rect2i) -> bool:
+	return pos.x >= bounds.position.x and pos.x < bounds.position.x + bounds.size.x \
+		and pos.y >= bounds.position.y and pos.y < bounds.position.y + bounds.size.y
+
+# Pure move generator against the snapshot (§2.5) - same sliding-until-blocked loop
+# shape as base_character.calculate_valid_targets(), minus LOS/fog/entry-denial
+# concerns (irrelevant to a hypothetical 1-2 ply lookahead).
+func _snapshot_valid_targets(snapshot: Dictionary, from_pos: Vector2i, bounds: Rect2i) -> Array[Vector2i]:
+	var targets: Array[Vector2i] = []
+	if not snapshot.has(from_pos):
+		return targets
+	var entry: Dictionary = snapshot[from_pos]
+	var directions: Array = entry.get("move_directions", [])
+	var move_range: int = entry.get("move_range", 1)
+	var is_enemy: bool = entry.get("is_enemy", false)
+	for dir in directions:
+		var d: Vector2i = dir
+		for step in range(1, move_range + 1):
+			var target_pos: Vector2i = from_pos + d * step
+			if not _in_bounds(target_pos, bounds):
+				break
+			if snapshot.has(target_pos):
+				var occupant: Dictionary = snapshot[target_pos]
+				if occupant.get("is_enemy", false) != is_enemy and not occupant.get("is_obstacle", false):
+					targets.append(target_pos)
+				break
+			targets.append(target_pos)
+	return targets
+
+# Radius-bounded opponent move generation (§2.5): only pieces of `side_is_enemy`
+# within (their own move_range + the contested piece's move_range) tiles of
+# `contested_pos` are considered - pieces far away can't plausibly punish/exploit
+# this move, and scanning them wastes time.
+func _generate_radius_bounded_moves(snapshot: Dictionary, side_is_enemy: bool, contested_pos: Vector2i, bounds: Rect2i) -> Array:
+	var moves: Array = []
+	var contested_range: int = snapshot.get(contested_pos, {}).get("move_range", 1)
+	for from_pos in snapshot.keys():
+		var entry: Dictionary = snapshot[from_pos]
+		if entry.get("is_enemy", false) != side_is_enemy or entry.get("is_obstacle", false):
+			continue
+		var piece_range: int = entry.get("move_range", 1)
+		if Vector2(from_pos).distance_to(Vector2(contested_pos)) > piece_range + contested_range:
+			continue
+		for to_pos in _snapshot_valid_targets(snapshot, from_pos, bounds):
+			moves.append({"from": from_pos, "to": to_pos})
+	return moves
+
+# Minimax with alpha-beta pruning (required per §2.5, not optional - without it,
+# depth 2 with even a handful of nearby pieces gets slow). `maximizing` = is it the
+# ORIGINAL mover's side choosing at this node (maximize) or the opponent's
+# (minimize) - `mover_is_enemy` stays fixed across the whole recursion, only
+# `maximizing` alternates. depth counts ADVERSARIAL REPLIES (§2.5), not full game
+# turns - our own candidate move is already applied by the caller before the first
+# call, so the first ply here is always the opponent's reply (maximizing=false).
+func _minimax(snapshot: Dictionary, depth: int, maximizing: bool, alpha: float, beta: float, mover_is_enemy: bool, contested_pos: Vector2i, bounds: Rect2i) -> float:
+	if depth <= 0:
+		return _evaluate(snapshot, mover_is_enemy, contested_pos, bounds)
+
+	var side_is_enemy: bool = mover_is_enemy if maximizing else not mover_is_enemy
+	var replies: Array = _generate_radius_bounded_moves(snapshot, side_is_enemy, contested_pos, bounds)
+	if replies.is_empty():
+		return _evaluate(snapshot, mover_is_enemy, contested_pos, bounds)
+
+	if maximizing:
+		var value := -INF
+		for reply in replies:
+			var child: Dictionary = _simulate_move(snapshot, reply["from"], reply["to"])
+			value = maxf(value, _minimax(child, depth - 1, false, alpha, beta, mover_is_enemy, reply["to"], bounds))
+			alpha = maxf(alpha, value)
+			if alpha >= beta:
+				break
+		return value
+	else:
+		var value := INF
+		for reply in replies:
+			var child: Dictionary = _simulate_move(snapshot, reply["from"], reply["to"])
+			value = minf(value, _minimax(child, depth - 1, true, alpha, beta, mover_is_enemy, reply["to"], bounds))
+			beta = minf(beta, value)
+			if alpha >= beta:
+				break
+		return value
+
+# §2.5.1 evaluation function - higher = better for mover_is_enemy's side. Material +
+# lightweight board-control (piece-square-table analogue) + mobility of whichever
+# piece currently sits on contested_pos (the search's focal point at this leaf - may
+# be empty if that piece got captured along the way, in which case mobility is 0).
+# Curse-synergy term (IMPOSSIBLE only) comes in M4.
+func _evaluate(snapshot: Dictionary, mover_is_enemy: bool, contested_pos: Vector2i, bounds: Rect2i) -> float:
+	var center := Vector2(bounds.position) + Vector2(bounds.size) / 2.0
+	var max_dist: float = Vector2(bounds.size).length() / 2.0
+
+	var material := 0.0
+	var control := 0.0
+	for pos in snapshot.keys():
+		var entry: Dictionary = snapshot[pos]
+		if entry.get("is_obstacle", false):
+			continue
+		var sign := 1.0 if entry.get("is_enemy", false) == mover_is_enemy else -1.0
+		material += sign * entry.get("value", 1)
+		var dist_to_center: float = Vector2(pos).distance_to(center)
+		control += sign * BOARD_CONTROL_WEIGHT * (max_dist - dist_to_center)
+
+	var mobility := 0.0
+	if snapshot.has(contested_pos):
+		var focal: Dictionary = snapshot[contested_pos]
+		if not focal.get("is_obstacle", false):
+			var sign := 1.0 if focal.get("is_enemy", false) == mover_is_enemy else -1.0
+			mobility = sign * MOBILITY_WEIGHT * _snapshot_valid_targets(snapshot, contested_pos, bounds).size()
+
+	return material + control + mobility
+
+# `static_exchange_evaluation` (SEE, §2.4) - a STATIC (non-recursive) net-material
+# estimate for landing at `pos`: material gained by this move (if it's a capture)
+# minus this piece's own value if ANY opposing piece could reach `pos` afterward
+# (worst case - assumes they would recapture). "Static" because it doesn't search
+# further plies itself (that's minimax's job, §2.5) - used above for candidate
+# ORDERING (real chess-engine technique: order captures first so alpha-beta prunes
+# more) and as a small additive nudge on the final score, reinforcing what deep
+# search already tends to find (declining a rook-defended pawn) even at shallow
+# depth/narrow radius bounds.
+func _static_exchange_score(character: BaseCharacter, snapshot: Dictionary, pos: Vector2i, bounds: Rect2i) -> int:
+	var gain: int = snapshot[pos].get("value", 1) if snapshot.has(pos) else 0
+	var own_value: int = character.curse_data.get_piece_value(character.strName)
+	for from_pos in snapshot.keys():
+		var entry: Dictionary = snapshot[from_pos]
+		if entry.get("is_enemy", false) == character.is_enemy or entry.get("is_obstacle", false):
+			continue
+		if pos in _snapshot_valid_targets(snapshot, from_pos, bounds):
+			return gain - own_value
+	return gain
+
+# `threat_creation` (fork bonus, §2.4) - small bonus if landing at `pos` would put
+# 2+ opposing pieces within this piece's OWN next-turn capture range simultaneously.
+# Evaluated from a hypothetical snapshot (this piece placed at pos, any capture at
+# pos already resolved) - not a live move, per §2.4.
+func _threat_bonus(character: BaseCharacter, snapshot: Dictionary, pos: Vector2i, bounds: Rect2i) -> float:
+	var hypothetical: Dictionary = _simulate_move(snapshot, character.grid_pos, pos)
+	var reachable: Array[Vector2i] = _snapshot_valid_targets(hypothetical, pos, bounds)
+	var threatened := 0
+	for target in reachable:
+		if hypothetical.has(target) and hypothetical[target].get("is_enemy", false) != character.is_enemy:
+			threatened += 1
+	return THREAT_CREATION_BONUS if threatened >= 2 else 0.0

@@ -501,23 +501,79 @@ every other check green on every run.
 
 ### M3 — HARD + EXTREME tiers
 
-- [ ] `avoid_hanging_pieces`: implement the value-aware danger filter (§2.4),
+- [x] `avoid_hanging_pieces`: implement the value-aware danger filter (§2.4),
       applied inside the heuristic path (both capture and chase candidates), gated on
       the tier flag. Verify HARD still returns a move when *every* candidate is
       dangerous (never paralyze).
-- [ ] `static_exchange_evaluation` + `threat_creation`: implement as scoring
+- [x] `static_exchange_evaluation` + `threat_creation`: implement as scoring
       adjustments (§2.4), only reachable once `min_max == true`, i.e. these live in the
       minimax evaluation path (§2.5.1), not the heuristic path — EXTREME is the first
       tier where both `min_max` and these two flags are true together.
-- [ ] Minimax core (§2.5): board snapshot builder, radius-bounded opponent
+- [x] Minimax core (§2.5): board snapshot builder, radius-bounded opponent
       move generation, `_minimax(state, depth, maximizing, alpha, beta)` with
       alpha-beta pruning, `_evaluate()` (material + board-control + mobility, no curse
       term yet). Wire depth 1 for EXTREME.
-- [ ] Smoke test: small hand-built board where the "obviously good" move (grab a
+- [x] Smoke test: small hand-built board where the "obviously good" move (grab a
       pawn) is actually a **trap** (that square is defended by a rook worth more than
       the pawn) — assert EXTREME/IMPOSSIBLE decline the trade and NORMAL/HARD still
       walk into it (proves SEE + minimax are actually doing something, not just present
       but inert).
+
+**DEVIATION (avoid_hanging_pieces doesn't gate the minimax path):** the ladder table
+(§2.4/§3.2) keeps `avoid_hanging_pieces: true` for EXTREME/IMPOSSIBLE too (additive
+superset property), but `_choose_minimax()` intentionally never reads that flag - it
+always runs pure minimax over the full `valid_targets`. Reasoning: `avoid_hanging_pieces`
+is a cheap, *pre-move* reachability check (`grid_manager.tiles_reachable_by(false)` on
+the live board, before simulating anything) - real search-based safety from minimax
+is strictly better (it simulates the move and searches the opponent's actual best
+reply on the resulting position), so pre-filtering candidates with the cruder
+heuristic first could only ever remove options minimax might have correctly judged
+safe (or even a good trade). The flag staying "true" in the JSON for those tiers is
+harmless (never consulted) and keeps the ladder's additive-superset property simple
+to read at a glance; `_choose_minimax` doesn't need to read it for HARD's protection
+to already be strictly subsumed by something better.
+
+**DEVIATION (relationship between avoid_hanging_pieces and static_exchange_evaluation):**
+both ultimately compute the same "gain vs. own piece's value, if reachable by the
+opponent" comparison - `avoid_hanging_pieces` (HARD, heuristic path) as a binary
+filter against the LIVE board via `grid_manager.tiles_reachable_by(false)`;
+`static_exchange_evaluation` (EXTREME+, minimax path) as a numeric score against the
+*snapshot* board, used to (a) order candidates before the search for better
+alpha-beta pruning (§2.5's "required, not optional") and (b) as a small additive
+nudge on top of the real minimax value. The plan's own §2.3 note ("real chess engines
+don't special-case captures either; they just tend to score well because of the
+material swing in the evaluation function") already implies most of the "decline a
+bad trade" behavior at EXTREME/IMPOSSIBLE comes from minimax's own recursive search,
+not from SEE as a separate decision mechanism - SEE's distinct, useful role here is
+move-ordering/tie-breaking (its real-world primary use in chess engines), not
+duplicating the search's conclusion. Confirmed via the M3 smoke test
+(`smoke_ai_minimax.gd`) that minimax alone (SEE only affecting ordering/a small
+nudge) correctly declines the defended-pawn trap.
+
+**DEVIATION (why the trap smoke test distinguishes HARD from EXTREME at all):**
+initially worried `avoid_hanging_pieces` and minimax would reach the same
+conclusion on any trap scenario (since both ultimately compare gain vs. own value),
+making a HARD-fails/EXTREME-passes test impossible to construct. Resolved by
+exploiting a REAL structural difference: `avoid_hanging_pieces` checks reachability
+on the **pre-move** live board, where the defending rook's line of sight is still
+blocked by the bait pawn it's defending (can't slide through its own ally) - so the
+danger is invisible to a single-ply heuristic. Minimax **simulates** the capture
+first (bait pawn removed from the snapshot), THEN generates the opponent's replies
+against that post-move position, where the defender's line has opened up. This
+isn't a contrived test gap - it's a genuine, realistic illustration of why lookahead
+search catches things static heuristics structurally cannot.
+
+**Ran:** `./tests/run_all.sh` — green except the same pre-existing
+`smoke_ability_ui_pipeline` flake noted in M2 (confirmed unrelated to this plan).
+New `smoke_ai_minimax.gd` (8 assertions: capture-candidate sanity, pre-move
+reachability sanity, NORMAL/HARD walk into the trap, EXTREME/IMPOSSIBLE decline it,
+`avoid_hanging_pieces` never returns zero candidates) green on 5 consecutive runs
+(checked for flakiness given the RNG-dependent chase/panic mechanics elsewhere in
+this file - this scenario has no RNG dependency: bait pawn placed outside
+`panic_distance` so panic randomness can't perturb the result, and capture priority
+is unconditional so tier comparisons are deterministic). Registered in
+`tests/run_all.sh` right after `smoke_ai`. `smoke_ai.gd` still green (all 8
+assertions, unaffected by M3's changes).
 
 ### M4 — IMPOSSIBLE tier + curse synergy
 
