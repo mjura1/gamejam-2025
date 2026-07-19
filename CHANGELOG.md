@@ -1,3 +1,43 @@
+# Winter March — snow rework: bug fix + risk/reward freeze mechanic → features/snow-rework (awaiting review)
+
+New feature on `features/snow-rework` (NOT merged — left for review): fixes a
+long-standing bug where curse-placed snow was never clearable by anything, and
+reworks snow from an in-battle click-blocking wall into a risk/reward visual block.
+
+- **Bug fix**: `GridManager.reveal_area()` only ever removed ambient fog, so every
+  "clear the snow" path — Pawn's Lantern Signal, Rook's Lookout, the Flare item,
+  the `move_reveal`/`battle_start_reveal` skill-tree passives, and Queen's "Scorched
+  Earth" node (previously unimplemented entirely) — silently did nothing to
+  curse-placed snow. `reveal_area()` now clears both fog systems in one place, so
+  every existing ability's description finally matches its behavior. Removed the
+  now-redundant `clear_curse_fog_area()` (Rook's Lookout called both back-to-back).
+- **Un-walled**: snowed tiles used to silently eat clicks during play (the fog
+  tile's `ColorRect` defaulted to `MOUSE_FILTER_STOP`) — now `MOUSE_FILTER_IGNORE`,
+  so clicks reach the normal select/move/capture logic. Piece movement and
+  turn-start reveal now clear only the single tile a piece stands on (was a 3x3
+  auto-clear), so snow stays visually opaque instead of melting on approach.
+  Moving/capturing onto snow that hides an enemy is an intended surprise-capture
+  risk; inspecting a hidden enemy with nothing selected is blocked so it can't be
+  used to peek without that risk.
+- **New status — FROZEN**: an allied piece surrounded by snow (either fog system)
+  on all 4 orthogonal sides for 1 consecutive player-turn-start freezes (movement
+  blocked, abilities still work, still capturable); thaws immediately the moment
+  the ring breaks, even mid-turn (e.g. an ally moving next to it); dies if the ring
+  never breaks for 3 consecutive turn-starts. New `FrozenBadge` + STUNNED > FROZEN
+  > ROOTED status priority in the detail panel.
+
+Fixed a regression this uncovered along the way: ending a battle immediately on a
+freeze-death (e.g. the king) required calling `check_battle_end()` at every
+turn start, which exposed a pre-existing landmine in `PlayerManager.enemyGone()`/
+`activeGone()` (both return true unconditionally for an empty list, with no "never
+actually started" guard) — broke the dev-only `test_sandbox.tscn`, fixed by seeding
+placeholder roster entries there like a real battle always does.
+
+Tests: `run_all.sh` gained `smoke_snow_freeze` (bug fix, Scorched Earth, single-tile
+clear, fog click-transparency, freeze, same-turn thaw, death). Full rationale,
+verified code map, and every design decision/deviation documented in
+`plans/SNOW_REWORK_PLAN.md`.
+
 # Winter March — AI difficulty (chess-engine tiers, decoupled from curse difficulty) → features/ai-difficulty (awaiting review)
 
 New feature on `features/ai-difficulty`: a second, independent **AI difficulty**

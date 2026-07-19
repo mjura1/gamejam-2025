@@ -371,4 +371,55 @@ convention — other agents read it instead of re-running the suite).
       production battle path starts a turn with zero active enemies/party members, so
       this isn't flagged for Miha as a gameplay concern, only logged here in case it
       resurfaces elsewhere.
-- [ ] M4 wrap-up: final suite result:
+- [x] M4 wrap-up: final suite result: unit tests pass with 0 failures (note: the
+      passed-count fluctuates run to run - 942/944/948 seen across M0-M4 runs on an
+      otherwise-identical suite; pre-existing test-harness noise, not a regression from
+      this branch - every run showed 0 failed). Smoke: all PASS except the same
+      pre-existing `smoke_ability_ui_pipeline` failure from the M0 baseline. CHANGELOG.md
+      entry added. See "Final report to Miha" below for flagged decisions + manual
+      playtest checklist.
+
+## 7. Final report to Miha
+
+**Flagged decisions (implemented as written, per §3 - confirm or adjust if these don't
+match intent):**
+1. "Snow" = ambient fog OR curse fog for every check (surrounded/freeze/click-guard).
+   Pushing an ally into the plain ambient snow blanket at the top of the map is now
+   freeze-risky too, not just curse snow.
+3. "Surrounded" counts an off-board side as surrounding - edge/corner pieces can freeze
+   (and even die) faster than interior pieces, since they need fewer real snow tiles.
+5. Frozen only blocks movement - abilities still fire (a frozen pawn can Lantern-Signal
+   itself free) and frozen pieces can still be captured normally.
+8. Moving/capturing onto a snowed tile never checks what's under it - a surprise capture
+   is the intended risk/reward. Only the *inspect-with-nothing-selected* path is blocked
+   from leaking a hidden enemy.
+- Knight "Shadow Leap" still refuses snowed tiles as jump targets (untouched, per plan) -
+  under the rework this becomes a real tradeoff (skip risk, but also skip snow's now-legal
+  surprise-capture upside).
+- Pre-existing, out-of-scope leak (not fixed, per plan): when a piece is selected, the
+  move highlighter marks capture targets including enemies hidden under snow - this
+  existed before (targets never checked fog) and is more visible now that snow is
+  click-through. Only fix if asked.
+
+**Unplanned side effect found + fixed (see M3 log above)**: `check_battle_end()` now
+runs every player turn-start (required for freeze-deaths to end the battle immediately).
+This exposed a latent bug in `PlayerManager.enemyGone()`/`activeGone()` - both
+unconditionally declare victory/loss for an empty roster list, with no "never started"
+guard. Only surfaced in the dev-only `test_sandbox.tscn` (no production battle path
+starts a turn with an empty roster); fixed there, not flagged as a gameplay concern.
+
+**Manual playtest checklist** (not exercised - headless tests can't drive real mouse
+clicks):
+- [ ] Click a distant snowed tile as a slide target - click now registers (old wall gone).
+- [ ] Move onto snow - only that landing tile clears, neighbors stay snowed.
+- [ ] Surprise capture by moving onto a snowed tile hiding an enemy.
+- [ ] Click a snowed hidden enemy with nothing selected - does NOT open inspection.
+- [ ] Let a piece get ringed by snow on all 4 sides - FROZE badge + FROZEN status show on
+      the turn it happens.
+- [ ] Rescue a frozen piece mid-turn (move an ally to break the ring) - badge clears
+      immediately, piece can move that same turn.
+- [ ] Let a ringed piece stay surrounded 3 turns - it dies, battle-end triggers if it was
+      the last piece/the king.
+- [ ] Rook "Lookout" / Pawn "Lantern Signal" / Flare item all clear curse snow now (not
+      just ambient).
+- [ ] Queen "Scorched Earth" skill node clears snow in the exterminate blast area.
