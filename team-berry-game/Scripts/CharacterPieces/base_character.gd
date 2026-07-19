@@ -55,7 +55,7 @@ var grid_manager
 # ----------------- ABILITIES -----------------
 # Odklenjeni sposobnostni sloti (slot 1 je vedno odklenjen). Trajno stanje
 # živi v PlayerManager.piece_upgrades (po TIPU figure, kupljena vozlišča
-# drevesa iz Data/skill_trees.json) - figura ga prebere ob registraciji na
+# drevesa iz GameParameters/skill_trees.json) - figura ga prebere ob registraciji na
 # mrežo (glej _load_persistent_upgrades in is_slot_unlocked).
 var unlocked_slots: Array[int] = [1]
 
@@ -517,7 +517,7 @@ func get_empty_tiles_in_los(max_view_range: int) -> Array[Vector2i]:
 # }
 # Dodatni "znanci" ability-specifičnih vrednosti (radius ipd.) gredo v
 # base/upgraded slovarja in jih _execute_ability prebere sam. Število uporab
-# (base_uses/max_uses) NI tu - to živi v Data/abilities.json (glej AbilityData
+# (base_uses/max_uses) NI tu - to živi v GameParameters/abilities.json (glej AbilityData
 # autoload), da lahko balansiramo brez posega v kodo.
 func get_ability_defs() -> Array:
 	return []
@@ -549,7 +549,7 @@ func _area_tiles(tier: Dictionary, center: Vector2i) -> Array[Vector2i]:
 		tiles.append(center + offset)
 	return tiles
 
-# Vrne max. število uporab za dani slot iz AbilityData (Data/abilities.json),
+# Vrne max. število uporab za dani slot iz AbilityData (GameParameters/abilities.json),
 # glede na trenutni nivo TEGA slota (ability_levels[slot]), plus morebitne
 # "extra_uses" pasive drevesa za ta slot.
 func _ability_uses_max(slot: int) -> int:
@@ -810,7 +810,7 @@ func calculate_best_move() -> Dictionary:
 	# 6. CAPTURE HAS ABSOLUTE PRIORITY - VALUE-AWARE (vedno aktivno, ni
 	# gated na težavnost - Miha: "captures stay aggressive, that's the
 	# fun"). Zbere VSE zajemljive tarče na tej potezi in izbere najvrednejšo
-	# (CurseData.get_piece_value, Data/ai_config.json) namesto prve najdene.
+	# (CurseData.get_piece_value, GameParameters/ai_config.json) namesto prve najdene.
 	# ---------------------------------
 	var capture_candidates: Array[Vector2i] = []
 	for pos in valid_targets:
@@ -838,7 +838,7 @@ func calculate_best_move() -> Dictionary:
 	# ---------------------------------
 	# 7. NORMAL CHASE (TOWARD LAST SEEN) - z difficulty-gated "danger
 	# avoidance": z verjetnostjo danger_avoid_prob[difficulty] (EASY 0% /
-	# NORMAL 50% / HARD 100%, Data/ai_config.json) med enako dobrimi
+	# NORMAL 50% / HARD 100%, GameParameters/ai_config.json) med enako dobrimi
 	# kandidati raje izbere polje, ki ga NOBENA zavezniška figura ne bi
 	# mogla zajeti naslednjo potezo. Če so VSI kandidati nevarni, se vrne
 	# na navadno najboljšo potezo (nikoli se ne "paralizira"). Namerno se

@@ -21,9 +21,17 @@ mono_crash.*.json
 graphify-out/
 
 # Local-only audit/progress-tracking docs — not meant to be committed
-CODE_AUDIT.md
-FIX_TODO.md
-FIX_PROGRESS.md
-ABILITY_TIER_NOTES.md
+plans/CODE_AUDIT.md
+plans/FIX_TODO.md
+plans/FIX_PROGRESS.md
+plans/ABILITY_TIER_NOTES.md
 code_review.txt
+
+# Plan docs — untracked going forward, still present in past history
+plans/BATTLE_UI_ABILITY_PANEL_PLAN.md
+plans/ENEMY_CURSES_PLAN.md
+plans/ITEM_SHOP_PLAN.md
+plans/PLAY_MODES_PLAN.md
+plans/SHOP_V2_PLAN.md
+plans/SKILL_TREE_PLAN.md
 

@@ -1,6 +1,6 @@
 extends TestCase
 
-# Testi za Data/skill_trees.json shemo in PlayerManager nakup vozlišč
+# Testi za GameParameters/skill_trees.json shemo in PlayerManager nakup vozlišč
 # (glej SKILL_TREE_PLAN.md §2 in §7).
 
 const PlayerManagerScript = preload("res://Scripts/Player/PlayerManager.gd")
@@ -10,7 +10,7 @@ const SKELETON_IDS := ["a1_lv2", "a1_lv3", "a2_unlock", "a2_lv2", "a2_lv3", "p1"
 const EFFECT_TYPES := ["ability_level", "ability_unlock", "move_range", "extra_uses", "battle_start_reveal", "move_reveal", "curse_immune", "flag"]
 const NEW_ABILITY_IDS := ["promotion", "ambush", "sanctify", "castling", "command", "royal_decree"]
 
-# ----------------- shema Data/skill_trees.json -----------------
+# ----------------- shema GameParameters/skill_trees.json -----------------
 
 func test_every_piece_type_has_full_skeleton():
 	for piece_type in PIECE_TYPES:

@@ -1,11 +1,11 @@
 # res://Scripts/Data/tutorial_data.gd
-# Autoload. Prebere Data/tutorials.json (naslov/opis tutorial stopenj), po
+# Autoload. Prebere GameParameters/tutorials.json (naslov/opis tutorial stopenj), po
 # vzoru item_data.gd. Scene stopenj so registrirane tukaj (id -> PackedScene),
 # ker JSON ne more nositi preload-a; per-stage vedenje (npr. AI on/off) je
 # lastnost same scene (glej BattleController.ai_enabled).
 extends Node
 
-const TUTORIALS_PATH := "res://Data/tutorials.json"
+const TUTORIALS_PATH := "res://GameParameters/tutorials.json"
 
 const STAGE_SCENES: Dictionary = {
 	"movement": preload("res://Scenes/Tutorial/tutorial_movement.tscn"),

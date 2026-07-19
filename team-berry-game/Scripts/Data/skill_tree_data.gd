@@ -1,10 +1,10 @@
 # res://Scripts/Data/skill_tree_data.gd
-# Autoload. Prebere Data/skill_trees.json (drevo nadgradenj po tipu figure),
+# Autoload. Prebere GameParameters/skill_trees.json (drevo nadgradenj po tipu figure),
 # da lahko balansiramo drevesa brez spreminjanja GDScript kode.
 # Glej SKILL_TREE_PLAN.md za shemo vozlišč in seznam effect tipov.
 extends Node
 
-const DATA_PATH := "res://Data/skill_trees.json"
+const DATA_PATH := "res://GameParameters/skill_trees.json"
 
 var _trees_by_type: Dictionary = {}
 

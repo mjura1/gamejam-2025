@@ -1,0 +1,57 @@
+{
+	"_comment": "This file is loaded with Godot's JSON.parse_string (see curse_data.gd), which is STRICT JSON - it has no // or /* */ comments. Adding real comments will fail to parse and silently empty out EVERY curse in the game. Use '_comment_<field>' sibling keys like the ones below instead - the loader only reads specific named keys, so extra '_'-prefixed keys are safely ignored.",
+	"config": {
+		"tier_min_floor": [4, 3, 2],
+		"_comment_tier_min_floor": "Room depth (NOT map tier) at/above which curses can appear at all, indexed by CURRENT MAP TIER (index 0/1/2 = Tier 0/Tier 1/Tier 2). Below this depth, no curses ever spawn - should_curse() is always false and get_min_curse_count() is always 0. Lower value = curses start earlier. Tiers past index 2 use index 2 as their base, then infinite_mode.min_floor_decrement_per_tier below lowers it further.",
+
+		"curse_chance": 0.25,
+		"_comment_curse_chance": "Base per-enemy probability (0-1) of getting a random bonus curse on top of the guaranteed count below. Multiplied by difficulty_chance_mult and tier_curse_chance_mult, then by infinite_mode's increment past base_tier.",
+
+		"difficulty_chance_mult": {"easy": 0.5, "normal": 1.0, "hard": 1.5},
+		"_comment_difficulty_chance_mult": "Multiplies curse_chance by the player's chosen difficulty.",
+
+		"tier_curse_chance_mult": [1.0, 1.25, 1.5],
+		"_comment_tier_curse_chance_mult": "Multiplies curse_chance by the CURRENT MAP TIER (index 0/1/2 = Tier 0/Tier 1/Tier 2 - the 3 classic maps, NOT room depth). Tiers past index 2 reuse the last entry as their base, then infinite_mode below adds extra growth on top.",
+
+		"min_curse_count_per_room": 1,
+		"_comment_min_curse_count_per_room": "How many extra GUARANTEED cursed enemies each room depth past min_floor adds, on a normal (non-boss) battle.",
+
+		"boss_curse_count": 3,
+		"_comment_boss_curse_count": "Fixed guaranteed cursed-enemy count for the tier's FINAL BOSS battle only. Replaces the min_curse_count_per_room formula entirely for that one fight (ignores room depth/min_floor).",
+
+		"mini_boss_curse_count": 2,
+		"_comment_mini_boss_curse_count": "Same idea as boss_curse_count, but for the mid-map MINI-BOSS battle (the queen encounter on Tier 1/Tier 2).",
+
+		"infinite_mode": {
+			"base_tier": 2,
+			"_comment_base_tier": "Last map tier MapGenerator.TIER_CONFIGS actually defines. Infinite mode keeps incrementing the tier number forever, but the map itself just repeats Tier 2's layout past this point - so everything below adds scaling that keeps climbing where the map layout itself no longer does.",
+
+			"curse_count_per_tier": 1,
+			"max_curse_count": 8,
+			"_comment_curse_count_per_tier_and_max": "Extra guaranteed cursed enemies added per map tier ABOVE base_tier, clamped at max_curse_count total (set max_curse_count to -1 to remove the clamp).",
+
+			"min_floor_decrement_per_tier": 1,
+			"min_floor_clamp": 0,
+			"_comment_min_floor_decrement_and_clamp": "Lowers the effective tier_min_floor by this much per map tier ABOVE base_tier, so curses keep starting earlier the deeper an infinite run goes - clamped so it never drops below min_floor_clamp (0 = curses can appear from the very first room).",
+
+			"curse_chance_increment_per_tier": 0.05,
+			"max_curse_chance": 1.0,
+			"_comment_curse_chance_increment_and_max": "Extra flat probability added to curse_chance per map tier ABOVE base_tier, clamped at max_curse_chance (0-1)."
+		},
+
+		"_example_infinite_mode_tier_3_room_depth_4": "Worked example with the defaults above, difficulty=normal, at map tier 3 (1 tier past base_tier=2) and room depth 4: effective min_floor = tier_min_floor[index 2, since tier 3 is past the array's last index 2] = 2, minus (3-2)*min_floor_decrement_per_tier[1] = 1 (would clamp at min_floor_clamp=0 if it went further negative) - so this run's curses already start at room depth 1, instead of Tier 0's depth 4. GUARANTEED count = (4-1+1)*min_curse_count_per_room[1] + (3-2)*curse_count_per_tier[1] = 4 + 1 = 5 cursed enemies (under max_curse_count=8, so no clamp yet). BONUS chance per remaining enemy = curse_chance[0.25] * difficulty_chance_mult.normal[1.0] * tier_curse_chance_mult[index 2 = 1.5] + (3-2)*curse_chance_increment_per_tier[0.05] = 0.375 + 0.05 = 0.425 (42.5%) per non-guaranteed enemy."
+	},
+	"curses": {
+		"snowfall":      {"name": "Snowfall", "description": "Covers a + area in decaying snow after it moves.", "weight": 40, "excluded_pieces": [], "radius": 1, "decay_ticks_per_stage": 1, "color": [0.55, 0.75, 1.0]},
+		"frenzy":        {"name": "Frenzy", "description": "Acts twice every enemy turn.", "weight": 30, "excluded_pieces": ["queen"], "extra_actions": 1, "color": [1.0, 0.45, 0.3]},
+		"stunning_gaze": {"name": "Stunning Gaze", "description": "After it moves, stuns the closest ally in its sight for 1 turn.", "weight": 30, "excluded_pieces": [], "duration": 1, "cooldown": 2, "color": [0.8, 0.5, 1.0]},
+		"blizzard":      {"name": "Blizzard", "description": "Covers a 3x3 area in slow-decaying snow after it moves. The enemy king's own curse.", "weight": 0, "excluded_pieces": [], "radius": 1, "decay_ticks_per_stage": 2, "color": [0.35, 0.55, 0.85]},
+		"fey_step":      {"name": "Fey Step", "description": "Cannot capture. After moving, may blink to a random open tile nearby.", "weight": 20, "excluded_pieces": [], "blink_chance": 0.5, "blink_range": 2, "color": [0.75, 0.35, 0.85]},
+		"changeling":    {"name": "Changeling", "description": "After moving, swaps places with its closest fellow enemy.", "weight": 18, "excluded_pieces": [], "color": [0.4, 0.8, 0.6]},
+		"abduction":     {"name": "Abduction", "description": "After moving, swaps places with the closest ally in its sight.", "weight": 15, "excluded_pieces": [], "color": [0.85, 0.25, 0.35]},
+		"entangle":      {"name": "Entangle", "description": "After it moves, roots the closest ally in its sight for 1 turn - they can still capture, but can't move to open ground.", "weight": 25, "excluded_pieces": [], "duration": 1, "cooldown": 2, "color": [0.45, 0.65, 0.25]},
+		"wraith_cloak":  {"name": "Wraith Cloak", "description": "Starts hidden in its own snow until it first moves.", "weight": 15, "excluded_pieces": [], "decay_ticks_per_stage": 2, "color": [0.3, 0.3, 0.4]},
+		"contagion":     {"name": "Contagion", "description": "Covers a + area in snow after it moves, which can spread to neighboring tiles if left alone.", "weight": 18, "excluded_pieces": [], "radius": 1, "decay_ticks_per_stage": 1, "spread_chance": 0.15, "color": [0.55, 0.85, 0.35]},
+		"bloodlust":     {"name": "Bloodlust", "description": "After a capture, immediately acts again (up to a limit).", "weight": 5, "excluded_pieces": [], "max_bonus_actions": 2, "color": [0.9, 0.1, 0.1]}
+	}
+}

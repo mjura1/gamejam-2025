@@ -3,7 +3,7 @@ extends SceneTree
 # AI improvements (Phase 5, base_character.calculate_best_move):
 #   1. Value-aware capture (always on): with a pawn AND a queen both
 #      capturable in the same move, the AI takes the queen (higher
-#      Data/ai_config.json piece_values).
+#      GameParameters/ai_config.json piece_values).
 #   2. Danger avoidance (difficulty-gated, HARD = 100%): among two
 #      equal-score chase candidates, the one an ally could capture next
 #      turn is avoided in favor of the equally-good safe one.
@@ -38,7 +38,7 @@ func _initialize():
 	var enemies: Array[String] = ["enemy_rook", "enemy_pawn"]
 	player_manager.enemy_party = enemies
 	player_manager.active_enemies = enemies.duplicate()
-	# Explicit roster (pawn value 1, queen value 9 in Data/ai_config.json) so
+	# Explicit roster (pawn value 1, queen value 9 in GameParameters/ai_config.json) so
 	# the value-aware capture check has a real, known value gap to assert on -
 	# BattleBoot.boot()'s default roster composition is otherwise not part of
 	# this test's contract.

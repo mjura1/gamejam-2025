@@ -2,7 +2,7 @@
 # Hub s seznamom tutorial stopenj. Prava scena, ne overlay (glej
 # GF.start_tutorial_hub) - stopnja je battle-like scena, po njej se hub
 # zgradi na novo. Vrstice se zgradijo ob zagonu iz TutorialData
-# (Data/tutorials.json); PLAY zažene stopnjo prek GF.start_tutorial_stage.
+# (GameParameters/tutorials.json); PLAY zažene stopnjo prek GF.start_tutorial_stage.
 extends Control
 
 @onready var rows_container: VBoxContainer = %RowsContainer

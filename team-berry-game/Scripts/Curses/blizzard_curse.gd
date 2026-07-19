@@ -1,7 +1,7 @@
 # res://Scripts/Curses/blizzard_curse.gd
 # Prekletstvo "blizzard": kraljeva lastna, MOČNEJŠA različica "snowfall" -
 # nosilec po vsakem premiku znova pokrije 3x3 območje (namesto "+") s SVOJO
-# meglo, ki razpada POČASNEJE (glej Data/curses.json decay_ticks_per_stage).
+# meglo, ki razpada POČASNEJE (glej GameParameters/curses.json decay_ticks_per_stage).
 # Izločena iz splošnega naključnega nabora (weight: 0 v JSON) - dodeli se
 # neposredno kralju, glej battle.gd._apply_curses.
 extends BaseCurse

@@ -1,6 +1,6 @@
 # res://Scenes/Menu/CampfireUpgradePanel.gd
 # Nadgradnje na počivališču: za vsak TIP figure v lasti (aktivna + rezerva)
-# prikaže njeno skill-tree drevo (Data/skill_trees.json) v 4 stolpcih -
+# prikaže njeno skill-tree drevo (GameParameters/skill_trees.json) v 4 stolpcih -
 # sposobnost 1/2/3 + perki - z gumbom za nakup vsakega vozlišča.
 # Nadgradnje veljajo za VSE figure istega tipa in so trajne za ta run
 # (PlayerManager.piece_upgrades) - tu je edino mesto porabe upgrade itemov.

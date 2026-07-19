@@ -2,7 +2,7 @@
 # Prekletstvo "bloodlust": po USPEŠNEM ZAJETJU (ne po navadnem premiku) dobi
 # nosilec eno dodatno akcijo TAKOJ v isti sovražnikovi potezi (glej
 # BattleController.start_enemy_turn - "was_capture" veja). Omejeno na
-# max_bonus_actions na potezo (Data/curses.json), da verižno zajemanje ne
+# max_bonus_actions na potezo (GameParameters/curses.json), da verižno zajemanje ne
 # more pomesti celotne plošče v enem krogu - namerno zelo redko (nizka
 # weight), glej curses.json.
 extends BaseCurse
