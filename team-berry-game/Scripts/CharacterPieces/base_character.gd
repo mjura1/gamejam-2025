@@ -41,6 +41,12 @@ var grid_manager
 # VSEH smoke testih (preverjeno). get_node() se razreši šele ob teku, ne
 # ob prevajanju - varno.
 @onready var curse_data = get_node("/root/CurseData")
+# NAMENOMA get_node(), ne bare "AiStrategyData" identifikator - isti razlog kot
+# curse_data zgoraj. get_strategy() vrne EnemyAIStrategy, a spodaj v
+# calculate_best_move() ostane ne-tipizirano iz istega razloga kot "var curse"
+# (glej opombo tam) - ne SME se statično tipizirati na EnemyAIStrategy NIKJER v
+# tej datoteki.
+@onready var ai_strategy_data = get_node("/root/AiStrategyData")
 
 # ----------------- NASTAVITVE IN VREDNOSTI -----------------
 @export var selected: bool = false
@@ -807,10 +813,11 @@ func calculate_best_move() -> Dictionary:
 		is_panicking = true
 
 	# ---------------------------------
-	# 6. CAPTURE HAS ABSOLUTE PRIORITY - VALUE-AWARE (vedno aktivno, ni
-	# gated na težavnost - Miha: "captures stay aggressive, that's the
-	# fun"). Zbere VSE zajemljive tarče na tej potezi in izbere najvrednejšo
-	# (CurseData.get_piece_value, GameParameters/ai_config.json) namesto prve najdene.
+	# 6-7. CAPTURE + CHASE, delegated to the tier-specific decision strategy
+	# (SettingsManager.ai_difficulty, GameParameters/ai_difficulty.json) - see
+	# Scripts/AI/enemy_ai_strategy.gd and plans/AI_DIFFICULTY_PLAN.md §2.3. Capture
+	# priority still always wins ("captures stay aggressive" - Miha's words); the
+	# strategy just decides HOW aggressively/carefully to chase/capture/search per tier.
 	# ---------------------------------
 	var capture_candidates: Array[Vector2i] = []
 	for pos in valid_targets:
@@ -820,63 +827,24 @@ func calculate_best_move() -> Dictionary:
 		if target_char and target_char.is_enemy != is_enemy:
 			capture_candidates.append(pos)
 
-	if not capture_candidates.is_empty():
-		var best_capture: Vector2i = capture_candidates[0]
-		var best_value := -1
-		for pos in capture_candidates:
-			var target_char = grid_manager.get_character_at(pos)
-			var value: int = curse_data.get_piece_value(target_char.strName)
-			if value > best_value:
-				best_value = value
-				best_capture = pos
-		return {
-			"move_type": "CAPTURE",
-			"target_pos": best_capture
+	var strategy = ai_strategy_data.get_strategy(settings_manager.ai_difficulty)
+	var action: Dictionary = strategy.choose_action(self, {
+		"valid_targets": valid_targets,
+		"capture_candidates": capture_candidates,
+		"last_known_player_pos": last_known_player_pos,
+	})
+	if action.is_empty():
+		return {}
+
+	# ---------------------------------
+	# 8. PANIC RANDOMNESS - stays a base_character-level trait, NOT part of the
+	# difficulty ladder (every tier's characters panic the same way). Matches the
+	# pre-refactor invariant: only ever overrides a MOVE, never a CAPTURE.
+	# ---------------------------------
+	if is_panicking and action.get("move_type") != "CAPTURE" and randf() < panic_randomness:
+		action = {
+			"move_type": "MOVE",
+			"target_pos": valid_targets[randi() % valid_targets.size()]
 		}
 
-
-	# ---------------------------------
-	# 7. NORMAL CHASE (TOWARD LAST SEEN) - z difficulty-gated "danger
-	# avoidance": z verjetnostjo danger_avoid_prob[difficulty] (EASY 0% /
-	# NORMAL 50% / HARD 100%, GameParameters/ai_config.json) med enako dobrimi
-	# kandidati raje izbere polje, ki ga NOBENA zavezniška figura ne bi
-	# mogla zajeti naslednjo potezo. Če so VSI kandidati nevarni, se vrne
-	# na navadno najboljšo potezo (nikoli se ne "paralizira"). Namerno se
-	# NE uporablja pri zajetju zgoraj - zajetja ostanejo agresivna.
-	# ---------------------------------
-	var best_move: Vector2i = valid_targets[0]
-	var best_score := INF
-
-	for pos in valid_targets:
-		var score = pos.distance_to(last_known_player_pos)
-		if score < best_score:
-			best_score = score
-			best_move = pos
-
-	var avoid_prob: float = curse_data.get_ai_param(settings_manager.difficulty, "danger_avoid_prob", 0.0)
-	if avoid_prob > 0.0 and randf() < avoid_prob:
-		var danger_tiles: Array[Vector2i] = grid_manager.tiles_reachable_by(false)
-		var safe_move: Vector2i = best_move
-		var safe_score := INF
-		var found_safe := false
-		for pos in valid_targets:
-			if pos in danger_tiles:
-				continue
-			var score = pos.distance_to(last_known_player_pos)
-			if score < safe_score:
-				safe_score = score
-				safe_move = pos
-				found_safe = true
-		if found_safe:
-			best_move = safe_move
-
-	# ---------------------------------
-	# 8. PANIC RANDOMNESS
-	# ---------------------------------
-	if is_panicking and randf() < panic_randomness:
-		best_move = valid_targets[randi() % valid_targets.size()]
-
-	return {
-		"move_type": "MOVE",
-		"target_pos": best_move
-	}
+	return action

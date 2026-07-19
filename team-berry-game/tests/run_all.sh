@@ -249,6 +249,21 @@ check_script "smoke_ai" "res://tests/smoke/smoke_ai.gd" 4 \
 	"SMOKE_AI_OK"
 echo
 
+echo "== AI difficulty minimax smoke test (defended-pawn trap) =="
+check_script "smoke_ai_minimax" "res://tests/smoke/smoke_ai_minimax.gd" 8 \
+	"SMOKE_AI_MINIMAX_OK"
+echo
+
+echo "== AI difficulty curse synergy smoke test (stunning_gaze positioning) =="
+check_script "smoke_ai_curse_synergy" "res://tests/smoke/smoke_ai_curse_synergy.gd" 8 \
+	"SMOKE_AI_CURSE_SYNERGY_OK"
+echo
+
+echo "== AI difficulty performance guardrail (24 enemies @ IMPOSSIBLE) =="
+check_script "smoke_ai_perf" "res://tests/smoke/smoke_ai_perf.gd" 8 \
+	"SMOKE_AI_PERF_OK"
+echo
+
 echo "== Pause menu smoke test =="
 check_script "smoke_pause_menu" "res://tests/smoke/smoke_pause_menu.gd" 80 \
 	"SMOKE TEST: escape resumed - menu hidden and tree unpaused again"

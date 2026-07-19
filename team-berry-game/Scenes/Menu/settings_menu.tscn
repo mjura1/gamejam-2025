@@ -72,6 +72,28 @@ popup/item_1/id = 1
 popup/item_2/text = "HARD"
 popup/item_2/id = 2
 
+[node name="AiDifficultyRow" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="AiDifficultyLabel" type="Label" parent="Content/AiDifficultyRow"]
+layout_mode = 2
+text = "AI DIFFICULTY"
+
+[node name="AiDifficultyOption" type="OptionButton" parent="Content/AiDifficultyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 4
+selected = 0
+popup/item_0/text = "NORMAL"
+popup/item_0/id = 0
+popup/item_1/text = "HARD"
+popup/item_1/id = 1
+popup/item_2/text = "EXTREME"
+popup/item_2/id = 2
+popup/item_3/text = "IMPOSSIBLE"
+popup/item_3/id = 3
+
 [node name="RowsScroll" type="ScrollContainer" parent="Content"]
 custom_minimum_size = Vector2(0, 340)
 layout_mode = 2

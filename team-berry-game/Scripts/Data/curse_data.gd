@@ -1,10 +1,13 @@
 # res://Scripts/Data/curse_data.gd
 # Autoload. Prebere GameParameters/curses.json (ogrodje prekletstev sovražnikov), po
 # vzoru item_data.gd ("1 avtoload prebere JSON + registry razredov" vzorec).
-# Nosi TUDI GameParameters/ai_config.json (splošni "enemy behavior" podatki - vrednosti
-# figur za value-aware capture in danger-avoidance verjetnosti po težavnosti,
-# glej base_character.calculate_best_move) - namerno v istem avtoloadu namesto
-# ločenega, da ne množimo majhnih JSON-loaderjev za tesno povezane AI podatke.
+# Nosi TUDI GameParameters/ai_config.json (figur vrednosti za value-aware capture,
+# glej base_character.calculate_best_move in Scripts/AI/enemy_ai_strategy.gd) -
+# namerno v istem avtoloadu namesto ločenega, da ne množimo majhnih JSON-loaderjev
+# za tesno povezane AI podatke. Difficulty-gated AI PARAMETRI (danger_avoid_prob
+# ipd.) so se preselili v Scripts/Data/ai_strategy_data.gd + GameParameters/
+# ai_difficulty.json (SettingsManager.ai_difficulty - ločena os od curse-difficulty,
+# glej plans/AI_DIFFICULTY_PLAN.md).
 extends Node
 
 const CURSES_PATH := "res://GameParameters/curses.json"
@@ -66,11 +69,18 @@ func get_color(id: String) -> Color:
 		return Color(rgb[0], rgb[1], rgb[2])
 	return Color.MAGENTA
 
-func get_weight(id: String) -> float:
-	return _curses.get(id, {}).get("weight", 0.0)
+# difficulty-aware: falls back to the base "weight"/"excluded_pieces" unless the
+# curse defines a "weight_by_difficulty"/"excluded_pieces_by_difficulty" override
+# for this exact difficulty (see GameParameters/curses.json root-level comments).
+func get_weight(id: String, difficulty: String = "normal") -> float:
+	var curse: Dictionary = _curses.get(id, {})
+	var overrides: Dictionary = curse.get("weight_by_difficulty", {})
+	return overrides.get(difficulty, curse.get("weight", 0.0))
 
-func get_excluded_pieces(id: String) -> Array:
-	return _curses.get(id, {}).get("excluded_pieces", [])
+func get_excluded_pieces(id: String, difficulty: String = "normal") -> Array:
+	var curse: Dictionary = _curses.get(id, {})
+	var overrides: Dictionary = curse.get("excluded_pieces_by_difficulty", {})
+	return overrides.get(difficulty, curse.get("excluded_pieces", []))
 
 # min_floor je zdaj PO MAPNEM NIVOJU (GameParameters/curses.json config.tier_min_floor -
 # array, indeksiran kot tier_curse_chance_mult/MapGenerator.TIER_CONFIGS: 0/1/2 = Tier 0/1/2).
@@ -198,8 +208,10 @@ func create_curse(id: String) -> BaseCurse:
 # Uteženi met med prekletstvi, ki so za ta tip figure sploh dovoljena
 # (weight > 0, strName ni v excluded_pieces). "" = nobeno ni na voljo.
 # rng parameter zaradi testov (seedable) - ista konvencija kot
-# ItemData.roll_shop_stock.
-func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> String:
+# ItemData.roll_shop_stock. difficulty izbere weight_by_difficulty/
+# excluded_pieces_by_difficulty override (glej get_weight/get_excluded_pieces
+# zgoraj), privzeto "normal" da klici brez njega ostanejo nespremenjeni.
+func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null, difficulty: String = "normal") -> String:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
@@ -207,9 +219,9 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> St
 	var eligible: Array = []
 	var total_weight := 0.0
 	for id in get_curse_ids():
-		if piece_name in get_excluded_pieces(id):
+		if piece_name in get_excluded_pieces(id, difficulty):
 			continue
-		var w := get_weight(id)
+		var w := get_weight(id, difficulty)
 		if w <= 0.0:
 			continue
 		eligible.append(id)
@@ -221,7 +233,7 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> St
 	var roll := rng.randf() * total_weight
 	var acc := 0.0
 	for id in eligible:
-		acc += get_weight(id)
+		acc += get_weight(id, difficulty)
 		if roll < acc:
 			return id
 
@@ -234,9 +246,3 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null) -> St
 # tarčami izbere najvrednejšo). Privzeto 1, če piece_values nima vnosa.
 func get_piece_value(piece_name: String) -> int:
 	return _ai_config.get("piece_values", {}).get(piece_name, 1)
-
-# Splošen getter za ai_config.json vrednosti po težavnosti (trenutno samo
-# "danger_avoid_prob" - verjetnost, da sovražnik pri "chase" koraku raje
-# izbere polje izven zavezniškega dosega, glej calculate_best_move korak 7).
-func get_ai_param(difficulty: String, key: String, default: float = 0.0) -> float:
-	return _ai_config.get(key, {}).get(difficulty, default)

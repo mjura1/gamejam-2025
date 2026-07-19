@@ -1,3 +1,43 @@
+# Winter March — AI difficulty (chess-engine tiers, decoupled from curse difficulty) → features/ai-difficulty (awaiting review)
+
+New feature on `features/ai-difficulty`: a second, independent **AI difficulty**
+selector (`SettingsManager.ai_difficulty`, NORMAL/HARD/EXTREME/IMPOSSIBLE — no EASY
+rung) added right below the existing curse-difficulty row in Settings. Curse
+difficulty now controls curse *chance* only; AI difficulty controls the enemy's
+move/capture *decision-making*, via a new data-driven `EnemyAIStrategy`
+(`Scripts/AI/enemy_ai_strategy.gd`) parametrized per-tier by
+`GameParameters/ai_difficulty.json` and loaded through a new `AiStrategyData`
+autoload. NORMAL reproduces today's curse-difficulty-NORMAL AI bit-for-bit
+(regression-safety anchor).
+
+- **HARD**: danger-avoidance goes deterministic (100%, was a 0/50/100% curve tied to
+  curse difficulty), plus `avoid_hanging_pieces` — a value-aware "don't hang a
+  piece" filter, now applied to captures too (previously always unconditional).
+- **EXTREME**: first tier with real lookahead — alpha-beta minimax (depth 1) over a
+  pure board snapshot, plus static-exchange-evaluation-based move ordering and a
+  fork/`threat_creation` bonus. Declines "trap" trades (e.g. a defended pawn) that
+  HARD's cheaper, pre-move-only heuristic can't see coming.
+- **IMPOSSIBLE**: minimax depth 2, plus **curse synergy** — a new
+  `BaseCurse.ai_positioning_bonus()` hook (default a no-op) that lets
+  `stunning_gaze`/`entangle`/`abduction` steer the AI toward ending its move nearest
+  the *highest-value* visible player piece, and lets `frenzy`/`bloodlust`-cursed
+  pieces weigh candidates that set up a guaranteed follow-up capture.
+
+Performance: an early perf smoke run surfaced a real problem — IMPOSSIBLE against
+this codebase's actual worst-case enemy count (24, the real spawn cap) took
+**5.5 seconds**. The plan's own suggested radius bound (`move_range` + opponent's
+`move_range`) barely bounds anything when sliding pieces have range 8 on a
+~12-wide board — every piece "qualified" at every ply. A tighter radius cap plus
+captures-first move ordering (better alpha-beta pruning) brought it down to
+**~35-100ms**, no depth reduction needed.
+
+Tests: `run_all.sh` gained `smoke_ai` (updated to drive the new `ai_difficulty`
+setting), `smoke_ai_minimax` (defended-pawn trap — proves EXTREME+ actually
+searches, not just present-but-inert), `smoke_ai_curse_synergy` (proves the new
+curse hook actually steers positioning), and `smoke_ai_perf` (the timing guardrail
+above, printed every run). Full rationale, design decisions, and every deviation
+from the original plan documented in `plans/AI_DIFFICULTY_PLAN.md`.
+
 # Winter March — play modes (Mode Select + Infinite + Tutorial hub) → features/play-modes (awaiting review)
 
 New feature on `features/play-modes` (NOT merged — left for review): the main menu's

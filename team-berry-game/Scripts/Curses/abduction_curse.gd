@@ -6,8 +6,49 @@
 # obojestransko). Ista LOS/domet geometrija kot stunning_gaze.
 extends BaseCurse
 
+# IMPOSSIBLE-tier AI positioning weight (curse_synergy, plans/AI_DIFFICULTY_PLAN.md
+# §2.6) - deliberately heavier than stunning_gaze/entangle's (3.0): abduction's
+# effect (yanking a player piece into the enemy cluster) is far more punishing than
+# a stun/root. Placeholder, Miha's to balance - needs to be large relative to
+# _evaluate()'s board-control/mobility terms (see smoke_ai_curse_synergy.gd) since
+# it's a small per-candidate nudge competing against those across the WHOLE
+# candidate set, not just against one specific alternative.
+const AI_POSITIONING_WEIGHT := 5.0
+
 func _init():
 	id = "abduction"
+
+# Same "nearest visible" targeting as stunning_gaze/entangle, but the swap means the
+# abducted piece lands EXACTLY at candidate_pos (owner's own post-move square,
+# vacated when owner swaps into the target's old spot) - so the bonus also scales
+# with how exposed that landing tile is (snapshot_reachable_count: more of the
+# owner's own side able to reach it next turn = a worse spot to be abducted into).
+func ai_positioning_bonus(owner, candidate_pos: Vector2i, snapshot: Dictionary) -> float:
+	var seen: Array[Vector2i] = EnemyAIStrategy.snapshot_visible_positions(
+		snapshot, candidate_pos, owner.get_move_directions(), owner.move_range, owner.is_enemy)
+	if seen.is_empty():
+		return 0.0
+	var nearest_pos: Vector2i = seen[0]
+	var best_dist := INF
+	for pos in seen:
+		var dist: float = Vector2(candidate_pos).distance_to(Vector2(pos))
+		if dist < best_dist:
+			best_dist = dist
+			nearest_pos = pos
+	var value: int = snapshot.get(nearest_pos, {}).get("value", 1)
+	# BUGFIX (post-M4, found during plan review): `snapshot` still has the OWNER
+	# itself sitting at candidate_pos (this is the post-move-but-pre-swap
+	# snapshot) - querying reachability of a square occupied by a fellow enemy
+	# always returns 0 (same same-side-blocking gap as avoid_hanging_pieces, see
+	# enemy_ai_strategy.gd's _filter_hanging_pieces bugfix note), so `exposure`
+	# was silently always 0 and this whole term collapsed to a no-op constant
+	# (maxi(1, 0) == 1). Erase the owner from candidate_pos first so the check
+	# reflects what the tile will actually look like once the ABDUCTED piece (not
+	# the owner) is standing there instead.
+	var post_swap_snapshot: Dictionary = snapshot.duplicate(true)
+	post_swap_snapshot.erase(candidate_pos)
+	var exposure: int = EnemyAIStrategy.snapshot_reachable_count(post_swap_snapshot, owner.is_enemy, candidate_pos)
+	return value * maxi(1, exposure) * AI_POSITIONING_WEIGHT
 
 func on_action_taken(owner, _bc) -> void:
 	if not is_instance_valid(owner) or not is_instance_valid(owner.grid_manager):
