@@ -501,6 +501,27 @@ and zero-errors ≠ pass — assert explicitly.
 2. **BaseCharacter generalization.** 3-slot `ability_levels`, `unlocked_slots`,
    passive loading, `extra_uses` in `_ability_uses_max`, curse immunity,
    `move_range`/`move_reveal` hooks; `battle_start_reveal` in BattleController.
+   **STATUS: DONE.** Deviations/notes:
+   - `move_range` passives are applied idempotently: `_load_persistent_upgrades`
+     captures the scene's base value in `_base_move_range` on first call and
+     recomputes `move_range = base + bonuses` (plain `+=` per the plan text
+     would stack on any re-registration of the same instance).
+   - battle_ui.gd had a SECOND reader beyond the `unlock_cost` one flagged in
+     §5.1: `character.ability2_unlocked` at the top of `_show_abilities` —
+     repointed to `character.is_slot_unlocked(2)` in the same commit.
+   - `battle_start_reveal` hook lives in `start_player_turn()` inside a
+     `turn_count == 1` block (same spot as the bounty/courier first-turn
+     logic), NOT `initialize_battle()` — pieces are only on the board after
+     the placement phase.
+   - §5.2 checklist item verified, no change needed: `_clear_expired_evade()`
+     already loops ALL allied pieces (not just knights), so Royal Decree's
+     `is_capture_immune` will expire correctly in M4.
+   - Tests: unit suite 893/893 green; `smoke_upgrade_panel` passes.
+     `smoke_ability_ui_pipeline` fails PRE-EXISTINGLY on this branch (6
+     Queen.Lure/King.Cleanse/King.Heal assertions — verified byte-identical
+     with M2 stashed, so unrelated to skill trees; investigate separately).
+     `smoke_spyglass` is flaky (failed one run, passed the next, both
+     unrelated to this diff).
 3. **Battle UI slot 3.** Scene block, script wiring, `ability_3` keybind.
 4. **New abilities.** Suggested order: royal_decree → sanctify → ambush →
    castling → command → promotion (easiest to hardest; promotion last since the

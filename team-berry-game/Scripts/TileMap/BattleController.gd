@@ -244,6 +244,17 @@ func start_player_turn():
 			if not allies.is_empty():
 				courier = allies.pick_random()
 				courier_marked.emit(courier)
+
+	# Pasiva "battle_start_reveal" (skill tree): ob začetku bitke razkrij
+	# (2r+1)² kvadrat okoli vsake zavezniške figure s to pasivo. Vezano na
+	# prvo potezo, ker so figure postavljene šele po placement fazi.
+	if turn_count == 1 and is_instance_valid(grid_manager):
+		for character in grid_manager.get_all_characters():
+			if character is BaseCharacter and not character.is_enemy and not character.is_obstacle:
+				for effect in character.passives:
+					if effect.get("type", "") == "battle_start_reveal":
+						var radius: int = int(effect.get("radius", 1))
+						grid_manager.reveal_area(GridManager.square_radius_tiles(character.grid_pos, radius))
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 

@@ -10,6 +10,9 @@ extends CanvasLayer
 const MAX_PLACED := 5
 
 @onready var player_manager = get_node("/root/PlayerManager")
+# Za ceno a2_unlock vozlišča v "locked" sporočilu (glej _show_abilities) -
+# cene ne živijo več v Data/abilities.json, ampak v Data/skill_trees.json.
+@onready var skill_tree_data = get_node("/root/SkillTreeData")
 @onready var grid_manager = get_node("../GridManager")
 @onready var map_behaviour = get_node("../Map")
 @onready var battle_controller = get_node("../BattleController")
@@ -835,7 +838,7 @@ func _show_abilities(character: BaseCharacter):
 	ability1_desc.text = info1.get("desc", "")
 	ability1_button.disabled = not (can_use_now and info1.get("uses_remaining", 0) > 0)
 
-	if character.ability2_unlocked:
+	if character.is_slot_unlocked(2):
 		var info2 := character.get_ability_info(2)
 		ability2_body.visible = true
 		ability2_locked.visible = false
@@ -847,7 +850,9 @@ func _show_abilities(character: BaseCharacter):
 	else:
 		ability2_body.visible = false
 		ability2_locked.visible = true
-		var unlock_cost: int = character.get_ability_info(2).get("unlock_cost", 1)
+		# Cena odklepa pride iz skill drevesa (a2_unlock vozlišče tega tipa),
+		# ne več iz get_ability_info - glej SKILL_TREE_PLAN.md §5.1.
+		var unlock_cost: int = skill_tree_data.get_node_def(character.strName, "a2_unlock").get("cost", 1)
 		ability2_locked.text = "Use %d upgrade item%s at a rest to unlock the second ability." % [
 			unlock_cost, "" if unlock_cost == 1 else "s"
 		]
