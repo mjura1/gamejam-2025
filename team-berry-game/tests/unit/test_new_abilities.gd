@@ -7,6 +7,7 @@ extends TestCase
 # kličeta, zato so testirane samo _execute_ability poti, ne UI/targeting.
 
 const KingScript = preload("res://Scripts/CharacterPieces/Ally/king.gd")
+const BishopScript = preload("res://Scripts/CharacterPieces/Ally/bishop.gd")
 const KnightScript = preload("res://Scripts/CharacterPieces/Ally/knight.gd")
 const BattleControllerScript = preload("res://Scripts/TileMap/BattleController.gd")
 
@@ -90,3 +91,53 @@ func test_royal_decree_immunity_expires_at_start_of_next_player_turn():
 
 	assert_false(king.is_capture_immune, "_clear_expired_evade (called at the next start_player_turn) should clear Royal Decree's immunity")
 	assert_true(enemy.is_capture_immune, "_clear_expired_evade only loops allied pieces - enemy flags are untouched")
+
+# ----------------- Bishop.Sanctify -----------------
+
+func test_sanctify_clears_curses_in_area_only():
+	var gm := GridManager.new()
+	var bishop := BishopScript.new()
+	bishop.grid_pos = Vector2i(4, 4)
+	bishop.grid_manager = gm
+	gm.occupy(bishop.grid_pos, bishop)
+
+	var cursed_near := KnightScript.new()
+	cursed_near.grid_pos = Vector2i(4, 5) # within base 3x3
+	cursed_near.grid_manager = gm
+	cursed_near.curse = CurseData.create_curse("snowfall")
+	gm.occupy(cursed_near.grid_pos, cursed_near)
+
+	var cursed_far := KnightScript.new()
+	cursed_far.grid_pos = Vector2i(7, 7) # outside base 3x3
+	cursed_far.grid_manager = gm
+	cursed_far.curse = CurseData.create_curse("frenzy")
+	gm.occupy(cursed_far.grid_pos, cursed_far)
+
+	var cursed_enemy := KnightScript.new()
+	cursed_enemy.is_enemy = true
+	cursed_enemy.grid_pos = Vector2i(5, 4) # within base 3x3, but an enemy
+	cursed_enemy.grid_manager = gm
+	cursed_enemy.curse = CurseData.create_curse("blizzard")
+	gm.occupy(cursed_enemy.grid_pos, cursed_enemy)
+
+	var ok: bool = bishop._execute_ability("sanctify", null)
+
+	assert_true(ok, "sanctify should succeed when it clears at least one curse")
+	assert_true(cursed_near.curse == null, "an allied curse inside the 3x3 should be cleared")
+	assert_false(cursed_far.curse == null, "an allied curse outside the 3x3 should be untouched")
+	assert_false(cursed_enemy.curse == null, "sanctify must never clear an enemy's curse")
+
+func test_sanctify_returns_false_when_no_curse_in_range():
+	var gm := GridManager.new()
+	var bishop := BishopScript.new()
+	bishop.grid_pos = Vector2i(4, 4)
+	bishop.grid_manager = gm
+	gm.occupy(bishop.grid_pos, bishop)
+
+	var uncursed_near := KnightScript.new()
+	uncursed_near.grid_pos = Vector2i(4, 5)
+	uncursed_near.grid_manager = gm
+	gm.occupy(uncursed_near.grid_pos, uncursed_near)
+
+	var ok: bool = bishop._execute_ability("sanctify", null)
+	assert_false(ok, "sanctify with no curses in range should report no valid use")
