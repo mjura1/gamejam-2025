@@ -577,20 +577,92 @@ assertions, unaffected by M3's changes).
 
 ### M4 — IMPOSSIBLE tier + curse synergy
 
-- [ ] Bump minimax to depth 2 for IMPOSSIBLE (still radius-bounded, still
+- [x] Bump minimax to depth 2 for IMPOSSIBLE (still radius-bounded, still
       alpha-beta pruned — re-check perf, see M5).
-- [ ] `BaseCurse.ai_positioning_bonus()` new hook (default `0.0`), wired into
+- [x] `BaseCurse.ai_positioning_bonus()` new hook (default `0.0`), wired into
       `_evaluate()` behind the `curse_synergy` flag (§2.6).
-- [ ] Per-curse overrides: `stunning_gaze_curse.gd`, `entangle_curse.gd`,
+- [x] Per-curse overrides: `stunning_gaze_curse.gd`, `entangle_curse.gd`,
       `abduction_curse.gd` (required); `changeling_curse.gd` and the
       fog-curse family (optional for v1, note as deferred if skipped — see §2.6).
-- [ ] `frenzy`/`bloodlust` extra-action awareness in `enemy_ai_strategy.gd`'s own
+- [x] `frenzy`/`bloodlust` extra-action awareness in `enemy_ai_strategy.gd`'s own
       scoring (not a `BaseCurse` hook — §2.6).
-- [ ] Smoke test: enemy with `stunning_gaze` (or `entangle`) on IMPOSSIBLE, two
+- [x] Smoke test: enemy with `stunning_gaze` (or `entangle`) on IMPOSSIBLE, two
       visible player pieces of different `piece_values` both reachable — assert it
       chooses the move that ends up nearest the *higher-value* one, vs. NORMAL/HARD/
       EXTREME which (no curse_synergy) pick whichever nearest-by-raw-distance the
       existing on_action_taken hook would've picked regardless of the AI's move choice.
+
+**DEVIATION (`ai_positioning_bonus` wired at the ROOT level, not inside `_evaluate()`):**
+same reasoning as M3's `threat_creation` deviation — computed once per root candidate
+in `_choose_minimax`, not re-evaluated at every leaf of the depth-2 search tree.
+Performance (this is exactly what M5 exists to guard) and semantics (the curse's
+effect fires once, right after THIS piece's own move — not a recursively-meaningful
+property of hypothetical deeper board states) both point the same way. See the
+`_evaluate()` doc-comment for the fuller rationale, written once there and referenced
+from both M3 and M4 rather than repeated.
+
+**DEVIATION (`ai_positioning_bonus` signature stays bounds-free):** the hook takes
+`(_owner, _candidate_pos, _snapshot)` exactly as specified in §2.6 — no `bounds:
+Rect2i` parameter. Added two small STATIC public helpers to `EnemyAIStrategy`
+(`snapshot_visible_positions`, `snapshot_can_reach`/`snapshot_reachable_count`) that
+curse overrides call instead of duplicating LOS-walk logic — deliberately
+bounds-free, unlike the internal `_snapshot_valid_targets` search helper. This is
+safe specifically because these two only ever check a SPECIFIC already-known
+in-bounds position (an occupant found along a ray, or a named `candidate_pos`), never
+enumerate "every empty tile" — board-edge bookkeeping only matters for the latter
+(which is what move generation needs bounds for).
+
+**DEVIATION (weights bumped well past the plan's implicit "small nudge" framing):**
+`AI_POSITIONING_WEIGHT` ended up at `3.0` (stunning_gaze/entangle) and `5.0`
+(abduction) — not the `0.3`/`0.5` first tried. The curse-synergy bonus competes
+against `_evaluate()`'s board-control/mobility terms across the piece's ENTIRE
+candidate set (every empty tile it could move to), not just against one specific
+alternative — on an 8-directional queen with `move_range` 8 that's dozens of
+candidates, and mobility differences between them (`MOBILITY_WEIGHT * valid_targets
+count`) routinely exceed 1.0-2.0. A small bonus was reliably outscored by an
+unrelated, more "open" tile elsewhere on the board. Confirmed via
+`smoke_ai_curse_synergy.gd` (which prints the actual chosen tile during
+development) before settling on these values. Still a placeholder per §6 — Miha's to
+retune by feel — but future tuning should keep in mind *why* it needs to be large:
+it's competing against a sum across the whole candidate set, not a single rival.
+
+**DEVIATION (`changeling_curse.gd` + fog-curse family left at the default `0.0`):**
+per §2.6's own explicit allowance ("skip this one if it's not worth the complexity
+for v1" / "small weight — this is positional flavor, not a big swing"). Not
+implemented this milestone — `changeling` reshuffles the enemy's own side with no
+direct effect on the player (lowest-impact curse to optimize per the plan's own
+framing), and the fog family (`snowfall`/`contagion`/`blizzard`/`wraith_cloak`)
+would need fog-coverage-shape logic specific to each curse that wasn't worth the
+scope for v1. All four inherit `BaseCurse`'s default `ai_positioning_bonus` (`0.0`,
+confirmed by this milestone's `frenzy` default-hook smoke assertion, which exercises
+the same code path) — IMPOSSIBLE-tier AI carrying any of these four curses gets no
+positioning bonus from `curse_synergy`, same as every other curse would if this
+plan hadn't touched it. Noting as explicitly deferred, not forgotten.
+
+**DEVIATION (test scenario redesigned mid-implementation):** the first two attempts
+at `smoke_ai_curse_synergy.gd` failed for informative reasons, both left as comments
+in the final test file:
+  1. Using a second **queen** as the "high-value" piece meant it could also
+     recapture our queen directly (same sliding geometry, same line) — minimax
+     correctly declined to stand next to it regardless of the curse bonus. Not a
+     bug; the search was right to treat a real capture threat as more important
+     than a small positioning nudge. Fixed by using a **knight** instead (jump-only
+     geometry can't reach back along a straight line), decoupling "visible to us"
+     from "can hit us back".
+  2. Asserting the AI lands on one *exact* pre-picked tile was too strict — several
+     tiles along the same row see the high-value piece equally well and score
+     identically on the curse bonus, so secondary terms legitimately pick among
+     them. Fixed by asserting the *semantic* outcome (which piece ends up nearest,
+     re-derived from wherever the AI actually landed) instead of a specific
+     coordinate.
+
+**Ran:** `./tests/run_all.sh` — green except the same pre-existing
+`smoke_ability_ui_pipeline` flake noted in M2/M3 (unrelated). `smoke_curses.gd`
+(all pre-existing curse assertions, incl. `stunning_gaze`/`entangle`/`abduction`'s
+`on_action_taken` behavior) still green after adding the `ai_positioning_bonus`
+overrides — confirms the new hook is additive and doesn't disturb existing curse
+behavior. New `smoke_ai_curse_synergy.gd` (9 assertions) green on 5 consecutive
+runs. Registered in `tests/run_all.sh` right after `smoke_ai_minimax`.
 
 ### M5 — Performance guardrail
 

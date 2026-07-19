@@ -21,6 +21,7 @@ const BOARD_CONTROL_WEIGHT := 0.05
 const MOBILITY_WEIGHT := 0.1
 const THREAT_CREATION_BONUS := 1.5
 const SEE_ORDERING_WEIGHT := 0.5
+const FOLLOWUP_CAPTURE_BONUS := 1.0
 
 var _params: Dictionary
 
@@ -140,6 +141,7 @@ func _choose_minimax(character: BaseCharacter, context: Dictionary) -> Dictionar
 	var depth: int = _params.get("minimax_depth", 0)
 	var use_see: bool = _params.get("static_exchange_evaluation", false)
 	var use_threats: bool = _params.get("threat_creation", false)
+	var use_curse_synergy: bool = _params.get("curse_synergy", false)
 
 	var candidates: Array[Vector2i] = valid_targets.duplicate()
 	if use_see:
@@ -161,6 +163,9 @@ func _choose_minimax(character: BaseCharacter, context: Dictionary) -> Dictionar
 			value += SEE_ORDERING_WEIGHT * _static_exchange_score(character, snapshot, pos, bounds)
 		if use_threats:
 			value += _threat_bonus(character, snapshot, pos, bounds)
+		if use_curse_synergy and character.curse:
+			value += character.curse.ai_positioning_bonus(character, pos, child)
+			value += _followup_capture_bonus(character, snapshot, child, pos, bounds)
 		if value > best_value:
 			best_value = value
 			best_pos = pos
@@ -285,7 +290,17 @@ func _minimax(snapshot: Dictionary, depth: int, maximizing: bool, alpha: float, 
 # lightweight board-control (piece-square-table analogue) + mobility of whichever
 # piece currently sits on contested_pos (the search's focal point at this leaf - may
 # be empty if that piece got captured along the way, in which case mobility is 0).
-# Curse-synergy term (IMPOSSIBLE only) comes in M4.
+#
+# DEVIATION from §2.5.1's literal 4-component list: threat_creation (M3) and
+# curse_synergy (M4) are NOT folded in here - both are computed ONCE per ROOT
+# candidate in _choose_minimax instead of at every leaf this function is called
+# from. Reasoning: (1) performance - a depth-2 search can call _evaluate at many
+# leaf nodes per root candidate, and neither term's underlying question ("does MY
+# OWN move create a fork" / "does MY OWN move help MY curse's on-move effect")
+# changes meaning or needs re-checking at deeper hypothetical future board states,
+# so recomputing them per-leaf would be pure waste (relevant given M5's perf
+# guardrail); (2) semantics - both are about the ORIGINAL mover's own move this
+# turn, evaluated once, not a recursively-meaningful property of the search tree.
 func _evaluate(snapshot: Dictionary, mover_is_enemy: bool, contested_pos: Vector2i, bounds: Rect2i) -> float:
 	var center := Vector2(bounds.position) + Vector2(bounds.size) / 2.0
 	var max_dist: float = Vector2(bounds.size).length() / 2.0
@@ -342,3 +357,88 @@ func _threat_bonus(character: BaseCharacter, snapshot: Dictionary, pos: Vector2i
 		if hypothetical.has(target) and hypothetical[target].get("is_enemy", false) != character.is_enemy:
 			threatened += 1
 	return THREAT_CREATION_BONUS if threatened >= 2 else 0.0
+
+# `frenzy`/`bloodlust` extra-action awareness (§2.6, IMPOSSIBLE/curse_synergy only -
+# NOT a BaseCurse hook, this is about the piece's own extra-action mechanic, not a
+# per-curse "who do I target" question). frenzy always grants another action this
+# turn (extra_actions() > 0); bloodlust only does when THIS specific candidate is
+# itself a capture (grants_bonus_action_on_capture(), checked against the PRE-move
+# snapshot). Cheap approximation per §2.6: does the post-move position's own
+# valid_targets include a follow-up capture?
+func _followup_capture_bonus(character: BaseCharacter, snapshot: Dictionary, child_snapshot: Dictionary, pos: Vector2i, bounds: Rect2i) -> float:
+	if not character.curse:
+		return 0.0
+	var is_capture: bool = snapshot.has(pos)
+	var gets_extra_action: bool = character.curse.extra_actions() > 0 \
+		or (character.curse.grants_bonus_action_on_capture() and is_capture)
+	if not gets_extra_action:
+		return 0.0
+	for target in _snapshot_valid_targets(child_snapshot, pos, bounds):
+		if child_snapshot.has(target) and child_snapshot[target].get("is_enemy", false) != character.is_enemy:
+			return FOLLOWUP_CAPTURE_BONUS
+	return 0.0
+
+# =====================================================================
+# Snapshot-equivalent visibility/reachability utilities (§2.6) - STATIC and public
+# (unlike the rest of this file's search internals) so BaseCurse.ai_positioning_bonus
+# overrides (stunning_gaze_curse.gd etc.) can reuse them without needing an
+# EnemyAIStrategy instance. Deliberately bounds-free (unlike _snapshot_valid_targets
+# above): both only ever check a SPECIFIC known in-bounds position (a visible
+# occupant found along a ray, or a named candidate_pos), never enumerate "all empty
+# tiles" the way move generation does - board-edge bookkeeping only matters for the
+# latter, so it's safe to skip here.
+# =====================================================================
+
+# Snapshot-equivalent of BaseCharacter.find_visible_enemies() - same "first occupant
+# per direction blocks LOS" geometry, walked against a search/curse-hook snapshot
+# instead of live grid_manager state. viewer_is_enemy: the viewer's OWN side -
+# returns opposing-side positions only (mirrors find_visible_enemies' is_enemy !=
+# check).
+static func snapshot_visible_positions(snapshot: Dictionary, from_pos: Vector2i, directions: Array, max_view_range: int, viewer_is_enemy: bool) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	for dir in directions:
+		var d: Vector2i = dir
+		for step in range(1, max_view_range + 1):
+			var check_pos: Vector2i = from_pos + d * step
+			if snapshot.has(check_pos):
+				var occupant: Dictionary = snapshot[check_pos]
+				if occupant.get("is_enemy", false) != viewer_is_enemy and not occupant.get("is_obstacle", false):
+					found.append(check_pos)
+				break
+	return found
+
+# Can the piece at from_pos (per the snapshot's stored move_directions/move_range)
+# reach target_pos in one move - sliding geometry, blocked by the first occupant
+# along the way (captures the blocker only if target_pos IS that occupant and it's
+# an opposing piece).
+static func snapshot_can_reach(snapshot: Dictionary, from_pos: Vector2i, target_pos: Vector2i) -> bool:
+	if not snapshot.has(from_pos):
+		return false
+	var entry: Dictionary = snapshot[from_pos]
+	var move_range: int = entry.get("move_range", 1)
+	var is_enemy: bool = entry.get("is_enemy", false)
+	for dir in entry.get("move_directions", []):
+		var d: Vector2i = dir
+		for step in range(1, move_range + 1):
+			var pos: Vector2i = from_pos + d * step
+			if snapshot.has(pos):
+				if pos == target_pos:
+					var occupant: Dictionary = snapshot[pos]
+					return occupant.get("is_enemy", false) != is_enemy and not occupant.get("is_obstacle", false)
+				break
+			if pos == target_pos:
+				return true
+	return false
+
+# How many pieces of side_is_enemy could reach target_pos in one move - used by
+# abduction_curse.gd's ai_positioning_bonus override ("how exposed would the
+# abducted piece's landing tile be").
+static func snapshot_reachable_count(snapshot: Dictionary, side_is_enemy: bool, target_pos: Vector2i) -> int:
+	var count := 0
+	for from_pos in snapshot.keys():
+		var entry: Dictionary = snapshot[from_pos]
+		if entry.get("is_enemy", false) != side_is_enemy or entry.get("is_obstacle", false):
+			continue
+		if snapshot_can_reach(snapshot, from_pos, target_pos):
+			count += 1
+	return count

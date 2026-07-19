@@ -10,8 +10,29 @@ extends BaseCurse
 # Koliko sovražnikovih potez še ne sme spet ukoreniniti (0 = sme takoj).
 var cooldown_left := 0
 
+# IMPOSSIBLE-tier AI positioning weight (curse_synergy, plans/AI_DIFFICULTY_PLAN.md
+# §2.6) - placeholder, Miha's to balance.
+const AI_POSITIONING_WEIGHT := 3.0
+
 func _init():
 	id = "entangle"
+
+# Same targeting shape as stunning_gaze_curse.gd (nearest visible ally by raw
+# distance) - identical positioning override, see that file's comment.
+func ai_positioning_bonus(owner, candidate_pos: Vector2i, snapshot: Dictionary) -> float:
+	var seen: Array[Vector2i] = EnemyAIStrategy.snapshot_visible_positions(
+		snapshot, candidate_pos, owner.get_move_directions(), owner.move_range, owner.is_enemy)
+	if seen.is_empty():
+		return 0.0
+	var nearest_pos: Vector2i = seen[0]
+	var best_dist := INF
+	for pos in seen:
+		var dist: float = Vector2(candidate_pos).distance_to(Vector2(pos))
+		if dist < best_dist:
+			best_dist = dist
+			nearest_pos = pos
+	var value: int = snapshot.get(nearest_pos, {}).get("value", 1)
+	return value * AI_POSITIONING_WEIGHT
 
 func on_action_taken(owner, bc) -> void:
 	if cooldown_left > 0:
