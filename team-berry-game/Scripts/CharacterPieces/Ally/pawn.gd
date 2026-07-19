@@ -1,5 +1,10 @@
 extends BaseCharacter
 
+# Koren battle scene - battle.gd nosi friendly_pieces slovar (ime -> scena),
+# potreben za spawn nadgrajene figure ob Promotion (glej king.gd Heal za isti
+# vzorec).
+@onready var battle_root = get_node("..")
+
 func _ready():
 	move_range = 2
 	strName = "pawn"
@@ -32,6 +37,12 @@ const ABILITY_DEFS = [
 		"mid": {"shape": "plus", "desc": "Clear the snow in a 3x3 + cross-shaped area around every allied piece."},
 		"upgraded": {"shape": "square", "radius": 2, "desc": "Clear the snow in a 5x5 area around every allied piece."},
 	},
+	{
+		"id": "promotion", "name": "Promotion", "needs_target": false,
+		"base": {"promote_to": "knight", "desc": "This pawn permanently becomes a knight for the rest of this battle."},
+		"mid": {"promote_to": "rook", "desc": "This pawn permanently becomes a rook for the rest of this battle."},
+		"upgraded": {"promote_to": "queen", "desc": "This pawn permanently becomes a queen for the rest of this battle."},
+	},
 ]
 
 func get_ability_defs() -> Array:
@@ -43,6 +54,8 @@ func _execute_ability(id: String, _target) -> bool:
 			return _do_rally(_tier_data(1).get("ally_count", -1))
 		"lantern_signal":
 			return _do_lantern_signal(_tier_data(2))
+		"promotion":
+			return _do_promotion(_tier_data(3).get("promote_to", "knight"))
 	return false
 
 # Premakne najbližjih "ally_count" zavezniških figur na prosta polja tik ob
@@ -97,4 +110,26 @@ func _do_lantern_signal(tier: Dictionary) -> bool:
 		reveal_positions.append_array(_area_tiles(tier, ally.grid_pos))
 
 	grid_manager.reveal_area(reveal_positions)
+	return true
+
+# Nadomesti tega pešca s "promote_to" figuro na istem polju za preostanek te
+# bitke. Reuses the King.Cleanse/bloodhound-wolf temp-ally pathway (glej
+# PlayerManager.add_temporary_ally): odstranitev pešca NE sme šteti kot smrt -
+# is_converted_ally usmeri BaseCharacter.die() skozi
+# PlayerManager.remove_converted_ally() namesto register_dead_character(), da
+# dead_party (ki ga bere King.Heal) nikoli ne vidi "friendly_pawn".
+func _do_promotion(promote_to: String) -> bool:
+	var roster_name := "friendly_" + promote_to
+	if not battle_root.friendly_pieces.has(roster_name):
+		return false
+
+	var spawn_pos: Vector2 = grid_manager.grid_to_world(grid_pos)
+	var scene: PackedScene = battle_root.friendly_pieces[roster_name]
+
+	is_converted_ally = true
+	die()
+
+	var promoted: BaseCharacter = grid_manager.spawn_character(scene, spawn_pos)
+	promoted.is_converted_ally = true
+	player_manager.add_temporary_ally(roster_name)
 	return true

@@ -11,8 +11,10 @@ const BishopScript = preload("res://Scripts/CharacterPieces/Ally/bishop.gd")
 const KnightScript = preload("res://Scripts/CharacterPieces/Ally/knight.gd")
 const RookScript = preload("res://Scripts/CharacterPieces/Ally/rook.gd")
 const QueenScript = preload("res://Scripts/CharacterPieces/Ally/queen.gd")
+const PawnScript = preload("res://Scripts/CharacterPieces/Ally/pawn.gd")
 const BattleControllerScript = preload("res://Scripts/TileMap/BattleController.gd")
 const PlayerManagerScript = preload("res://Scripts/Player/PlayerManager.gd")
+const BattleRootScript = preload("res://Scenes/Map/battle.gd")
 
 # ----------------- King.Royal Decree -----------------
 
@@ -283,3 +285,66 @@ func test_command_fails_against_enemy_target():
 
 	assert_false(ok, "command should never grant a free move to an enemy piece")
 	assert_true(bc.free_move_character == null, "a failed command should not set free_move_character")
+
+# ----------------- Pawn.Promotion -----------------
+
+# Promotion is the one new ability whose execution genuinely needs
+# GridManager.spawn_character() (instantiate a scene, add_child, register),
+# which needs a live SceneTree (get_parent()/get_tree()) - unlike every other
+# ability in this file, which stays fully off-tree (see the file header
+# comment). This test builds a tiny scratch subtree under the real SceneTree
+# root just so spawn_character has somewhere to attach the promoted piece,
+# then tears it down synchronously (remove_child + free(), NOT queue_free())
+# so it can't leak into any later test file sharing this same process -
+# run_unit_tests.gd never processes a frame between test methods, so a
+# queue_free()'d node would still be sitting in the "characters" group the
+# next time some spawn_character() call re-scans it.
+func test_promotion_removes_pawn_without_death_and_spawns_temp_ally():
+	var tree: SceneTree = Engine.get_main_loop()
+	var scratch_root := Node.new()
+	tree.root.add_child(scratch_root)
+
+	var gm := GridManager.new()
+	scratch_root.add_child(gm)
+
+	# The promoted piece's BaseCharacter.@onready fields resolve "../BattleController"
+	# and "../Map/TileMapLayer" (same layout as the real battle.tscn) - stub
+	# siblings here purely to keep those lookups quiet, not because this test
+	# exercises battle_controller/tile_map behavior.
+	var battle_controller_stub := Node.new()
+	battle_controller_stub.name = "BattleController"
+	scratch_root.add_child(battle_controller_stub)
+	var map_stub := Node.new()
+	map_stub.name = "Map"
+	scratch_root.add_child(map_stub)
+	var tile_map_stub := Node.new()
+	tile_map_stub.name = "TileMapLayer"
+	map_stub.add_child(tile_map_stub)
+
+	var pawn := PawnScript.new()
+	pawn.strName = "pawn"
+	pawn.grid_pos = Vector2i(3, 3)
+	pawn.grid_manager = gm
+	pawn.player_manager = PlayerManagerScript.new()
+	var starting_party: Array[String] = ["friendly_pawn"]
+	pawn.player_manager.active_party = starting_party
+	pawn.battle_root = BattleRootScript.new()
+	gm.occupy(pawn.grid_pos, pawn)
+
+	var ok: bool = pawn._execute_ability("promotion", null)
+
+	assert_true(ok, "promotion should succeed when the promote_to scene exists")
+	assert_false(pawn.player_manager.dead_party.has("friendly_pawn"), "promotion must NOT register the pawn as dead")
+	assert_false(pawn.player_manager.active_party.has("friendly_pawn"), "the pawn's roster entry should leave the active party for this battle")
+	assert_true(pawn.player_manager.active_party.has("friendly_knight"), "the promoted piece should join the active party as a temporary ally")
+
+	var promoted = gm.get_character_at(Vector2i(3, 3))
+	assert_true(promoted != null and promoted is BaseCharacter, "a new piece should occupy the pawn's former tile")
+	if promoted != null:
+		assert_eq(promoted.strName, "knight", "base-tier promotion should spawn a knight")
+		assert_true(promoted.is_converted_ally, "the promoted piece must be flagged as a temporary ally, not persistent roster")
+
+	# Synchronous cleanup (see comment above) - keeps this test isolated from
+	# any other unit test file that runs later in the same process.
+	tree.root.remove_child(scratch_root)
+	scratch_root.free()
