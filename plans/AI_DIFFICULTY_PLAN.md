@@ -733,14 +733,41 @@ before-mentioned timing each run. Registered in `tests/run_all.sh` right after
 
 ### M6 — Wrap up
 
-- [ ] Full `./tests/run_all.sh` green, including all new smoke tests from M2–M5.
-- [ ] Headless `battle.tscn` boot, `--quit-after 5`, zero ERROR lines, at a forced
+- [x] Full `./tests/run_all.sh` green, including all new smoke tests from M2–M5.
+- [x] Headless `battle.tscn` boot, `--quit-after 5`, zero ERROR lines, at a forced
       floor where curses are active (reuses the pattern from `ENEMY_CURSES_PLAN.md`
       Phase 6) — confirms curse synergy code paths don't error even when
       `curse_synergy` is off (default guard clauses) and when on.
-- [ ] `CHANGELOG.md` entry.
-- [ ] Small per-milestone commits, Claude co-author line, leave branch unmerged for
+- [x] `CHANGELOG.md` entry.
+- [x] Small per-milestone commits, Claude co-author line, leave branch unmerged for
       review (per house convention — Miha merges `--no-ff` himself when ready).
+
+**Ran:**
+- `./tests/run_all.sh` — green, the only failure being the pre-existing
+  `smoke_ability_ui_pipeline` flake confirmed present on baseline `develop` before
+  this plan's first commit (M2's testing log) — unrelated to this plan, not touched.
+  `smoke_spyglass` — also confirmed pre-existing/unrelated flakiness (~27% on
+  baseline `develop` across 15 runs, M2) — passed on this run.
+- Literal `--scene res://Scenes/Map/battle.tscn --quit-after 5` boot: zero
+  `ERROR`/`SCRIPT ERROR` lines.
+- One-off `--script` harness (built on `BattleBoot`'s own boot steps, `current_map_floor`
+  forced to 6 before `battle.gd._ready()` runs, matching `ENEMY_CURSES_PLAN.md` Phase
+  6's exact precedent — **not committed**, deleted after use): ran 4 full
+  player-turn→enemy-turn cycles at both `ai_difficulty = "impossible"`
+  (`curse_synergy` on) and `"extreme"` (`curse_synergy` off), against a real battle
+  with **naturally** floor-gated curse assignment (not hand-forced) — zero real error
+  lines either way. Confirmed actual curses were assigned and exercised both the
+  overridden (`entangle`, IMPOSSIBLE run) and un-overridden default (`changeling`,
+  IMPOSSIBLE run; also saw `contagion`/`wraith_cloak`/`frenzy` on the EXTREME run) code
+  paths through `ai_positioning_bonus` — both the "has an override" and "default 0.0"
+  branches exercised in a real, not hand-built, battle.
+- `CHANGELOG.md`: new top entry, same "Title → branch (status)" convention as
+  existing entries.
+
+Branch `features/ai-difficulty` has 6 commits on top of `develop` (M1–M6, one per
+milestone, plan doc included in M1's commit), left unmerged and unpushed for review
+per house convention (`[[feedback-no-fast-forward-merges]]` — Miha merges `--no-ff`
+himself when ready).
 
 ---
 
