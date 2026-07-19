@@ -259,6 +259,11 @@ check_script "smoke_ai_curse_synergy" "res://tests/smoke/smoke_ai_curse_synergy.
 	"SMOKE_AI_CURSE_SYNERGY_OK"
 echo
 
+echo "== AI difficulty performance guardrail (24 enemies @ IMPOSSIBLE) =="
+check_script "smoke_ai_perf" "res://tests/smoke/smoke_ai_perf.gd" 8 \
+	"SMOKE_AI_PERF_OK"
+echo
+
 echo "== Pause menu smoke test =="
 check_script "smoke_pause_menu" "res://tests/smoke/smoke_pause_menu.gd" 80 \
 	"SMOKE TEST: escape resumed - menu hidden and tree unpaused again"

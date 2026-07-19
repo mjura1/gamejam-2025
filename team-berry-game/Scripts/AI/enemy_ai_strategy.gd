@@ -22,6 +22,15 @@ const MOBILITY_WEIGHT := 0.1
 const THREAT_CREATION_BONUS := 1.5
 const SEE_ORDERING_WEIGHT := 0.5
 const FOLLOWUP_CAPTURE_BONUS := 1.0
+# Per-piece radius contribution cap (M5 perf guardrail, plans/AI_DIFFICULTY_PLAN.md).
+# §2.5's literal "move_range + opponent's own move_range" bound barely bounds
+# anything on this board: sliding pieces (queen/rook/bishop) have move_range 8 on a
+# ~12-wide board, so two of them sum to 16 - wider than the board itself, meaning
+# EVERY piece on the board "qualifies" as a plausible reply at every ply and the
+# radius bound does no pruning at all. Capping each side's contribution keeps the
+# *spirit* (nearby pieces only) while actually bounding branching factor - measured
+# via smoke_ai_perf.gd, see that file + the M5 plan notes for before/after numbers.
+const RADIUS_CAP := 3
 
 var _params: Dictionary
 
@@ -234,22 +243,30 @@ func _snapshot_valid_targets(snapshot: Dictionary, from_pos: Vector2i, bounds: R
 	return targets
 
 # Radius-bounded opponent move generation (§2.5): only pieces of `side_is_enemy`
-# within (their own move_range + the contested piece's move_range) tiles of
-# `contested_pos` are considered - pieces far away can't plausibly punish/exploit
-# this move, and scanning them wastes time.
+# within (their own move_range + the contested piece's move_range, each capped at
+# RADIUS_CAP - see that constant's comment) tiles of `contested_pos` are considered
+# - pieces far away can't plausibly punish/exploit this move, and scanning them
+# wastes time. Replies are ordered captures-first (cheap, no extra snapshot walk -
+# reuses the occupancy check already done while building the list) so alpha-beta
+# above finds a strong bound early and prunes more.
 func _generate_radius_bounded_moves(snapshot: Dictionary, side_is_enemy: bool, contested_pos: Vector2i, bounds: Rect2i) -> Array:
-	var moves: Array = []
-	var contested_range: int = snapshot.get(contested_pos, {}).get("move_range", 1)
+	var captures: Array = []
+	var quiet_moves: Array = []
+	var contested_range: int = mini(snapshot.get(contested_pos, {}).get("move_range", 1), RADIUS_CAP)
 	for from_pos in snapshot.keys():
 		var entry: Dictionary = snapshot[from_pos]
 		if entry.get("is_enemy", false) != side_is_enemy or entry.get("is_obstacle", false):
 			continue
-		var piece_range: int = entry.get("move_range", 1)
+		var piece_range: int = mini(entry.get("move_range", 1), RADIUS_CAP)
 		if Vector2(from_pos).distance_to(Vector2(contested_pos)) > piece_range + contested_range:
 			continue
 		for to_pos in _snapshot_valid_targets(snapshot, from_pos, bounds):
-			moves.append({"from": from_pos, "to": to_pos})
-	return moves
+			if snapshot.has(to_pos):
+				captures.append({"from": from_pos, "to": to_pos})
+			else:
+				quiet_moves.append({"from": from_pos, "to": to_pos})
+	captures.append_array(quiet_moves)
+	return captures
 
 # Minimax with alpha-beta pruning (required per §2.5, not optional - without it,
 # depth 2 with even a handful of nearby pieces gets slow). `maximizing` = is it the

@@ -666,15 +666,70 @@ runs. Registered in `tests/run_all.sh` right after `smoke_ai_minimax`.
 
 ### M5 — Performance guardrail
 
-- [ ] Headless timing smoke: a battle with a realistic worst-case enemy count (check
+- [x] Headless timing smoke: a battle with a realistic worst-case enemy count (check
       `MapGenerator`/`GameParameters` for the actual max enemies-per-battle used at the
       hardest map tier) on IMPOSSIBLE, measure wall-clock for one full
       `start_enemy_turn()` pass. No hard frame budget exists elsewhere in this codebase
       to match against — pick a sane ceiling (e.g. a few hundred ms total, not
       per-piece) and print the measured time so Miha can judge by feel; don't silently
       pass/fail on an arbitrary threshold.
-- [ ] If too slow: tighten the opponent-move-generation radius bound (§2.5) before
+- [x] If too slow: tighten the opponent-move-generation radius bound (§2.5) before
       reducing search depth — radius is the cheaper lever.
+
+**DEVIATION (worst-case enemy count derived, not guessed):** `battle.gd` caps enemy
+spawns at `map_width(12) * enemy_spawn_rows.size()(2)` = **24** — `PlayerManager.
+add_to_enemy_party()`'s own comment confirms the enemy roster grows across every
+battle within a map tier (not reset until a new tier), and infinite mode keeps that
+growth going indefinitely past Tier 2, so 24 is the actual hard ceiling this
+codebase will ever hand the AI in one turn, not an arbitrary pick. Mix proportioned
+to Tier 2's `TIER_CONFIGS` `enemy_pool` weights (pawn 5 : knight 3 : rook 4 :
+bishop 2 : queen 1) for a realistic worst case.
+
+**DEVIATION (measured `calculate_best_move()` directly, not `start_enemy_turn()`
+as a whole):** `start_enemy_turn()`'s coroutine awaits `BattleController.
+ENEMY_MOVE_DELAY` (0.3s) per action for the move flash/pause — a fixed UI-pacing
+cost with nothing to do with AI decision cost, and at 24 enemies it adds 7.2s of
+pure sleep that would swamp any real signal. Timed the sum of
+`calculate_best_move()` calls directly instead (the actual expensive part), on a
+static board (moves computed but not applied) — if anything a slightly
+*pessimistic* estimate versus a real turn, since a real turn thins out via captures
+as it proceeds, making later pieces' searches cheaper; this keeps the board fully
+loaded for every single evaluation.
+
+**Found the guardrail was needed, not just decorative:** first run (before any
+radius tightening) measured **5479ms** for 24 enemies at IMPOSSIBLE (~228ms/enemy)
+— confirmed the plan's own stated worry (§2.5: "depth 2 with even a handful of
+nearby pieces gets slow") was real. Root cause: §2.5's literal `move_range +
+opponent's own move_range` radius bound barely bounds anything on this board —
+sliding pieces (queen/rook/bishop) have `move_range` 8 on a ~12-wide board, so two
+of them sum to 16, wider than the board itself. Every piece "qualified" as a
+plausible reply at every ply, so the radius bound was doing effectively zero
+pruning — a huge combinatorial blow-up across 24 root pieces × many opponent
+replies × many our-replies at depth 2.
+
+**Fix (radius, per the plan's own preferred lever — depth was NOT reduced):**
+added `EnemyAIStrategy.RADIUS_CAP := 3`, applied via `mini(piece_range, RADIUS_CAP)`
+to each side's contribution to the bound (`Scripts/AI/enemy_ai_strategy.gd
+_generate_radius_bounded_moves`) — keeps the *spirit* of "nearby pieces only" while
+actually bounding branching factor, instead of the raw (and here, nearly
+board-spanning) `move_range`. Also added a cheap secondary optimization in the same
+function: reply candidates are now ordered captures-first (free — reuses the
+occupancy check already done while building the list) so alpha-beta finds a strong
+bound earlier and prunes more.
+
+**Result:** 5479ms → **~35-104ms** for the same 24-enemy IMPOSSIBLE scenario across
+repeated runs (~50-150x faster) — comfortably inside the `SANITY_CEILING_MS = 5000`
+smoke-test ceiling (which, per the plan's own guidance, is a "catastrophic
+regression" tripwire, not a tuned budget — the actual number is printed every run
+for Miha to judge by feel). Re-ran `smoke_ai_minimax.gd` and
+`smoke_ai_curse_synergy.gd` after the radius change to confirm the tighter bound
+didn't silently break correctness (both scenarios' relevant pieces stay within
+`RADIUS_CAP`-bounded distance of the contested square) — both still green.
+
+**Ran:** `./tests/run_all.sh` — green except the same pre-existing
+`smoke_ability_ui_pipeline` flake. New `smoke_ai_perf.gd` green, printing the
+before-mentioned timing each run. Registered in `tests/run_all.sh` right after
+`smoke_ai_curse_synergy`.
 
 ### M6 — Wrap up
 
