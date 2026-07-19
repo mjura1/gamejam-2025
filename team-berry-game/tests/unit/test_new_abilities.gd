@@ -10,7 +10,9 @@ const KingScript = preload("res://Scripts/CharacterPieces/Ally/king.gd")
 const BishopScript = preload("res://Scripts/CharacterPieces/Ally/bishop.gd")
 const KnightScript = preload("res://Scripts/CharacterPieces/Ally/knight.gd")
 const RookScript = preload("res://Scripts/CharacterPieces/Ally/rook.gd")
+const QueenScript = preload("res://Scripts/CharacterPieces/Ally/queen.gd")
 const BattleControllerScript = preload("res://Scripts/TileMap/BattleController.gd")
+const PlayerManagerScript = preload("res://Scripts/Player/PlayerManager.gd")
 
 # ----------------- King.Royal Decree -----------------
 
@@ -225,3 +227,59 @@ func test_castling_fails_against_enemy_target():
 
 	assert_false(ok, "castling should never swap positions with an enemy piece")
 	assert_eq(rook.grid_pos, Vector2i(5, 5), "a failed castling attempt should not move the rook")
+
+# ----------------- Queen.Command -----------------
+
+func test_command_marks_free_move_character_and_skips_its_next_move_cost():
+	var gm := GridManager.new()
+	var queen := QueenScript.new()
+	queen.grid_pos = Vector2i(5, 5)
+	queen.grid_manager = gm
+	gm.occupy(queen.grid_pos, queen)
+
+	var ally := KnightScript.new()
+	ally.grid_pos = Vector2i(5, 6)
+	ally.grid_manager = gm
+	gm.occupy(ally.grid_pos, ally)
+
+	var bc := BattleControllerScript.new()
+	bc.grid_manager = gm
+	bc.player_manager = PlayerManagerScript.new()
+	queen.battle_controller = bc
+
+	var ok: bool = queen._execute_ability("command", ally.grid_pos)
+
+	assert_true(ok, "command should succeed when targeting a valid ally")
+	assert_true(bc.free_move_character == ally, "command should mark the targeted ally as the battle controller's free-move character")
+
+	bc.moves_remaining = 1
+	bc.consume_move_for(ally)
+	assert_eq(bc.moves_remaining, 1, "the free move should not consume the moves budget")
+	assert_true(bc.free_move_character == null, "the free move should be cleared once it has been used")
+
+	bc.moves_remaining = 1
+	bc.consume_move_for(queen)
+	assert_eq(bc.moves_remaining, 0, "a move by a different character should consume the budget as normal")
+
+func test_command_fails_against_enemy_target():
+	var gm := GridManager.new()
+	var queen := QueenScript.new()
+	queen.grid_pos = Vector2i(5, 5)
+	queen.grid_manager = gm
+	gm.occupy(queen.grid_pos, queen)
+
+	var enemy := KnightScript.new()
+	enemy.is_enemy = true
+	enemy.grid_pos = Vector2i(5, 6)
+	enemy.grid_manager = gm
+	gm.occupy(enemy.grid_pos, enemy)
+
+	var bc := BattleControllerScript.new()
+	bc.grid_manager = gm
+	bc.player_manager = PlayerManagerScript.new()
+	queen.battle_controller = bc
+
+	var ok: bool = queen._execute_ability("command", enemy.grid_pos)
+
+	assert_false(ok, "command should never grant a free move to an enemy piece")
+	assert_true(bc.free_move_character == null, "a failed command should not set free_move_character")

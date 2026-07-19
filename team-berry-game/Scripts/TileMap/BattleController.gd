@@ -103,6 +103,13 @@ var exterminate_armed: Dictionary = {}
 var lured_enemies: Array[BaseCharacter] = []
 var lure_source: BaseCharacter = null
 
+# Queen.Command: figura, ki ji je bila podeljena brezplačna poteza za to
+# potezo (glej queen._do_command in consume_move_for spodaj) - null, kadar
+# trenutno ni podeljene nobene. Restricted-target design (SKILL_TREE_PLAN.md
+# §4.5 popravek): NAMERNO ne skupni proračun kot add_bonus_move(), ker mora
+# biti brezplačna poteza vezana točno na izbranega zaveznika.
+var free_move_character: BaseCharacter = null
+
 func _clear_expired_evade():
 	if not is_instance_valid(grid_manager):
 		return
@@ -220,6 +227,10 @@ func start_player_turn():
 	abilities_remaining = player_manager.abilities_per_turn
 	vicious_knight_used = false
 
+	# Queen.Command: neporabljena brezplačna poteza se ne sme prenesti v
+	# naslednjo potezo.
+	free_move_character = null
+
 	# Itema "bounty"/"courier_package": tarča/kurir se izbereta enkrat, ob
 	# začetku prve poteze v bitki (sovražniki so do takrat že spawnani).
 	if turn_count == 1 and is_instance_valid(player_manager) and is_instance_valid(grid_manager):
@@ -274,6 +285,17 @@ func start_player_turn():
 func consume_move():
 	moves_remaining = maxi(0, moves_remaining - 1)
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
+
+# Kot consume_move(), a preskoči porabo proračuna, če je "character" ravno
+# figura, ki ji je Queen.Command podelila brezplačno potezo za to potezo
+# (glej free_move_character zgoraj) - ta poteza je bila že "plačana" s samo
+# Command ability-uporabo. map_behaviour.gd (oba consume_move() klicna mesta)
+# kličeta TO namesto consume_move() neposredno.
+func consume_move_for(character: BaseCharacter) -> void:
+	if character == free_move_character:
+		free_move_character = null
+		return
+	consume_move()
 
 # Porabi 1 sposobnost iz proračuna te poteze (ločeno od premikov - glej
 # opombo pri moves_remaining).

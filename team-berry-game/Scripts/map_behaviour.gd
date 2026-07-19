@@ -229,9 +229,11 @@ func _unhandled_input(event):
 					_clear_selection()
 
 					# Zajetje porabi 1 iz proračuna premikov te poteze - poteza
-					# se ne konča sama (glej consume_move()).
+					# se ne konča sama (glej consume_move()). consume_move_for()
+					# namesto consume_move() neposredno, da Queen.Command lahko
+					# preskoči porabo za svojo tarčo (glej free_move_character).
 					if is_instance_valid(battle_controller):
-						battle_controller.consume_move()
+						battle_controller.consume_move_for(mover)
 
 						# Item "vicious_knights": trmoglavo zajetje s skakačem
 						# podeli +1 premik, omejeno na 1x na potezo.
@@ -282,9 +284,11 @@ func _unhandled_input(event):
 			_clear_selection()
 
 			# Premik porabi 1 iz proračuna premikov te poteze - poteza se ne
-			# konča sama (glej consume_move()).
+			# konča sama (glej consume_move()). consume_move_for() namesto
+			# consume_move() neposredno, da Queen.Command lahko preskoči
+			# porabo za svojo tarčo (glej free_move_character).
 			if is_instance_valid(battle_controller):
-				battle_controller.consume_move()
+				battle_controller.consume_move_for(selected_character)
 				battle_controller.check_battle_end()
 
 			return
