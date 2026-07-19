@@ -474,6 +474,19 @@ func clear_all_curse_fog() -> void:
 
 # "Sneg" (snow) = katerikoli od obeh sistemov megle - uporabljeno tam, kjer
 # se pravila ne ozirajo na to, KATERA megla je na polju (klik-skozi guard,
-# freeze mehanika v M3).
+# freeze mehanika spodaj).
 func has_snow_at(pos: Vector2i) -> bool:
 	return fog_nodes.has(pos) or curse_fog_nodes.has(pos)
+
+# Snow rework: "obkrožena s snegom" = vsak od 4 ortogonalnih sosedov je BODISI
+# zunaj plošče BODISI ima sneg (robne figure lahko zamrznejo - polja zunaj
+# plošče štejejo kot obkrožujoča).
+func is_snow_surrounded(pos: Vector2i) -> bool:
+	if not is_instance_valid(tile_map):
+		return false
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = pos + offset
+		if is_inside_boundary(n, used_rect) and not has_snow_at(n):
+			return false
+	return true

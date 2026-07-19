@@ -130,6 +130,17 @@ var stunned_turns: int = 0
 # BattleController.end_player_turn tick-down).
 var rooted_turns: int = 0
 
+# Snow rework: koliko ZAPOREDNIH igralčevih potez je ta figura obkrožena s
+# snegom na vseh 4 ortogonalnih straneh (glej GridManager.is_snow_surrounded in
+# BattleController._update_snow_freeze_states) - resetira se na 0, takoj ko se
+# obroč prekine. Pri SNOW_DEATH_TURNS figura umre.
+var snow_trapped_turns: int = 0
+
+# Snow rework: ali je ta figura trenutno ZAMRZNJENA (ne more se premakniti,
+# sposobnosti pa še vedno delujejo) - glej is_snow_frozen_now spodaj za
+# "leno" (lazy) odmrzovanje, ki dovoljuje reševanje SREDI poteze.
+var snow_frozen: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -222,12 +233,31 @@ func is_castle_protected() -> bool:
 			step += dir
 	return false
 
+# Snow rework: PRAVI vir resnice za "ali je figura trenutno zamrznjena" -
+# leno (lazy) preveri, ali se je obroč snega že prekinil, in če DA, takoj
+# odmrzne (thaw je torej TAKOJŠNJI, znotraj iste poteze - npr. ko druga
+# figura prime nanjo prosto polje in prekine obroč). Klicati namesto branja
+# gole "snow_frozen" spremenljivke povsod, kjer je pomembno trenutno stanje
+# (gibanje, UI značke/status).
+func is_snow_frozen_now() -> bool:
+	if snow_frozen and is_instance_valid(grid_manager) \
+			and not grid_manager.is_snow_surrounded(grid_pos):
+		snow_frozen = false
+		snow_trapped_turns = 0
+	return snow_frozen
+
 func calculate_valid_targets() -> Array[Vector2i]:
 	var targets: Array[Vector2i] = []
 
 	# Prekletstvo "stunning_gaze": omamljena figura se ne more premakniti
 	# (traja natanko igralčevo naslednjo potezo, glej BattleController.end_player_turn).
 	if stunned_turns > 0:
+		return targets
+
+	# Snow rework: zamrznjena figura (obkrožena s snegom na vseh 4 straneh)
+	# se ne more premakniti - samo zavezniki zamrznejo (glej
+	# BattleController._update_snow_freeze_states).
+	if not is_enemy and is_snow_frozen_now():
 		return targets
 
 	# Bishop.Traps: dokler je ta figura ujeta v sovražnikovo cono, se ne more

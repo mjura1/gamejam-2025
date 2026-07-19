@@ -49,6 +49,16 @@ signal piece_stunned(character: BaseCharacter)
 # poveže to na značko/STATUS, enako kot piece_stunned.
 signal piece_rooted(character: BaseCharacter)
 
+# Snow rework: figura je bila pravkar zamrznjena (obkrožena s snegom na vseh
+# 4 straneh SNOW_FREEZE_TURNS zaporednih potez) - glej
+# _update_snow_freeze_states spodaj, battle_ui.gd poveže to na značko/STATUS.
+signal piece_frozen(character: BaseCharacter)
+
+# Snow rework pragi (glej _update_snow_freeze_states) - šteto v ZAPOREDNIH
+# začetkih igralčevih potez, prebitih obkroženo s snegom.
+const SNOW_FREEZE_TURNS := 1
+const SNOW_DEATH_TURNS := 3
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -278,6 +288,11 @@ func start_player_turn():
 
 	# Razkrijemo figure takoj, ko se poteza začne
 	update_fog_after_turn_start()
+
+	# Snow rework: smrt zaradi zamrznitve (npr. kralja) mora TAKOJ končati
+	# bitko - update_fog_after_turn_start() zgoraj lahko pravkar pokliče die().
+	if check_battle_end():
+		return
 
 	# Knight.Evade: imuniteta velja "za eno potezo" - torej natanko čez
 	# sovražnikovo potezo, ki se je pravkar iztekla.
@@ -618,3 +633,36 @@ func update_fog_after_turn_start():
 	# Prekletstvena "snowfall" megla razpada 1 fazo na rundo - vezano na začetek
 	# igralčeve poteze, torej po vsaki polni rundi (glej GridManager.tick_curse_fog_decay).
 	grid_manager.tick_curse_fog_decay()
+
+	# Vrstni red je pomemben: lastno-polje razkritje -> razpad -> freeze
+	# preverjanje, da sneg, ki je pravkar skopnel, ne šteje več za obkrožujočega.
+	_update_snow_freeze_states()
+
+# Snow rework: preveri, ali je vsaka živa zavezniška figura obkrožena s
+# snegom na vseh 4 ortogonalnih straneh - če DA, šteje ZAPOREDNE poteze
+# (SNOW_FREEZE_TURNS -> FROZEN, SNOW_DEATH_TURNS -> smrt); če NE, ponastavi
+# šteto na 0. get_all_characters() vrne occupied.values(), kar je že SNAPSHOT
+# (Dictionary.values() vrne nov Array) - varno je iterirati, tudi če die()
+# spodaj med iteracijo spremeni "occupied" preko vacate().
+func _update_snow_freeze_states() -> void:
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter):
+			continue
+		if character.is_enemy or character.is_obstacle:
+			continue
+
+		if grid_manager.is_snow_surrounded(character.grid_pos):
+			character.snow_trapped_turns += 1
+			if character.snow_trapped_turns >= SNOW_DEATH_TURNS:
+				character.die()
+				continue
+			if character.snow_trapped_turns >= SNOW_FREEZE_TURNS and not character.snow_frozen:
+				character.snow_frozen = true
+				piece_frozen.emit(character)
+		else:
+			character.snow_trapped_turns = 0
+			character.snow_frozen = false

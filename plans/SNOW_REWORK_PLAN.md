@@ -353,5 +353,22 @@ convention — other agents read it instead of re-running the suite).
 - [x] M2 single-tile clear: suite result: unit tests 942/942 pass. Smoke: all PASS
       except the same pre-existing `smoke_ability_ui_pipeline` failure. No new failures.
       `smoke_snow_freeze` single-tile-clear + fog-click-through cases pass.
-- [ ] M3 freeze mechanic: suite result:
+- [x] M3 freeze mechanic: suite result: unit tests 942/942 pass. Smoke: all PASS except
+      the same pre-existing `smoke_ability_ui_pipeline` failure. `smoke_snow_freeze` now
+      also covers freeze/same-turn-thaw/death (all pass).
+      **Deviation found + fixed**: adding `if check_battle_end(): return` to
+      `start_player_turn()` (as instructed, for freeze-deaths like the king to end the
+      battle immediately) exposed a pre-existing landmine in `PlayerManager.enemyGone()`/
+      `activeGone()` - both unconditionally return true for an EMPTY
+      `active_enemies`/`active_party`, with no guard for "never actually populated yet".
+      This had never fired before because nothing called `check_battle_end()` at turn
+      start. It broke `tests/smoke/smoke_test_sandbox.gd` (regression test for
+      `Scenes/test_sandbox.tscn`, a dev tool with 3 hand-placed friendly-only pieces and
+      no battle.gd spawn flow to populate either list) - the battle now "won" instantly
+      on turn 1 and tore down the scene. Fixed by having `Scenes/test_sandbox.gd` seed
+      both lists with a placeholder entry if empty, matching what a real battle.gd spawn
+      always does before `initialize_battle()`. Root cause is sandbox-tool-only; no
+      production battle path starts a turn with zero active enemies/party members, so
+      this isn't flagged for Miha as a gameplay concern, only logged here in case it
+      resurfaces elsewhere.
 - [ ] M4 wrap-up: final suite result:
