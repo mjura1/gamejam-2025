@@ -12,10 +12,16 @@ signal back_pressed
 @onready var back_button: Button = %BackButton
 @onready var reduced_motion_check: CheckBox = %ReducedMotionCheck
 @onready var difficulty_option: OptionButton = %DifficultyOption
+@onready var ai_difficulty_option: OptionButton = %AiDifficultyOption
 
 # Vrstni red mora ustrezati OptionButton item indeksom v settings_menu.tscn
 # (0=EASY, 1=NORMAL, 2=HARD).
 const DIFFICULTY_IDS := ["easy", "normal", "hard"]
+
+# Vrstni red mora ustrezati OptionButton item indeksom v settings_menu.tscn
+# (0=NORMAL, 1=HARD, 2=EXTREME, 3=IMPOSSIBLE) - ločena os od DIFFICULTY_IDS
+# zgoraj, glej SettingsManager.ai_difficulty.
+const AI_DIFFICULTY_IDS := ["normal", "hard", "extreme", "impossible"]
 
 const MODIFIER_KEYCODES := [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META, KEY_CAPSLOCK]
 
@@ -31,6 +37,8 @@ func _ready():
 	reduced_motion_check.toggled.connect(_on_reduced_motion_toggled)
 	difficulty_option.selected = DIFFICULTY_IDS.find(SettingsManager.difficulty)
 	difficulty_option.item_selected.connect(_on_difficulty_selected)
+	ai_difficulty_option.selected = AI_DIFFICULTY_IDS.find(SettingsManager.ai_difficulty)
+	ai_difficulty_option.item_selected.connect(_on_ai_difficulty_selected)
 	_build_rows()
 
 
@@ -43,6 +51,13 @@ func _on_difficulty_selected(index: int):
 	if index < 0 or index >= DIFFICULTY_IDS.size():
 		return
 	SettingsManager.set_difficulty(DIFFICULTY_IDS[index])
+
+
+func _on_ai_difficulty_selected(index: int):
+	UiAudio.play_click()
+	if index < 0 or index >= AI_DIFFICULTY_IDS.size():
+		return
+	SettingsManager.set_ai_difficulty(AI_DIFFICULTY_IDS[index])
 
 
 func _build_rows():
