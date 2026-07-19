@@ -36,7 +36,18 @@ func ai_positioning_bonus(owner, candidate_pos: Vector2i, snapshot: Dictionary) 
 			best_dist = dist
 			nearest_pos = pos
 	var value: int = snapshot.get(nearest_pos, {}).get("value", 1)
-	var exposure: int = EnemyAIStrategy.snapshot_reachable_count(snapshot, owner.is_enemy, candidate_pos)
+	# BUGFIX (post-M4, found during plan review): `snapshot` still has the OWNER
+	# itself sitting at candidate_pos (this is the post-move-but-pre-swap
+	# snapshot) - querying reachability of a square occupied by a fellow enemy
+	# always returns 0 (same same-side-blocking gap as avoid_hanging_pieces, see
+	# enemy_ai_strategy.gd's _filter_hanging_pieces bugfix note), so `exposure`
+	# was silently always 0 and this whole term collapsed to a no-op constant
+	# (maxi(1, 0) == 1). Erase the owner from candidate_pos first so the check
+	# reflects what the tile will actually look like once the ABDUCTED piece (not
+	# the owner) is standing there instead.
+	var post_swap_snapshot: Dictionary = snapshot.duplicate(true)
+	post_swap_snapshot.erase(candidate_pos)
+	var exposure: int = EnemyAIStrategy.snapshot_reachable_count(post_swap_snapshot, owner.is_enemy, candidate_pos)
 	return value * maxi(1, exposure) * AI_POSITIONING_WEIGHT
 
 func on_action_taken(owner, _bc) -> void:

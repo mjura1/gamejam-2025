@@ -135,7 +135,15 @@ func _process(_delta: float) -> bool:
 	_teleport(grid_manager, enemy_pawn, Vector2i(5, 5))
 	_teleport(grid_manager, pawn, Vector2i(5, 9)) # the lone "defender" ally
 	# Move the queen far away so it doesn't also contribute to the danger set.
-	_teleport(grid_manager, queen, Vector2i(0, 0))
+	# NOT (0,0): that sits exactly on the (0,0)-(1,1)-...-(5,5)-(6,6) diagonal -
+	# post-M3 bugfix, avoid_hanging_pieces now correctly simulates the enemy
+	# pawn's own move first, so a queen sitting on that diagonal would see her
+	# own line through the pawn's vacated (5,5) newly opened all the way to
+	# (6,6) once the pawn moves there - a REAL exposure a live pre-move check
+	# structurally cannot see (see enemy_ai_strategy.gd's _hanging_piece_is_safe
+	# comment), which would make (6,6) look dangerous too and defeat this test's
+	# premise. (11,0) is off that diagonal and off row 5/column 5 entirely.
+	_teleport(grid_manager, queen, Vector2i(11, 0))
 	enemy_pawn.has_spotted_player = true
 	enemy_pawn.last_known_player_pos = Vector2i(6, 7)
 

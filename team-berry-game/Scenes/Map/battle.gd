@@ -100,11 +100,18 @@ func _ready() -> void:
 # Prekletstva (Scripts/Curses/): od nadstropja CurseData.get_min_floor(current_map_tier) naprej
 # vsaka bitka ZAGOTOVI vsaj CurseData.get_min_curse_count(current_floor, current_map_tier)
 # prekletih sovražnikov (naključno izbranih izmed spawnanih, glej
-# CurseData.roll_curse_for - excluded_pieces). Vsak PREOSTALI, še ne prekleti
-# sovražnik ima poleg tega še vedno CurseData.get_curse_chance() možnost
-# dodatnega naključnega prekletstva - verjetnost je odvisna od izbrane
-# težavnosti (SettingsManager.difficulty, glej GameParameters/curses.json
-# config.difficulty_chance_mult).
+# CurseData.roll_curse_for - excluded_pieces, zdaj tudi difficulty-aware, glej
+# spodaj). Vsak PREOSTALI, še ne prekleti sovražnik ima poleg tega še vedno
+# CurseData.get_curse_chance() možnost dodatnega naključnega prekletstva -
+# verjetnost je odvisna od izbrane težavnosti (SettingsManager.difficulty,
+# glej GameParameters/curses.json config.difficulty_chance_mult).
+#
+# roll_curse_for SAM prejme isti difficulty naprej - GameParameters/curses.json
+# lahko vsakemu prekletstvu doda "weight_by_difficulty"/"excluded_pieces_by_difficulty"
+# override (manjkajoč ključ = privzeti "weight"/"excluded_pieces" nespremenjen),
+# tako da lahko nevarnejša prekletstva postanejo pogostejša na HARD in redkejša
+# na EASY, ločeno od zgornjega curse_chance skaliranja (ki samo določa KOLIKO
+# sovražnikov je prekletih, ne KATERO prekletstvo dobijo).
 #
 # get_min_floor() sam je zdaj PO MAPNEM NIVOJU (config.tier_min_floor, tier 0-2) -
 # višji tier => nižji prag => prekletstva se pojavijo PREJ (manjša globina sobe),
@@ -166,12 +173,12 @@ func _apply_curses(enemies: Array) -> void:
 	for i in range(roll_pool.size()):
 		var enemy = roll_pool[i]
 		if i < min_count:
-			_curse_enemy(enemy) # zajamčeno mesto - prekletstvo ne glede na met
+			_curse_enemy(enemy, difficulty) # zajamčeno mesto - prekletstvo ne glede na met
 		elif CurseData.should_curse(current_floor, randf(), difficulty, current_map_tier):
-			_curse_enemy(enemy) # bonus met nad zajamčenim minimumom
+			_curse_enemy(enemy, difficulty) # bonus met nad zajamčenim minimumom
 
-func _curse_enemy(enemy) -> bool:
-	var curse_id := CurseData.roll_curse_for(enemy.strName)
+func _curse_enemy(enemy, difficulty: String = "normal") -> bool:
+	var curse_id := CurseData.roll_curse_for(enemy.strName, null, difficulty)
 	if curse_id == "":
 		return false
 	enemy.apply_curse(CurseData.create_curse(curse_id))

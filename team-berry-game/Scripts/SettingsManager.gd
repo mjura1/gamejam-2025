@@ -1,7 +1,8 @@
 # res://Scripts/SettingsManager.gd (Autoload/Singleton)
 # Splošne igralne nastavitve (ločeno od KeybindManager, ki upravlja samo
 # preslikave tipk) - "reduced motion" za izklop drsečih animacij figur
-# (dostopnost), "difficulty" (curse CHANCE only, glej CurseData.get_curse_chance)
+# (dostopnost), "difficulty" (curse chance/weights/exclusions, glej
+# CurseData.get_curse_chance/get_weight/get_excluded_pieces)
 # in "ai_difficulty" (enemy move/capture DECISION-MAKING, glej
 # AiStrategyData/EnemyAIStrategy in base_character.calculate_best_move) - dve
 # NAMENOMA neodvisni osi, glej plans/AI_DIFFICULTY_PLAN.md §2.1. Shrani/naloži

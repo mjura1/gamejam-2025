@@ -66,10 +66,13 @@ func _choose_heuristic(character: BaseCharacter, context: Dictionary) -> Diction
 	var last_known_player_pos: Vector2i = context.get("last_known_player_pos", Vector2i.ZERO)
 	var avoid_hanging: bool = _params.get("avoid_hanging_pieces", false)
 
-	if not capture_candidates.is_empty():
-		var safe_captures: Array[Vector2i] = capture_candidates
-		if avoid_hanging:
-			safe_captures = _filter_hanging_pieces(character, capture_candidates)
+	var safe_captures: Array[Vector2i] = capture_candidates
+	if avoid_hanging and not capture_candidates.is_empty():
+		var snapshot: Dictionary = _build_snapshot(character)
+		var own_value: int = character.curse_data.get_piece_value(character.strName)
+		safe_captures = capture_candidates.filter(func(pos): return _hanging_piece_is_safe(character, snapshot, own_value, pos))
+
+	if not safe_captures.is_empty():
 		var best_capture: Vector2i = safe_captures[0]
 		var best_value := -1
 		for pos in safe_captures:
@@ -80,9 +83,21 @@ func _choose_heuristic(character: BaseCharacter, context: Dictionary) -> Diction
 				best_capture = pos
 		return {"move_type": "CAPTURE", "target_pos": best_capture}
 
-	var chase_candidates: Array[Vector2i] = valid_targets
+	# No capture worth taking (either none existed, or avoid_hanging_pieces
+	# declined every one of them as a bad trade) - chase using only genuinely
+	# EMPTY destinations. Excluding capture_candidates here matters regardless of
+	# why we got here: try_move() re-resolves the target itself and treats ANY
+	# enemy-occupied destination as a capture no matter what move_type we return
+	# (see base_character.gd's try_move comment), so leaving a declined-as-unsafe
+	# capture tile in the chase pool would silently take it anyway, undoing the
+	# whole point of declining it above.
+	var chase_pool: Array[Vector2i] = valid_targets.filter(func(pos): return pos not in capture_candidates)
+	if chase_pool.is_empty():
+		chase_pool = capture_candidates # boxed in by only capturable enemies - "never paralyze", take the least-bad one
+
+	var chase_candidates: Array[Vector2i] = chase_pool
 	if avoid_hanging:
-		chase_candidates = _filter_hanging_pieces(character, chase_candidates)
+		chase_candidates = _filter_hanging_pieces(character, chase_pool)
 
 	var best_move: Vector2i = chase_candidates[0]
 	var best_score := INF
@@ -109,28 +124,53 @@ func _choose_heuristic(character: BaseCharacter, context: Dictionary) -> Diction
 		if found_safe:
 			best_move = safe_move
 
-	return {"move_type": "MOVE", "target_pos": best_move}
+	# best_move can legitimately be a capture here (the chase_pool "boxed in"
+	# fallback above) - resolve move_type from the live board rather than
+	# hardcoding "MOVE", for an accurate return value even though try_move()
+	# would auto-correct it anyway.
+	var move_type := "CAPTURE" if character.grid_manager.get_character_at(best_move) else "MOVE"
+	return {"move_type": move_type, "target_pos": best_move}
 
-# `avoid_hanging_pieces` (HARD+, §2.4): generalizes danger-avoidance from the chase
-# step to EVERY candidate, captures included (pre-refactor code explicitly never
-# filtered captures - "captures stay aggressive"; this tier flag is what changes
-# that). For each candidate in the ally-reachable ("danger") set, keeps it only if
-# what we'd gain (captured piece's value, 0 for a plain move) isn't clearly less than
-# what we'd risk (this piece's own value) - i.e. drops candidates that are a bad
-# trade. Never leaves zero candidates - falls back to the unfiltered set if every
-# candidate looks dangerous (same "never paralyze" rule as the pre-refactor code).
+# Per-candidate "would landing here look safe" check (§2.4) - shared by
+# _filter_hanging_pieces (chase path, keeps its own never-paralyze fallback below)
+# and the capture-priority branch above (which does NOT want that fallback: forcing
+# a knowingly-bad capture defeats the point of checking at all, when simply not
+# capturing and chasing instead is always available as a fallback).
+#
+# BUGFIX (post-M3, found during plan review): this used to check
+# `character.grid_manager.tiles_reachable_by(false)` - the LIVE, PRE-move board -
+# for every candidate. That's a no-op for captures specifically: a capture
+# candidate's square is, by definition, occupied by the piece about to be
+# captured, and calculate_valid_targets() never lets a same-side ally "reach"
+# a square occupied by another living ally (see base_character.gd:256-272) - so
+# the live pre-move board can never show a capture square as dangerous, no matter
+# how defended it actually is. HARD was silently walking into every defended-piece
+# trap exactly like NORMAL, contradicting this flag's own "captures included"
+# promise (§2.4). Fixed by checking POST-move reachability against a snapshot
+# instead (simulate landing at `pos` first, removing whatever was captured, THEN
+# check who could reach it) - same idea _static_exchange_score already uses, just
+# without the extra ordering/SEE scoring since this is the (non-search) heuristic
+# path. This also correctly catches the SYMMETRIC case a live pre-move check
+# structurally cannot: vacating our OWN square can open a fellow piece's line
+# THROUGH that square to somewhere further along it (see smoke_ai.gd's TEST 2
+# comment for a worked example with a queen sitting on the relevant diagonal).
+func _hanging_piece_is_safe(character: BaseCharacter, snapshot: Dictionary, own_value: int, pos: Vector2i) -> bool:
+	var gain: int = snapshot[pos].get("value", 1) if snapshot.has(pos) else 0
+	var post_move: Dictionary = _simulate_move(snapshot, character.grid_pos, pos)
+	var exposed: bool = snapshot_reachable_count(post_move, not character.is_enemy, pos) > 0
+	return not exposed or gain > own_value
+
+# Keeps a candidate only if what we'd gain (captured piece's value, 0 for a plain
+# move) isn't clearly less than what we'd risk (this piece's own value) once
+# actually standing there. Never leaves zero candidates - falls back to the
+# unfiltered set if every candidate looks dangerous (same "never paralyze" rule as
+# before this file existed). Used for the CHASE pool only - see
+# _hanging_piece_is_safe's own doc comment for why the capture-priority branch
+# above calls that helper directly instead of going through this fallback.
 func _filter_hanging_pieces(character: BaseCharacter, candidates: Array[Vector2i]) -> Array[Vector2i]:
-	var danger_tiles: Array[Vector2i] = character.grid_manager.tiles_reachable_by(false)
+	var snapshot: Dictionary = _build_snapshot(character)
 	var own_value: int = character.curse_data.get_piece_value(character.strName)
-	var safe: Array[Vector2i] = []
-	for pos in candidates:
-		if pos not in danger_tiles:
-			safe.append(pos)
-			continue
-		var target_char = character.grid_manager.get_character_at(pos)
-		var gain: int = character.curse_data.get_piece_value(target_char.strName) if target_char else 0
-		if gain > own_value:
-			safe.append(pos)
+	var safe: Array[Vector2i] = candidates.filter(func(pos): return _hanging_piece_is_safe(character, snapshot, own_value, pos))
 	if safe.is_empty():
 		return candidates
 	return safe

@@ -769,6 +769,69 @@ milestone, plan doc included in M1's commit), left unmerged and unpushed for rev
 per house convention (`[[feedback-no-fast-forward-merges]]` — Miha merges `--no-ff`
 himself when ready).
 
+## Post-M6 bugfix pass (plan review, before merge)
+
+A review pass (independent test re-run + reading the actual diff, not just the
+deviation prose above) found two real gaps in M3/M4, both sharing one root cause:
+`tiles_reachable_by()`/`snapshot_can_reach()` can never show a square as "reachable"
+while it's still occupied by a piece of the *same side doing the querying*
+(`calculate_valid_targets()` blocks same-side occupancy unconditionally, see
+`base_character.gd:256-272`) - any check run on a snapshot where the queried square
+is occupied by the querying side's own piece silently returns "not reachable," no
+matter how genuinely exposed that square actually is once the piece in question
+moves away.
+
+1. **`avoid_hanging_pieces` (HARD) was a no-op for captures.** M3's version checked
+   `tiles_reachable_by(false)` on the LIVE, pre-move board - but a capture
+   candidate's square is *by definition* occupied by the piece about to be
+   captured, so it could never register as dangerous no matter how defended it
+   was. HARD was walking into the exact same defended-piece trap NORMAL does,
+   contradicting §2.4's own "captures included" promise. Fixed in
+   `enemy_ai_strategy.gd` by checking POST-move reachability against a snapshot
+   instead (new `_hanging_piece_is_safe` helper, shared by both the capture and
+   chase paths).
+2. **Fixing #1 surfaced a second, deeper issue**: the "never paralyze" fallback
+   (fall back to the unfiltered candidate set if everything looks dangerous) was
+   defeating the capture fix whenever there was exactly ONE capture candidate and
+   it was a bad trade - filtering it out left `safe` empty, which triggered the
+   fallback right back to `[the one bad capture]`, so HARD still took it anyway.
+   Restructured `_choose_heuristic`: a capture that gets filtered out is now
+   genuinely declined (not re-forced by the fallback), falling through to chase
+   instead - using only `valid_targets` MINUS `capture_candidates`, since
+   `try_move()` re-resolves the target and would silently execute a capture
+   anyway if the chase step picked one of the declined squares.
+3. **The fix also correctly catches the SYMMETRIC case a live pre-move check
+   structurally cannot**: vacating our OWN square can open a fellow piece's
+   line THROUGH it to somewhere further along the same line. This is real, not a
+   false positive - but it broke `smoke_ai.gd`'s TEST 2, whose ally queen
+   happened to sit at (0,0), exactly on the diagonal through the enemy pawn's
+   start (5,5) and one of the test's two tied chase candidates (6,6). Once the
+   pawn's own move is properly simulated, that diagonal opens up post-move and
+   (6,6) genuinely becomes exposed too - not a bug, just a test fixture that
+   accidentally depended on the old check's blind spot. Fixed by moving the
+   queen to (11,0) (off that diagonal and off row/column 5 entirely).
+4. **`abduction_curse.gd`'s `exposure` term was dead code** - same root cause,
+   different spot: `ai_positioning_bonus` queried reachability of `candidate_pos`
+   on a snapshot where the OWNER itself still stood there (post-move-but-pre-swap),
+   so `exposure` was always 0 and `maxi(1, exposure)` always simplified to the
+   constant `1`. The "scales with how exposed the landing tile is" behavior the
+   comment described never actually happened. Not caught by M4's own smoke test,
+   which only exercises `stunning_gaze`. Fixed by erasing the owner from a
+   duplicated snapshot before checking (representing the tile as it will look once
+   the *abducted* piece, not the owner, stands there).
+
+**Also added:** a `smoke_ai_curse_synergy.gd` regression check for #4 (hand-built
+snapshot with 0 vs. 2 fellow-enemy "reachers" of the landing tile, asserting the
+bonus actually differs - `maxi(1, x)` floors at 1, so exposure needs to reach 2
+before it's distinguishable from the broken always-0 case, not 1).
+
+**Ran:** `./tests/run_all.sh` 4 consecutive times after the fix - green except the
+same pre-existing `smoke_ability_ui_pipeline` flake (every run) and one incidental
+`smoke_fortress` flake (1 of 4 runs, passed on retry, unrelated - this branch never
+touches the fortress item). All AI smoke tests (`smoke_ai`, `smoke_ai_minimax`,
+`smoke_ai_curse_synergy`, `smoke_ai_perf`) green on every run, including the two new/
+adjusted assertions from this pass.
+
 ---
 
 ## 5. Testing plan (rolled into milestones above, summarized here)

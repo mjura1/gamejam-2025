@@ -95,9 +95,12 @@ func test_roll_curse_for_is_deterministic_with_seeded_rng():
 		"same seed should produce the same rolled curse")
 
 func test_roll_curse_for_never_rolls_zero_weight_curse():
-	# Temporarily zero out frenzy's weight and confirm it never rolls.
+	# Temporarily zero out frenzy's weight (base AND weight_by_difficulty.normal,
+	# which shadows "weight" for the default "normal" difficulty passed below -
+	# see curses.json's weight_by_difficulty comment) and confirm it never rolls.
 	var original: Dictionary = CurseData._curses["frenzy"].duplicate()
 	CurseData._curses["frenzy"]["weight"] = 0
+	CurseData._curses["frenzy"]["weight_by_difficulty"] = {}
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	for i in range(50):

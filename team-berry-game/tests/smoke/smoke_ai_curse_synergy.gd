@@ -163,6 +163,36 @@ func _process(_delta: float) -> bool:
 	_check("EXTREME (no curse_synergy) still returns a legal move with a curse present",
 		extreme_action.get("target_pos", Vector2i(-99, -99)) in valid_targets)
 
+	# ---------------------------------------------------------------
+	# BUGFIX regression check (post-M4, found during plan review): abduction's
+	# `exposure` term used to be dead code - always 0 (maxi(1, 0) == 1, a no-op
+	# constant) - because the snapshot it queried still had the OWNER itself
+	# standing at candidate_pos, and a fellow enemy can never "reach" a square
+	# occupied by another enemy (same same-side-blocking gap avoid_hanging_pieces
+	# had, see enemy_ai_strategy.gd's _filter_hanging_pieces comment). Confirm the
+	# bonus now genuinely varies with how many fellow enemies could reach the
+	# abducted piece's landing tile: hand-build two variants of snapshot_b (queen
+	# already at CANDIDATE_B, from the check above) - baseline (no other enemy
+	# nearby) vs. two synthetic enemy rooks that can each reach CANDIDATE_B (one
+	# down the column, one along the row) - maxi(1, exposure) needs exposure >= 2
+	# to differ from the baseline's exposure == 0, since maxi(1,0) == maxi(1,1) == 1.
+	# ---------------------------------------------------------------
+	var abduction = curse_data.create_curse("abduction")
+	var bonus_no_exposure: float = abduction.ai_positioning_bonus(enemy_queen, CANDIDATE_B, snapshot_b)
+
+	var rook_shape: Dictionary = {
+		"is_enemy": true, "is_obstacle": false, "value": 5,
+		"move_directions": [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)],
+		"move_range": 8,
+	}
+	var snapshot_b_exposed: Dictionary = snapshot_b.duplicate(true)
+	snapshot_b_exposed[Vector2i(5, 9)] = rook_shape.duplicate() # same column as CANDIDATE_B (5,6)
+	snapshot_b_exposed[Vector2i(9, 6)] = rook_shape.duplicate() # same row as CANDIDATE_B (5,6)
+	var bonus_two_exposed: float = abduction.ai_positioning_bonus(enemy_queen, CANDIDATE_B, snapshot_b_exposed)
+
+	_check("abduction's exposure term is no longer dead code - fellow enemies able to reach the landing tile raise the bonus",
+		bonus_two_exposed > bonus_no_exposure)
+
 	if fails == 0:
 		print(">>> SMOKE_AI_CURSE_SYNERGY_OK <<<")
 	else:

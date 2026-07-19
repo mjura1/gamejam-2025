@@ -1,15 +1,24 @@
 extends SceneTree
 
 # AI difficulty (plans/AI_DIFFICULTY_PLAN.md M3): proves minimax (EXTREME/IMPOSSIBLE)
-# is actually doing something, not just present but inert - a hand-built "defended
-# pawn" trap where the immediate capture looks great (gain a pawn) but is actually a
-# blunder (the square is only reachable by a defending rook once the bait pawn is
-# removed - line-of-sight opens up post-capture). NORMAL/HARD's avoid_hanging_pieces
-# checks reachability on the LIVE, PRE-move board, where the defender's path is still
-# blocked by its own bait pawn - so it can't see the trap and walks in. EXTREME/
-# IMPOSSIBLE's minimax SIMULATES the capture first, then generates the opponent's
-# replies from the post-move snapshot, where the defender's line is now open -
-# correctly declining the trade.
+# and avoid_hanging_pieces (HARD+) are actually doing something, not just present but
+# inert - a hand-built "defended pawn" trap where the immediate capture looks great
+# (gain a pawn) but is actually a blunder (the square is only reachable by a
+# defending rook once the bait pawn is removed - line-of-sight opens up
+# post-capture). NORMAL has no protection at all and walks in. HARD/EXTREME/
+# IMPOSSIBLE all SIMULATE the capture first (removing the bait pawn), then check the
+# post-move position for the now-open defender line - correctly declining the trade.
+#
+# POST-M3 BUGFIX NOTE: HARD's avoid_hanging_pieces originally checked reachability
+# on the LIVE, PRE-move board, which can never see this trap (a same-side-blocking
+# gap - see enemy_ai_strategy.gd's _filter_hanging_pieces comment) and made HARD
+# walk in identically to NORMAL. Fixed to check POST-move reachability instead, so
+# HARD now correctly declines this trap too - it's a real one-ply "is this square
+# now defended" check, just not full search. EXTREME/IMPOSSIBLE's minimax remains
+# strictly more capable (multi-ply, SEE-ordered, fork-aware) - this specific
+# single-ply-detectable trap just no longer happens to be the scenario that
+# distinguishes HARD from EXTREME; a deeper/multi-defender scenario would be needed
+# for that, left as a possible follow-up rather than in scope for this bugfix.
 #
 # Enemy rook (5,5) [value 5], bait ally pawn (5,2) [value 1, distance 3 - outside
 # panic_distance so panic randomness can't perturb the MOVE result], defender ally
@@ -99,7 +108,7 @@ func _process(_delta: float) -> bool:
 	_check("the defender's line is still blocked pre-move - (5,2) is NOT flagged dangerous yet",
 		not (BAIT_POS in danger_tiles))
 
-	for tier in ["normal", "hard"]:
+	for tier in ["normal"]:
 		_teleport(grid_manager, enemy_rook, ENEMY_POS)
 		_teleport(grid_manager, bait_pawn, BAIT_POS)
 		_teleport(grid_manager, defender_rook, DEFENDER_POS)
@@ -110,7 +119,7 @@ func _process(_delta: float) -> bool:
 		_check("%s ai_difficulty walks into the defended-pawn trap" % tier.to_upper(),
 			action.get("move_type", "") == "CAPTURE" and action.get("target_pos", Vector2i(-99, -99)) == BAIT_POS)
 
-	for tier in ["extreme", "impossible"]:
+	for tier in ["hard", "extreme", "impossible"]:
 		_teleport(grid_manager, enemy_rook, ENEMY_POS)
 		_teleport(grid_manager, bait_pawn, BAIT_POS)
 		_teleport(grid_manager, defender_rook, DEFENDER_POS)
