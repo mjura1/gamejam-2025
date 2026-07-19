@@ -122,6 +122,7 @@ func trigger_exterminate_if_armed():
 		return
 	var tiles: Array = exterminate_armed.get("tiles", [])
 	var owner_is_enemy: bool = exterminate_armed.get("owner_is_enemy", false)
+	var blast_owner = exterminate_armed.get("owner")
 	exterminate_armed = {}
 
 	if not is_instance_valid(grid_manager):
@@ -131,6 +132,12 @@ func trigger_exterminate_if_armed():
 		var target = grid_manager.get_character_at(pos)
 		if target and target is BaseCharacter and target.is_enemy != owner_is_enemy and not target.is_obstacle:
 			target.die()
+
+	# Queen.Scorched Earth (skill tree flag "blast_clears_snow"): razkrije
+	# celotno eksplozijsko območje po zajetju - glej GameParameters/skill_trees.json.
+	if is_instance_valid(blast_owner) and blast_owner is BaseCharacter \
+			and blast_owner.has_flag("blast_clears_snow"):
+		grid_manager.reveal_area(tiles)
 
 const ENEMY_MOVE_DELAY := 0.3 # premor med posameznimi sovražnikovimi potezami
 const ENEMY_MOVE_FADE_DURATION := 5.0 # kako dolgo počasi izginjajo poudarki potez

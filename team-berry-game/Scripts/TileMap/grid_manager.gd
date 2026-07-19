@@ -304,11 +304,14 @@ func _remove_fog_tile(grid_pos: Vector2i):
 		return true
 	return false
 
-# Klicano s strani BattleControllerja za razkrivanje območja
+# Klicano s strani BattleControllerja za razkrivanje območja - odstrani OBA
+# sistema megle (ambientno in prekletstveno), da so vsa "clear snow" mesta
+# (figure, predmeti, pasivke) resnično dosledna z opisi, ki jih obljubljajo.
 func reveal_area(positions_to_reveal):
 	for pos in positions_to_reveal:
 		# Odstrani vozlišče megle, če obstaja
 		_remove_fog_tile(pos)
+		_remove_curse_fog_tile(pos)
 
 # Prekletstvo "snowfall": zrcalno reveal_area - PONOVNO pokrije polja z
 # meglo. Klicatelj (snowfall_curse.gd) polja že filtrira na mejo plošče, zato
@@ -462,12 +465,6 @@ func _remove_curse_fog_tile(pos: Vector2i) -> void:
 	curse_fog_ticks_per_stage.erase(pos)
 	curse_fog_tick_progress.erase(pos)
 	curse_fog_spread.erase(pos)
-
-# Aktivno "razkritje" prekletstvene megle na danih poljih (npr. Rook.Lookout) -
-# za razliko od tick_curse_fog_decay, ki polja stopi postopoma.
-func clear_curse_fog_area(positions_to_reveal) -> void:
-	for pos in positions_to_reveal:
-		_remove_curse_fog_tile(pos)
 
 func clear_all_curse_fog() -> void:
 	for pos in curse_fog_nodes.keys():

@@ -342,7 +342,14 @@ convention — other agents read it instead of re-running the suite).
       TEST: all 12 abilities exercised cleanly through the real UI pipeline") — unrelated
       to snow, not touched by this branch. Overall harness result `FAIL` due only to that
       one pre-existing failure. This is the baseline to diff against.
-- [ ] M1 bug fix: suite result:
+- [x] M1 bug fix: suite result: unit tests 942/942 pass. Smoke: all PASS except the
+      same pre-existing `smoke_ability_ui_pipeline` failure from the M0 baseline (no new
+      failures). One transient flake seen on a single run (`smoke_spyglass`, unrelated -
+      random column-pick test occasionally lands on an occupied tile); reran clean.
+      New `smoke_snow_freeze` (bug-fix + Scorched Earth cases) passes.
+      Deviation from plan: `reveal_area()`'s Slovenian doc-comment was a plain one-liner,
+      not a multi-line block - expanded it in place rather than editing a nonexistent
+      longer comment.
 - [ ] M2 single-tile clear: suite result:
 - [ ] M3 freeze mechanic: suite result:
 - [ ] M4 wrap-up: final suite result:
