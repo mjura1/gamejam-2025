@@ -26,25 +26,26 @@ const MAX_PLACED := 5
 @onready var revive_count_label: Label = %ReviveCount
 @onready var portrait: TextureRect = %Portrait
 @onready var status_value: Label = %StatusValue
+@onready var ability1_row: HBoxContainer = %Ability1Row
+@onready var ability1_icon: TextureRect = %Ability1Icon
 @onready var ability1_name: Label = %Ability1Name
 @onready var ability1_level: Label = %Ability1Level
 @onready var ability1_uses: Label = %Ability1Uses
-@onready var ability1_desc: Label = %Ability1Desc
 @onready var ability1_button: Button = %Ability1Button
+@onready var ability2_row: HBoxContainer = %Ability2Row
+@onready var ability2_icon: TextureRect = %Ability2Icon
 @onready var ability2_name: Label = %Ability2Name
 @onready var ability2_level: Label = %Ability2Level
 @onready var ability2_uses: Label = %Ability2Uses
-@onready var ability2_desc: Label = %Ability2Desc
 @onready var ability2_button: Button = %Ability2Button
-@onready var ability2_body: VBoxContainer = %Ability2Body
-@onready var ability2_locked: Label = %Ability2Locked
+@onready var ability3_row: HBoxContainer = %Ability3Row
+@onready var ability3_icon: TextureRect = %Ability3Icon
 @onready var ability3_name: Label = %Ability3Name
 @onready var ability3_level: Label = %Ability3Level
 @onready var ability3_uses: Label = %Ability3Uses
-@onready var ability3_desc: Label = %Ability3Desc
 @onready var ability3_button: Button = %Ability3Button
-@onready var ability3_body: VBoxContainer = %Ability3Body
-@onready var ability3_locked: Label = %Ability3Locked
+@onready var ability_bubble: PanelContainer = %AbilityBubble
+@onready var ability_bubble_label: Label = %AbilityBubbleLabel
 @onready var moves_label: Label = %MovesLabel
 @onready var abilities_label: Label = %AbilitiesLabel
 @onready var turn_label: Label = %TurnLabel
@@ -66,7 +67,24 @@ const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
 const STATUS_STUNNED_COLOR := Color(0.8, 0.5, 1.0)
 const STATUS_ROOTED_COLOR := Color(0.45, 0.65, 0.25)
 
+const ABILITY_ICON_PLACEHOLDER := preload("res://Assets/Sprites/ability_placeholder.png")
+# Isti "sivi" ton kot PieceIcon.COLOR_DEAD, da je "nedosegljivo" vizualno
+# skladno povsod po tem UI-ju.
+const ABILITY_ICON_LOCKED_TINT := Color(0.35, 0.35, 0.35)
+const ABILITY_ICON_UNLOCKED_TINT := Color(1, 1, 1)
+const ABILITY_BUBBLE_WIDTH := 260.0
+const ABILITY_BUBBLE_MARGIN := 8.0
+const ABILITY_BUTTON_TEXT_UNLOCKED := "Use Ability"
+const ABILITY_BUTTON_TEXT_LOCKED := "?"
+
 var placement_active: bool = false
+
+# Slot (1-3) -> hover bubble text ("" = no bubble on hover), napolnjen iz
+# _show_abilities()/_clear_ability_rows()/_show_enemy(), bran samo iz
+# _on_ability_row_mouse_entered spodaj. To omogoča, da tudi prekletstvo
+# sovražnika (repurposed slot 1 v _show_enemy) deluje skozi isti generični
+# mehanizem brez posebnih primerov v handlerju.
+var _slot_bubble_state: Dictionary = {1: "", 2: "", 3: ""}
 
 # Stanje drag & dropa med placement fazo. drag_source_character je nastavljen,
 # ko premikamo že postavljeno figuro; sicer postavljamo novo iz rosterja.
@@ -107,9 +125,18 @@ func _ready():
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
 	ability3_button.pressed.connect(_on_ability_pressed.bind(3))
+	for slot_row in [[1, ability1_row], [2, ability2_row], [3, ability3_row]]:
+		var slot: int = slot_row[0]
+		var row: HBoxContainer = slot_row[1]
+		row.mouse_entered.connect(_on_ability_row_mouse_entered.bind(slot, row))
+		row.mouse_exited.connect(_hide_ability_bubble)
 	# Preberi rebindane bližnjice v živo (npr. igralec spremeni bind med pavzo
 	# sredi bitke) - značke slotov naj se takoj osvežijo.
 	KeybindManager.rebinds_changed.connect(_rebuild_rows)
+
+	for w in _ability_slot_widgets().values():
+		w.icon.texture = ABILITY_ICON_PLACEHOLDER
+	ability_bubble_label.custom_minimum_size.x = ABILITY_BUBBLE_WIDTH
 
 	_update_item_counts()
 	_clear_detail_panel()
@@ -765,6 +792,7 @@ func _show_character(character: BaseCharacter):
 	else:
 		status_value.text = "ALIVE"
 		status_value.add_theme_color_override("font_color", STATUS_ALIVE_COLOR)
+	_hide_ability_bubble()
 	_shown_character = character
 	_show_abilities(character)
 
@@ -784,7 +812,7 @@ func _show_enemy(character: BaseCharacter):
 		status_value.text = character.curse.status_text()
 		status_value.add_theme_color_override("font_color", character.curse.color())
 		ability1_name.text = character.curse.display_name()
-		ability1_desc.text = character.curse.description()
+		_slot_bubble_state[1] = character.curse.description()
 	else:
 		status_value.text = "ENEMY"
 		status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
@@ -815,17 +843,17 @@ func _clear_detail_panel():
 
 
 func _clear_ability_rows():
-	ability1_name.text = "-"
-	ability1_level.text = ""
-	ability1_uses.text = ""
-	ability1_desc.text = ""
-	ability1_button.disabled = true
-	ability2_body.visible = false
-	ability2_locked.visible = true
-	ability2_locked.text = "Use 1 upgrade item at a rest to unlock the second ability."
-	ability3_body.visible = false
-	ability3_locked.visible = true
-	ability3_locked.text = "Unlock the third ability in this piece's skill tree at a rest."
+	for w in _ability_slot_widgets().values():
+		w.icon.modulate = ABILITY_ICON_LOCKED_TINT
+		w.name.text = "-"
+		w.level.text = ""
+		w.uses.text = ""
+		w.button.disabled = true
+		w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
+		w.button.mouse_filter = Control.MOUSE_FILTER_STOP
+	for slot in [1, 2, 3]:
+		_slot_bubble_state[slot] = ""
+	_hide_ability_bubble()
 
 
 # "LV n" ali "LV MAX", ko je figura na najvišji stopnji (glej
@@ -836,8 +864,30 @@ func _level_text(info: Dictionary) -> String:
 	return "LV MAX" if level >= level_max else "LV %d" % level
 
 
+# Zbere node reference vseh treh vrstic sposobnosti v en slovar (slot -> par
+# widgetov), da jih _show_abilities()/_clear_ability_rows() lahko obdelata v
+# isti zanki namesto s podvojeno kodo na slot.
+func _ability_slot_widgets() -> Dictionary:
+	return {
+		1: {"row": ability1_row, "icon": ability1_icon, "name": ability1_name,
+			"level": ability1_level, "uses": ability1_uses, "button": ability1_button},
+		2: {"row": ability2_row, "icon": ability2_icon, "name": ability2_name,
+			"level": ability2_level, "uses": ability2_uses, "button": ability2_button},
+		3: {"row": ability3_row, "icon": ability3_icon, "name": ability3_name,
+			"level": ability3_level, "uses": ability3_uses, "button": ability3_button},
+	}
+
+
+# Ime slota v besedilu "locked" sporočila ("second"/"third" - slot 1 nikoli ni
+# zaklenjen, glej is_slot_unlocked spodaj).
+const _SLOT_ORDINAL := {2: "second", 3: "third"}
+
+
 # Napolni vse tri vrstice sposobnosti iz character.get_ability_info(slot) in
-# nastavi gumbe glede na to, ali jih igralec sme trenutno uporabiti.
+# nastavi gumbe glede na to, ali jih igralec sme trenutno uporabiti. Slot 1 je
+# strukturno vedno "unlocked" (is_slot_unlocked(1) je unconditionally true v
+# base_character.gd), zato zanka spodaj brez posebnega primera pokrije vse 3
+# slote - locked veja preprosto nikoli ne sproži za slot 1.
 func _show_abilities(character: BaseCharacter):
 	var can_use_now: bool = (
 		not character.is_enemy
@@ -846,46 +896,41 @@ func _show_abilities(character: BaseCharacter):
 		and map_behaviour.pending_ability.is_empty()
 	)
 
-	var info1 := character.get_ability_info(1)
-	ability1_name.text = info1.get("name", "-")
-	ability1_level.text = _level_text(info1)
-	ability1_uses.text = "%d/%d" % [info1.get("uses_remaining", 0), info1.get("uses_max", 0)]
-	ability1_desc.text = info1.get("desc", "")
-	ability1_button.disabled = not (can_use_now and info1.get("uses_remaining", 0) > 0)
-
-	# Slota 2 in 3 delita isto "body/locked" strukturo (za razliko od slota 1,
-	# ki nima zaklenjenega stanja) - zberemo njune node reference v par
-	# slovarjev in ju obdelamo v isti zanki (isti vzorec kot unlocked_slots v
-	# base_character.gd _load_persistent_upgrades()).
-	var slot_widgets := {
-		2: {"name": ability2_name, "level": ability2_level, "uses": ability2_uses,
-			"desc": ability2_desc, "button": ability2_button, "body": ability2_body, "locked": ability2_locked},
-		3: {"name": ability3_name, "level": ability3_level, "uses": ability3_uses,
-			"desc": ability3_desc, "button": ability3_button, "body": ability3_body, "locked": ability3_locked},
-	}
-	for slot in [2, 3]:
+	var slot_widgets := _ability_slot_widgets()
+	for slot in [1, 2, 3]:
 		var w: Dictionary = slot_widgets[slot]
 		if character.is_slot_unlocked(slot):
 			var info := character.get_ability_info(slot)
-			w.body.visible = true
-			w.locked.visible = false
+			w.icon.modulate = ABILITY_ICON_UNLOCKED_TINT
 			w.name.text = info.get("name", "-")
 			w.level.text = _level_text(info)
 			w.uses.text = "%d/%d" % [info.get("uses_remaining", 0), info.get("uses_max", 0)]
-			w.desc.text = info.get("desc", "")
 			w.button.disabled = not (can_use_now and info.get("uses_remaining", 0) > 0)
+			w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
+			_slot_bubble_state[slot] = info.get("desc", "")
 		else:
-			w.body.visible = false
-			w.locked.visible = true
-			if slot == 2:
-				# Cena odklepa pride iz skill drevesa (a2_unlock vozlišče tega
-				# tipa), ne več iz get_ability_info - glej SKILL_TREE_PLAN.md §5.1.
-				var unlock_cost: int = skill_tree_data.get_node_def(character.strName, "a2_unlock").get("cost", 1)
-				w.locked.text = "Use %d upgrade item%s at a rest to unlock the second ability." % [
-					unlock_cost, "" if unlock_cost == 1 else "s"
-				]
-			else:
-				w.locked.text = "Unlock the third ability in this piece's skill tree at a rest."
+			# Cena odklepa pride iz skill drevesa (aN_unlock vozlišče tega
+			# tipa), ne iz get_ability_info - glej SKILL_TREE_PLAN.md §5.1.
+			var unlock_def: Dictionary = skill_tree_data.get_node_def(character.strName, "a%d_unlock" % slot)
+			var unlock_cost: int = unlock_def.get("cost", 1)
+			w.icon.modulate = ABILITY_ICON_LOCKED_TINT
+			w.name.text = "???"
+			w.level.text = ""
+			w.uses.text = ""
+			w.button.disabled = true
+			w.button.text = ABILITY_BUTTON_TEXT_LOCKED
+			var locked_text := "Use %d upgrade item%s at a rest to unlock the %s ability." % [
+				unlock_cost, "" if unlock_cost == 1 else "s", _SLOT_ORDINAL[slot]
+			]
+			# "requires" is empty for every a2_unlock node but names a passive
+			# for every a3_unlock node - read dynamically instead of hardcoding
+			# "only slot 3" so a future balance pass can't silently desync this.
+			var passive_names: Array[String] = []
+			for req_id in unlock_def.get("requires", []):
+				passive_names.append(skill_tree_data.get_node_def(character.strName, req_id).get("name", req_id))
+			if not passive_names.is_empty():
+				locked_text += " Also requires the %s passive." % ", ".join(passive_names)
+			_slot_bubble_state[slot] = locked_text
 
 
 func _on_ability_pressed(slot: int):
@@ -918,6 +963,49 @@ func _on_ability_pressed(slot: int):
 func _on_ability_activated(character: BaseCharacter):
 	if character == _shown_character:
 		_show_abilities(character)
+
+
+# ===============================================
+# ABILITY BUBBLE (hover/click opis, glej BATTLE_UI_ABILITY_PANEL_PLAN.md)
+# ===============================================
+
+# Prikaže bubble ob `anchor_row`, oblečen/pomaknjen tako, da nikoli ne pade
+# izven vidnega področja. Odpira se prednostno levo+navzgor od vrstice, ker
+# SidePanel zaseda desnih ~42% zaslona (anchor_left=0.58 zgoraj) - levo je
+# torej praviloma več prostora proti plošči.
+func _show_ability_bubble(anchor_row: Control, text: String) -> void:
+	if text == "":
+		_hide_ability_bubble()
+		return
+
+	ability_bubble_label.text = text
+	ability_bubble.visible = true
+	# Ročno pozicioniran PanelContainer (layout_mode=0) se ne re-sizea sam iz
+	# frame v frame - brez tega klica bi obdržal velikost prejšnjega besedila.
+	ability_bubble.reset_size()
+
+	var row_rect := anchor_row.get_global_rect()
+	var viewport_size := get_viewport().get_visible_rect().size
+	var bubble_size := ability_bubble.size
+
+	var desired := row_rect.position - bubble_size - Vector2(ABILITY_BUBBLE_MARGIN, ABILITY_BUBBLE_MARGIN)
+	var clamped := Vector2(
+		clampf(desired.x, ABILITY_BUBBLE_MARGIN, viewport_size.x - bubble_size.x - ABILITY_BUBBLE_MARGIN),
+		clampf(desired.y, ABILITY_BUBBLE_MARGIN, viewport_size.y - bubble_size.y - ABILITY_BUBBLE_MARGIN)
+	)
+	ability_bubble.global_position = clamped
+
+
+func _hide_ability_bubble() -> void:
+	ability_bubble.visible = false
+
+
+# Hover razkrije bubble za VSAK slot enako, ne glede na locked/unlocked -
+# locked prikaže unlock-cost besedilo, unlocked prikaže opis sposobnosti.
+func _on_ability_row_mouse_entered(slot: int, row: Control) -> void:
+	var text: String = _slot_bubble_state.get(slot, "")
+	if text != "":
+		_show_ability_bubble(row, text)
 
 
 # ===============================================
