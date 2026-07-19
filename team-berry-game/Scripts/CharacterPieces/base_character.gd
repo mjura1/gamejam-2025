@@ -183,6 +183,12 @@ func apply_curse(new_curse) -> void:
 	# brez stanja IN brez vizualnega markerja.
 	if has_passive("curse_immune"):
 		return
+	# Odstrani morebiten OBSTOJEČI marker PRED dodajanjem novega - sicer bi
+	# add_child sam preimenoval novega (podvojeno ime), clear_curse pa bi
+	# kasneje z get_node_or_null("CurseMarker") našel samo enega od dveh in
+	# drugega pustil za sabo (glej curse_marker._exit_tree - ta osirotel
+	# marker bi obdržal svoj pulzirajoč tween, ki se prepira z novim).
+	_remove_curse_marker()
 	curse = new_curse
 	var marker = load("res://Scripts/Curses/curse_marker.gd").new()
 	marker.name = "CurseMarker"
@@ -197,6 +203,11 @@ func apply_curse(new_curse) -> void:
 # tint), da ga ni treba podvajati na vsakem klicnem mestu.
 func clear_curse() -> void:
 	curse = null
+	_remove_curse_marker()
+	modulate = Color.WHITE
+
+
+func _remove_curse_marker() -> void:
 	var marker := get_node_or_null("CurseMarker")
 	if marker:
 		# remove_child() PRED queue_free(): queue_free() sam po sebi šele
@@ -205,7 +216,6 @@ func clear_curse() -> void:
 		# vozlišče, čeprav je "logično" že počiščeno.
 		remove_child(marker)
 		marker.queue_free()
-	modulate = Color.WHITE
 
 
 # ----------------- GIBANJE IN CILJANJE -----------------

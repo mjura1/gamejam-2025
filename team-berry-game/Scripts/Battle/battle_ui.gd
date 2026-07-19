@@ -592,11 +592,34 @@ func _set_board_badge(character: BaseCharacter, text: String):
 	_set_named_badge(character, "SlotBadge", text)
 
 
+# STUN/ROOT/FROZEN značke na figuri: IKONA (StatusIconBadge), ne besedilo -
+# glej status_icon_badge.gd za razlog (BADGE_RASTER_* besedilni trik zgoraj
+# se je pri "STUN"/"ROOT"/"FROZE" občasno popačil/obrezal, še posebej ob
+# premikanju figure; podroben tekst je itak viden v detajlnem panelu). Isti
+# vzorec kompenzacije scale-a kot _set_named_badge, a brez rasterize hacka.
+func _set_status_icon(character: BaseCharacter, node_name: String, active: bool,
+		color: Color, offset: Vector2):
+	if not is_instance_valid(character):
+		return
+	var badge := character.get_node_or_null(node_name) as StatusIconBadge
+	if badge == null:
+		badge = StatusIconBadge.new()
+		badge.name = node_name
+		badge.z_index = 5
+		character.add_child(badge)
+
+		var inv_scale := Vector2.ONE / character.scale
+		badge.scale = inv_scale
+		badge.position = offset * inv_scale
+
+	badge.set_active(active, color)
+
+
 # Prekletstvo "stunning_gaze": ločena značka ("StunBadge", zamaknjena desno
 # navzdol), da se ne prepisuje s slot številko/bounty/courier značko na isti
 # figuri.
 func _set_stun_badge(character: BaseCharacter, stunned: bool):
-	_set_named_badge(character, "StunBadge", "STUN" if stunned else "", STATUS_STUNNED_COLOR, Vector2(2, 9))
+	_set_status_icon(character, "StunBadge", stunned, STATUS_STUNNED_COLOR, Vector2(2, 9))
 
 
 # Prekletstvo "stunning_gaze": character je bil PRAVKAR omamljen (sproženo iz
@@ -627,7 +650,7 @@ func _refresh_stun_badges():
 # StunBadge - Vector2(2, 9) - da se figura, ki bi bila hkrati omamljena IN
 # ukoreninjena, ne bi izgubila ene od dveh značk).
 func _set_root_badge(character: BaseCharacter, rooted: bool):
-	_set_named_badge(character, "RootBadge", "ROOT" if rooted else "", STATUS_ROOTED_COLOR, Vector2(2, 17))
+	_set_status_icon(character, "RootBadge", rooted, STATUS_ROOTED_COLOR, Vector2(2, 17))
 
 
 # Prekletstvo "entangle": character je bil pravkar ukoreninjen (sproženo iz
@@ -656,7 +679,7 @@ func _refresh_root_badges():
 # Vector2(2, 17) - da se figura, ki je hkrati ROOTED IN FROZEN, ne izgubi
 # nobene od značk (glej RootBadge komentar zgoraj za isti vzorec).
 func _set_frozen_badge(character: BaseCharacter, frozen: bool):
-	_set_named_badge(character, "FrozenBadge", "FROZE" if frozen else "", STATUS_FROZEN_COLOR, Vector2(2, 25))
+	_set_status_icon(character, "FrozenBadge", frozen, STATUS_FROZEN_COLOR, Vector2(2, 25))
 
 
 # Snow rework: character je bil pravkar zamrznjen (sproženo iz

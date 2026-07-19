@@ -18,6 +18,8 @@ var game_initialized: bool = false
 var current_map_instance: Node = null
 var pause_menu_instance: Control = null
 var pause_menu_layer: CanvasLayer = null
+var floor_counter_layer: CanvasLayer = null
+var floor_counter_label: Label = null
 
 # =========================================================
 # 2. INICIALIZACIJA IN ZAGON IGRE (POPRVEK ZA MENU)
@@ -40,6 +42,67 @@ func _ready():
 	pause_menu_layer.layer = 10
 	pause_menu_layer.add_child(pause_menu_instance)
 	get_tree().root.call_deferred("add_child", pause_menu_layer)
+
+	_setup_floor_counter()
+
+
+# Prikaže "TIER x/3" (ali samo "x" v infinite načinu) na sredini vrha zaslona,
+# skozi CEL run (Map/Battle/Campfire/Shop) - isti CanvasLayer-na-rootu vzorec
+# kot pause_menu_layer zgoraj, samo z nižjim layer (pod pavza menijem).
+func _setup_floor_counter():
+	floor_counter_layer = CanvasLayer.new()
+	floor_counter_layer.name = "FloorCounterLayer"
+	floor_counter_layer.layer = 9
+	floor_counter_layer.visible = false
+
+	# Full-width lopar pri vrhu zaslona - CenterContainer znotraj njega poskrbi
+	# za vodoravno centriranje ne glede na dolžino besedila ("1" proti "1/3").
+	var top_strip := Control.new()
+	top_strip.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_strip.offset_top = 12
+	top_strip.offset_bottom = 44
+	top_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	floor_counter_layer.add_child(top_strip)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_strip.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.09, 0.1, 0.12, 0.7)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+
+	floor_counter_label = Label.new()
+	floor_counter_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	floor_counter_label.add_theme_font_size_override("font_size", 20)
+	panel.add_child(floor_counter_label)
+
+	get_tree().root.call_deferred("add_child", floor_counter_layer)
+
+
+# Klican ob začetku runa in ob vsakem advance_map_tier() - PlayerManager.current_map_tier
+# je 0-based (tier 0 = "1"), MapGenerator.TIER_CONFIGS.size() je isti vir
+# resnice kot hardcoded "3" v advance_map_tier() spodaj.
+func _update_floor_counter():
+	if not is_instance_valid(floor_counter_label):
+		return
+	var tier_display := PlayerManager.current_map_tier + 1
+	if PlayerManager.game_mode == "infinite":
+		floor_counter_label.text = str(tier_display)
+	else:
+		floor_counter_label.text = "%d/%d" % [tier_display, MapGenerator.TIER_CONFIGS.size()]
 
 
 ## Ta funkcija se kliče iz Main Menu ob pritisku gumba "Start"
@@ -152,7 +215,17 @@ func _change_scene_instance(new_instance: Node):
 		
 	get_tree().root.call_deferred("add_child", new_instance)
 	get_tree().call_deferred("set_current_scene", new_instance)
-	
+
+	# Floor counter naj bo viden SAMO na mapi (raziskovanje med sobami), ne v
+	# bitki/campfire/shopu/menijih - current_map_instance je edina scena, ki
+	# se v _change_scene_instance kdaj ponovno uporabi (glej return_to_map*
+	# zgoraj), zato je enakost z njo zanesljiv "smo na mapi?" test.
+	if is_instance_valid(floor_counter_layer):
+		var showing_map := new_instance == current_map_instance
+		floor_counter_layer.visible = showing_map
+		if showing_map:
+			_update_floor_counter()
+
 	print("--- Uspešno naložena scena: %s ---" % new_instance.name)
 
 func game_over():

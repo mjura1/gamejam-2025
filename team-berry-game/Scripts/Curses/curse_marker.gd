@@ -45,6 +45,17 @@ func setup(character: Node2D, curse: BaseCurse) -> void:
 		# obeh načinih.
 		queue_redraw()
 
+# _tween je bil ustvarjen na _character (glej _start_pulse), ne na tem
+# vozlišču, zato ga Godot NE ubije samodejno, ko ta marker izgine
+# (queue_free/remove_child) - brez tega bi ostal osirotel tween, ki naprej
+# pulzira figuro (in se, če se prekletstvo takoj znova doda, prekriva z
+# novim tweenom istega markerja -> utripanje/napačna barva "sometimes").
+func _exit_tree() -> void:
+	if is_instance_valid(_tween):
+		_tween.kill()
+	if is_instance_valid(_character):
+		_character.modulate = Color.WHITE
+
 func _spawn_particles() -> void:
 	var particles := CPUParticles2D.new()
 	particles.amount = 8
