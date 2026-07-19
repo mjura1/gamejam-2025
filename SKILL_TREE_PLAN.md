@@ -566,6 +566,41 @@ and zero-errors ≠ pass — assert explicitly.
 4. **New abilities.** Suggested order: royal_decree → sanctify → ambush →
    castling → command → promotion (easiest to hardest; promotion last since the
    temp-ally + not-a-death handling has the most edge cases). Smoke/unit test each.
+   **STATUS: FIRST HALF DONE** (royal_decree, sanctify, ambush; branch
+   `features/skill-trees`, 3 separate commits). castling/command/promotion are
+   still open (next session). Deviations/notes:
+   - Tests (`tests/unit/test_new_abilities.gd`, new file, built up across the
+     3 commits): pieces are instantiated directly (`KingScript.new()` etc.,
+     same `.new()`-without-scene-tree pattern as
+     `test_battle_controller_path.gd`) with `grid_manager`/`grid_pos` wired
+     manually - `_execute_ability(id, target)` is called directly, bypassing
+     `activate_ability`'s `battle_controller`/`player_manager` gate (neither
+     is initialized off-tree). This only exercises the ability-execution
+     logic, not targeting/UI - `get_ability_targets` for the new abilities
+     stays smoke-test-only coverage (existing repo convention: no unit test
+     touches `get_ability_targets` for any piece).
+   - **Ambush's `execute_move` needed a scene-tree workaround:**
+     `BaseCharacter.slide_to()` reads `settings_manager.reduced_motion` to
+     decide between an instant jump and `create_tween()` - the latter errors
+     on a node that was never added to the tree. The test temporarily flips
+     the real `SettingsManager` autoload's `reduced_motion` to `true` around
+     the call (save/restore, same temporary-global-mutation pattern
+     `test_curses.gd` already uses for `CurseData._curses`), rather than
+     stubbing a fake settings object.
+   - Ambush's own validation is intentionally minimal (`_do_ambush` only
+     re-checks `is_occupied`, not curse-fog or boundary) - it trusts
+     `get_ability_targets(3)` already filtered the click, matching the
+     existing "UI already filtered it" convention `_do_reposition`/
+     `_do_longshot` use (neither re-validates against their own targets list
+     either).
+   - Royal Decree's expiry needed no new code: confirmed (again, by direct
+     `BattleController._clear_expired_evade()` call in the test) that it's
+     still ally-loop-only per M2's note - unaffected by M3/M4.
+   - Tests: unit suite 914/914 green (16 new asserts across 7 test methods
+     added incrementally, 1 per commit's worth). `smoke_ability_ui_pipeline`
+     still fails exactly the same pre-existing 6 assertions (Knight.Reposition,
+     Bishop.Traps, Rook.Reinforce, Queen.Lure, King.Cleanse, King.Heal) after
+     each of the 3 commits - no new failures. `smoke_abilities` passes.
 5. **Campfire panel rewrite** + smoke test update; delete the old shim methods.
 6. **Balance pass** over costs and uses; update this file's numbers if changed.
 
