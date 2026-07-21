@@ -686,7 +686,7 @@ func get_ability_info(slot: int) -> Dictionary:
 # Sledi tarčam, ki jih mora igralec izbrati PO kliku na gumb (glej
 # map_behaviour.gd - pending_ability). Prazen seznam pomeni "ni potrebe po
 # dodatnem kliku, sposobnost se izvede takoj".
-func get_ability_targets(slot: int) -> Array[Vector2i]:
+func get_ability_targets(_slot: int) -> Array[Vector2i]:
 	return []
 
 # Glavni vstop iz UI (battle_ui.gd) / map_behaviour.gd (za ciljane
@@ -795,14 +795,14 @@ func calculate_best_move() -> Dictionary:
 	if not has_spotted_player:
 		const BLIND_SEEK_TARGET_ROW := 7 # Ciljna vrstica (približna sredina bojišča, če je 12 vrstic)
 		var best_move: Vector2i = grid_pos
-		var min_distance := INF
+		var blind_seek_min_distance := INF
 
 		# Izberemo potezo, ki sovražnika najbolj približa centru bojišča (navzdol)
 		for move_pos in valid_targets:
 			var distance_to_center = abs(move_pos.y - BLIND_SEEK_TARGET_ROW)
 
-			if distance_to_center < min_distance:
-				min_distance = distance_to_center
+			if distance_to_center < blind_seek_min_distance:
+				blind_seek_min_distance = distance_to_center
 				best_move = move_pos
 				
 		# Če se sploh lahko premakne

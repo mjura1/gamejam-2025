@@ -553,7 +553,7 @@ const BADGE_RASTER_BOOST := BADGE_RASTER_FONT_SIZE / BADGE_WORLD_FONT_HEIGHT
 # _set_stun_badge spodaj) - brez tega bi si npr. slot številka in "STUN" delili
 # isto vozlišče in se prepisovali.
 func _set_named_badge(character: BaseCharacter, node_name: String, text: String,
-		color: Color = Color(1, 1, 1, 0.65), offset: Vector2 = Vector2(2, 2)):
+		color: Color = Color(1, 1, 1, 0.65), badge_offset: Vector2 = Vector2(2, 2)):
 	if not is_instance_valid(character):
 		return
 	var badge := character.get_node_or_null(node_name) as Label
@@ -581,7 +581,7 @@ func _set_named_badge(character: BaseCharacter, node_name: String, text: String,
 		var inv_scale := Vector2.ONE / character.scale
 		badge.scale = inv_scale / BADGE_RASTER_BOOST
 		badge.size = Vector2(10, 8) * BADGE_RASTER_BOOST
-		badge.position = offset * inv_scale
+		badge.position = badge_offset * inv_scale
 
 	badge.text = text
 	badge.visible = text != ""
@@ -599,7 +599,7 @@ func _set_board_badge(character: BaseCharacter, text: String):
 # premikanju figure; podroben tekst je itak viden v detajlnem panelu). Isti
 # vzorec kompenzacije scale-a kot _set_named_badge, a brez rasterize hacka.
 func _set_status_icon(character: BaseCharacter, node_name: String, active: bool,
-		color: Color, offset: Vector2):
+		color: Color, badge_offset: Vector2):
 	if not is_instance_valid(character):
 		return
 	var badge := character.get_node_or_null(node_name) as StatusIconBadge
@@ -611,7 +611,7 @@ func _set_status_icon(character: BaseCharacter, node_name: String, active: bool,
 
 		var inv_scale := Vector2.ONE / character.scale
 		badge.scale = inv_scale
-		badge.position = offset * inv_scale
+		badge.position = badge_offset * inv_scale
 
 	badge.set_active(active, color)
 

@@ -368,17 +368,17 @@ func _evaluate(snapshot: Dictionary, mover_is_enemy: bool, contested_pos: Vector
 		var entry: Dictionary = snapshot[pos]
 		if entry.get("is_obstacle", false):
 			continue
-		var sign := 1.0 if entry.get("is_enemy", false) == mover_is_enemy else -1.0
-		material += sign * entry.get("value", 1)
+		var perspective_sign := 1.0 if entry.get("is_enemy", false) == mover_is_enemy else -1.0
+		material += perspective_sign * entry.get("value", 1)
 		var dist_to_center: float = Vector2(pos).distance_to(center)
-		control += sign * BOARD_CONTROL_WEIGHT * (max_dist - dist_to_center)
+		control += perspective_sign * BOARD_CONTROL_WEIGHT * (max_dist - dist_to_center)
 
 	var mobility := 0.0
 	if snapshot.has(contested_pos):
 		var focal: Dictionary = snapshot[contested_pos]
 		if not focal.get("is_obstacle", false):
-			var sign := 1.0 if focal.get("is_enemy", false) == mover_is_enemy else -1.0
-			mobility = sign * MOBILITY_WEIGHT * _snapshot_valid_targets(snapshot, contested_pos, bounds).size()
+			var perspective_sign := 1.0 if focal.get("is_enemy", false) == mover_is_enemy else -1.0
+			mobility = perspective_sign * MOBILITY_WEIGHT * _snapshot_valid_targets(snapshot, contested_pos, bounds).size()
 
 	return material + control + mobility
 

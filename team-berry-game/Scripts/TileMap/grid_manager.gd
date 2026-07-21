@@ -160,17 +160,17 @@ func register_all_characters_in_scene():
 	for node in character_nodes:
 		# Pazi: BaseCharacter mora biti pravilno definiran kot razred v svoji skripti
 		if node is BaseCharacter:
-			var char = node as BaseCharacter
-			
+			var character = node as BaseCharacter
+
 			# Prepreči ponovno registracijo
-			if char.grid_manager == self:
+			if character.grid_manager == self:
 				continue
 
 			# 1. Dodelimo referenco BaseCharacterju
-			char.grid_manager = self
-			
+			character.grid_manager = self
+
 			# 2. Inicializacija mreže
-			char.on_grid_manager_registered()
+			character.on_grid_manager_registered()
 		else:
 			print("Opozorilo: Vozlišče v skupini 'characters' ni BaseCharacter: " + node.name)
 			

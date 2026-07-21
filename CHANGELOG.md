@@ -1,3 +1,51 @@
+# Winter March — GDScript warning cleanup + missing project icon → fix/gdscript-warnings (awaiting review)
+
+New branch `fix/gdscript-warnings` (NOT merged — left for review): every
+`GDScript::reload` warning and the `res://Assets/icon.svg` load error printed
+on every single project startup, cleaned up. No gameplay logic changed —
+purely warnings/naming/a missing asset.
+
+- **Missing project icon**: `Assets/icon.svg` (referenced by `project.godot`'s
+  `config/icon`) was accidentally deleted in a much older commit
+  (`3781353`, "add friendly and enemy pawn pngs") — git's rename-detection
+  heuristic paired an unrelated `.import` file rename with it, silently
+  dropping the actual `.svg`. Restored verbatim from the last commit where it
+  existed (`8117b78`).
+- **`INT_AS_ENUM_WITHOUT_CAST`** (`KeybindManager.gd:59`): `event.physical_keycode`
+  is a `Key` enum property; the assigned `int` param is now cast with `as Key`.
+- **`INTEGER_DIVISION`** (`MapGenerator.gd:241,262`): both `MAP_WIDTH / 2`
+  array-index lookups are intentional (picks the middle column, `MAP_WIDTH`
+  is always odd) — annotated with `@warning_ignore("integer_division")`
+  rather than changed, since truncation is the desired behavior.
+- **Shadowed built-ins/globals** (`SHADOWED_GLOBAL_IDENTIFIER`): renamed
+  local variables that collided with an engine built-in or this project's
+  own global `class_name` — `char` → `character` (`grid_manager.gd:163`),
+  two `sign` → `perspective_sign` (`enemy_ai_strategy.gd:371,380`), and a
+  redundant `const MapGenerator = preload(...)` removed from
+  `MapController.gd` entirely (the script already has a global `class_name
+  MapGenerator`, so the local const just duplicated it under the same name).
+- **Shadowed base-class properties** (`SHADOWED_VARIABLE_BASE_CLASS`):
+  `_clamp_camera_position`'s `position` param → `cam_position`
+  (`MapController.gd:245`, shadowed `Node2D.position`); `_set_named_badge`/
+  `_set_status_icon`'s `offset` param → `badge_offset` (`battle_ui.gd:556,602`,
+  shadowed `CanvasLayer.offset`). Both are positional-only call sites, so no
+  callers needed updating.
+- **`CONFUSABLE_LOCAL_DECLARATION`** (`base_character.gd:798`): the blind-seek
+  branch's own `min_distance` (used and discarded before that branch always
+  returns) renamed to `blind_seek_min_distance` so it no longer shares a name
+  with the unrelated `min_distance` declared later in the same function's
+  outer scope.
+- **`UNUSED_PARAMETER`**: prefixed with `_` where the parameter is
+  genuinely unused (`base_character.gd:689` `slot`, `border.gd:10` and
+  `pause_menu.gd:14` `delta`). `house.gd`'s `_process(delta)` was a pure
+  `pass`-only no-op override, so it was deleted outright instead — one less
+  empty per-frame call.
+
+Verified with a headless `godot4 --headless --path . --quit` run (no more
+warnings, no more icon load error) and `./tests/run_all.sh` — identical
+result to `develop`'s baseline (only the pre-existing, unrelated
+`smoke_ability_ui_pipeline` flake), no regressions introduced.
+
 # Winter March — first-run tutorial map: fixed 6-node linear map, reused divine_intervention defeat flow, permanent +pawn+rook reward → features/tutorial-map (awaiting review)
 
 New feature on `features/tutorial-map` (NOT merged — left for review): brand-new
