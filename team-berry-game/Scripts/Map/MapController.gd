@@ -275,7 +275,7 @@ func _visualize_rooms():
 			room_node.room_clicked.connect(_on_room_selected)
 			room_node.hover_bubble_requested.connect(_on_hover_bubble_requested)
 			room_node.hover_bubble_dismissed.connect(_on_hover_bubble_dismissed)
-			
+
 			room_node.position = room_resource.position - room_node.size * room_node.scale / 2.0
 			room_node_map[room_resource] = room_node
 

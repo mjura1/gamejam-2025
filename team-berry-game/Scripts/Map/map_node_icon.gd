@@ -19,11 +19,21 @@ signal room_clicked(room_data)
 signal hover_bubble_requested(icon)
 signal hover_bubble_dismissed
 
+# NEW: Ripple efekt okoli trenutno izbirljivih vozlišč (glej
+# Scripts/Map/map_node_ripple.gd).
+const RippleScript = preload("res://Scripts/Map/map_node_ripple.gd")
+var _ripple: Node2D = null
+
 func _ready():
 	_init_icon_lookup()
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 	hover_timer.timeout.connect(_on_hover_timer_timeout)
+
+	_ripple = RippleScript.new()
+	add_child(_ripple)
+	move_child(_ripple, 0) # narisan PRED IconDisplay, da ostane za ikono
+	_ripple.position = size / 2.0
 
 func _on_mouse_entered():
 	hover_timer.start()
@@ -93,6 +103,9 @@ func update_look(unlocked: bool, selected: bool):
 		modulate = Color.WHITE # Odklenjena (aktivna)
 	else:
 		modulate =Color(0.25, 0.25, 0.25, 1.0) # Zaklenjena (skrita/neaktivna)
+
+	if is_instance_valid(_ripple):
+		_ripple.set_active(unlocked and not selected)
 
 # =========================================================
 # 3. OBRNAVNA KLIKA
