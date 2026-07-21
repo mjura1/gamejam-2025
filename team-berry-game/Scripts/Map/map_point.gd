@@ -48,3 +48,23 @@ static var RoomTypeNames: Dictionary = {
 	RoomType.item : "item",
 	RoomType.shop : "shop"
 }
+
+## Kratek opis vsakega tipa sobe za hover tooltip na mapi (glej MapController /
+## map_node_icon.gd) - en stavek, naj se prilega ~260px širokemu balonu.
+static var RoomDescriptions: Dictionary = {
+	RoomType.enemy_bishop : "Adds a Bishop to the enemy army",
+	RoomType.enemy_king : "Adds a King to the enemy army",
+	RoomType.enemy_knight : "Adds a Knight to the enemy army",
+	RoomType.enemy_rook : "Adds a Rook to the enemy army",
+	RoomType.enemy_queen : "Adds a Queen to the enemy army",
+	RoomType.enemy_pawn : "Adds a Pawn to the enemy army",
+	RoomType.friendly_pawn : "Recruits a Pawn to your army",
+	RoomType.friendly_knight : "Recruits a Knight to your army",
+	RoomType.friendly_rook : "Recruits a Rook to your army",
+	RoomType.friendly_bishop : "Recruits a Bishop to your army",
+	RoomType.friendly_queen : "Recruits a Queen to your army",
+	RoomType.friendly_king : "Recruits a King to your army",
+	RoomType.campfire : "Rest and upgrade your pieces",
+	RoomType.item : "Grants a free upgrade item",
+	RoomType.shop : "Opens the shop"
+}

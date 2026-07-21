@@ -9,12 +9,31 @@ class_name MapNodeIcon
 @export var room_resource: Room 
 
 @onready var icon_display: TextureRect = $IconDisplay # PREVERI, DA JE IME VOZLIŠČA PRAVILNO!
+@onready var hover_timer: Timer = $HoverTimer
 
 # Signal, ki ga posluša MapController, ko je soba kliknjena
-signal room_clicked(room_data) 
+signal room_clicked(room_data)
+
+# Signala za hover tooltip (glej MapController) - hover_bubble_requested se
+# sproži šele po HoverTimer.timeout (~3s), ne takoj ob mouse_entered.
+signal hover_bubble_requested(icon)
+signal hover_bubble_dismissed
 
 func _ready():
 	_init_icon_lookup()
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+	hover_timer.timeout.connect(_on_hover_timer_timeout)
+
+func _on_mouse_entered():
+	hover_timer.start()
+
+func _on_mouse_exited():
+	hover_timer.stop()
+	hover_bubble_dismissed.emit()
+
+func _on_hover_timer_timeout():
+	hover_bubble_requested.emit(self)
 
 static var ICON_LOOKUP: Dictionary = {}
 
@@ -56,20 +75,24 @@ func _update_icon():
 	if ICON_LOOKUP.has(room_resource.type):
 		icon_display.texture = ICON_LOOKUP[room_resource.type]
 
+const ICON_SCALE := 7.5
+
 func _update_scale():
-	scale = Vector2(3.0, 3.0)
+	scale = Vector2(ICON_SCALE, ICON_SCALE)
 
 ## Kliče jo MapController, da vizualno posodobi ikono (barva, aktivnost)
+## NEW: disabled se NE nastavlja več (glej _on_room_pressed - klik je itak
+## ločeno preverjen tam) - Godot disabled Button ne prejme mouse_entered/
+## mouse_exited zanesljivo, kar bi onemogočilo hover tooltip (M4) na zaklenjenih/
+## obiskanih sobah. Gumb ostane vedno "aktiven" za hover, klik pa ostane
+## pravilno blokiran preko obstoječega ročnega preverjanja spodaj.
 func update_look(unlocked: bool, selected: bool):
 	if selected:
 		modulate = Color.GRAY * 0.5 # Obiskana
-		self.disabled = true
 	elif unlocked:
 		modulate = Color.WHITE # Odklenjena (aktivna)
-		self.disabled = false
 	else:
 		modulate =Color(0.25, 0.25, 0.25, 1.0) # Zaklenjena (skrita/neaktivna)
-		self.disabled = true
 
 # =========================================================
 # 3. OBRNAVNA KLIKA
