@@ -1,0 +1,206 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Menu/post_battle_summary.gd" id="1_pbsum"]
+[ext_resource type="FontFile" uid="uid://cuqwva5tcu38a" path="res://Assets/menu/BLKCHCRY.TTF" id="2_font"]
+[ext_resource type="Shader" uid="uid://b8rg0htw0mohe" path="res://Scenes/pause_menu.gdshader" id="3_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_backdrop"]
+shader = ExtResource("3_shader")
+shader_parameter/lod = 0.9
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1254902, 0.1254902, 0.1254902, 0.9411765)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_size = 5
+shadow_offset = Vector2(0, 3.41)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
+bg_color = Color(11.708, 11.708, 11.708, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_size = 5
+shadow_offset = Vector2(0, 3.41)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.6, 0.6, 0.6, 0.78431374)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_size = 5
+shadow_offset = Vector2(0, 3.41)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_button_focus"]
+
+[node name="PostBattleSummary" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_pbsum")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_backdrop")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.21176471, 0.21176471, 0.21176471, 0.78431374)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="ContentVBox" type="VBoxContainer" parent="CenterContainer/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_y = 4
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 70
+horizontal_alignment = 1
+text = "VICTORY"
+
+[node name="VictoryContent" type="VBoxContainer" parent="CenterContainer/Panel/Margin/ContentVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SummaryLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "SUMMARY"
+
+[node name="EnemyLabelRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent"]
+layout_mode = 2
+
+[node name="EnemyLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent/EnemyLabelRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+text = "ENEMY"
+
+[node name="EnemyScroll" type="ScrollContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent/EnemyLabelRow"]
+custom_minimum_size = Vector2(400, 52)
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_scroll_mode = 0
+
+[node name="EnemyRow" type="HFlowContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent/EnemyLabelRow/EnemyScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MineLabelRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent"]
+layout_mode = 2
+
+[node name="MineLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent/MineLabelRow"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+text = "MINE"
+
+[node name="MineScroll" type="ScrollContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent/MineLabelRow"]
+custom_minimum_size = Vector2(400, 52)
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_scroll_mode = 0
+
+[node name="MineRow" type="HFlowContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent/MineLabelRow/MineScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RewardsLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "REWARDS"
+
+[node name="RewardsList" type="VBoxContainer" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ContinueButton" type="Button" parent="CenterContainer/Panel/Margin/ContentVBox/VictoryContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_button_focus")
+text = "CONTINUE"
+
+[node name="DefeatContent" type="VBoxContainer" parent="CenterContainer/Panel/Margin/ContentVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FinalFloorLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox/DefeatContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+text = "Final Floor: 1"
+
+[node name="FinalRoomLabel" type="Label" parent="CenterContainer/Panel/Margin/ContentVBox/DefeatContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+text = "Final Room: 0"
+
+[node name="BackButton" type="Button" parent="CenterContainer/Panel/Margin/ContentVBox/DefeatContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_button_focus")
+text = "BACK"
