@@ -81,6 +81,17 @@ func test_add_to_friendly_party_overflows_into_reserve_instead_of_dropping():
 	assert_eq(pm.friendly_party, ["friendly_pawn", "friendly_rook"], "a full active roster should not grow past max_party_size")
 	assert_eq(pm.reserve_party, ["friendly_bishop"], "a piece collected once the active roster is full should be kept in reserve_party, not lost")
 
+func test_add_to_friendly_party_returns_true_when_joining_active_roster():
+	var pm = PlayerManagerScript.new()
+	pm.max_party_size = 2
+	assert_true(pm.add_to_friendly_party("friendly_pawn"), "add_to_friendly_party should return true when the piece joins the active roster")
+
+func test_add_to_friendly_party_returns_false_when_overflowing_to_reserve():
+	var pm = PlayerManagerScript.new()
+	pm.max_party_size = 1
+	pm.add_to_friendly_party("friendly_pawn")
+	assert_false(pm.add_to_friendly_party("friendly_rook"), "add_to_friendly_party should return false when the piece overflows into reserve_party")
+
 # ----------------- upgrade itemi in nadgradnje po tipu figure -----------------
 # Šima try_unlock_slot2/try_level_up_ability/get_piece_upgrades je odstranjena
 # (glej SKILL_TREE_PLAN.md M5) - spodnji testi pokrivajo iste vedenjske

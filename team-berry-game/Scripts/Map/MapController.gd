@@ -354,13 +354,19 @@ func _handle_event(room_data: Room):
 	var room_name = Room.RoomTypeNames.get(room_data.type, "unknown_event")
 	print("Zagon %s..." % room_name)
 
+	# Pobriši prejšnjo "nova figura" oznako, da ne uide v naslednji post-battle summary.
+	PlayerManager.new_friendly_piece = ""
+	PlayerManager.new_enemy_piece = ""
+
 	PlayerManager.is_boss_floor = room_data.grid_position.x == generator.FLOORS - 1
 	PlayerManager.is_mini_boss_floor = generator.mini_boss_floor != -1 and room_data.grid_position.x == generator.mini_boss_floor
 
 	if room_name.begins_with("enemy_"):
 		PlayerManager.add_to_enemy_party(room_name)
+		PlayerManager.new_enemy_piece = room_name
 	elif room_name.begins_with("friendly_"):
-		PlayerManager.add_to_friendly_party(room_name)
+		if PlayerManager.add_to_friendly_party(room_name):
+			PlayerManager.new_friendly_piece = room_name
 	elif room_name == "item":
 		# Item soba: takojšnja nagrada, brez bitke - GF.start_event() za
 		# ta tip sobe ne zamenja scene, igralec ostane na mapi.
