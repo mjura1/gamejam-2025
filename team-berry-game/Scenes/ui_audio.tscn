@@ -1,10 +1,16 @@
-[gd_scene load_steps=3 format=3 uid="uid://bw1c1wl7bueme"]
+[gd_scene load_steps=4 format=3 uid="uid://bw1c1wl7bueme"]
 
 [ext_resource type="AudioStream" uid="uid://hs6jea5dfacq" path="res://Assets/audio/menuclick.mp3" id="1_47m1v"]
 [ext_resource type="Script" uid="uid://fxorfwshviyh" path="res://Scenes/ui_audio.gd" id="1_x8vgr"]
+[ext_resource type="AudioStream" path="res://Assets/audio/Mountain Dojo - Dojo  Club Penguin OST.mp3" id="2_ost"]
 
 [node name="uiAudio" type="Node"]
 script = ExtResource("1_x8vgr")
 
 [node name="ClickStreamer" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("1_47m1v")
+
+[node name="MusicStreamer" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_ost")
+volume_db = -10.0
+autoplay = false
