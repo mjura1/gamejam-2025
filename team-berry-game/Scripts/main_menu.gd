@@ -18,6 +18,9 @@ func _on_button_pressed():
 	UiAudio.play_click()
 	print("predvajam zvok")
 
+func open_mode_select() -> void:
+	_on_play_pressed()
+
 func _on_play_pressed():
 	if is_instance_valid(_mode_select_instance):
 		return

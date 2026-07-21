@@ -12,6 +12,7 @@ extends SceneTree
 # before the process ever stops.
 
 var killed_enemies := false
+var summary_handled := false
 var checked_result := false
 
 func _initialize():
@@ -31,27 +32,39 @@ func _process(_delta: float) -> bool:
 			print(">>> SMOKE TEST: Battle scene left the tree - transition happened cleanly <<<")
 		return false
 
-	if killed_enemies:
-		return false # give the deferred call more frames to fire
+	if not killed_enemies:
+		var grid_manager = battle_instance.get_node_or_null("GridManager")
+		var battle_controller = battle_instance.get_node_or_null("BattleController")
+		if grid_manager == null or battle_controller == null:
+			return false # still spawning
 
-	var grid_manager = battle_instance.get_node_or_null("GridManager")
-	var battle_controller = battle_instance.get_node_or_null("BattleController")
-	if grid_manager == null or battle_controller == null:
-		return false # still spawning
+		var enemies: Array = []
+		for character in grid_manager.get_all_characters():
+			if character is BaseCharacter and character.is_enemy:
+				enemies.append(character)
 
-	var enemies: Array = []
-	for character in grid_manager.get_all_characters():
-		if character is BaseCharacter and character.is_enemy:
-			enemies.append(character)
+		if enemies.is_empty():
+			return false # pieces haven't spawned yet
 
-	if enemies.is_empty():
-		return false # pieces haven't spawned yet
+		print(">>> SMOKE TEST: killing %d enemies to force a WIN <<<" % enemies.size())
+		for enemy in enemies:
+			enemy.die()
+		killed_enemies = true
 
-	print(">>> SMOKE TEST: killing %d enemies to force a WIN <<<" % enemies.size())
-	for enemy in enemies:
-		enemy.die()
-	killed_enemies = true
+		# Same check the real turn loop runs right after an action resolves.
+		battle_controller.check_battle_end()
+		return false
 
-	# Same check the real turn loop runs right after an action resolves.
-	battle_controller.check_battle_end()
+	if not summary_handled:
+		# check_battle_end() now shows the post-battle summary instead of
+		# transitioning immediately - drive its CONTINUE button directly
+		# (same "drive handlers directly" style as smoke_mode_select.gd).
+		var summary_layer = root.get_node_or_null("PostBattleSummaryLayer")
+		if summary_layer == null or summary_layer.get_child_count() == 0:
+			return false # summary overlay not up yet
+		print(">>> SMOKE TEST: post-battle summary shown, emitting continue_pressed <<<")
+		summary_layer.get_child(0).continue_pressed.emit()
+		summary_handled = true
+		return false
+
 	return false

@@ -215,6 +215,11 @@ check_script "smoke_battle_loss (LOSS path, map-leak check)" "res://tests/smoke/
 	"SMOKE TEST: old (detached) map instance was freed - no leak"
 echo
 
+echo "== Post-battle summary overlay smoke test (VICTORY/DEFEAT) =="
+check_script "smoke_post_battle_summary" "res://tests/smoke/smoke_post_battle_summary.gd" 100 \
+	"SMOKE_POST_BATTLE_SUMMARY_OK"
+echo
+
 echo "== Enemy turn pacing / move visualizer smoke test =="
 check_script "smoke_enemy_turn_pacing" "res://tests/smoke/smoke_enemy_turn_pacing.gd" 130 \
 	"SMOKE TEST: enemy turn completed after"

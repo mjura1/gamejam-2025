@@ -80,20 +80,26 @@ var is_boss_floor: bool = false
 # NOVO: Ali je soba, ki je sprožila trenutno bitko, mini-boss soba te mape
 # (glej MapGenerator.mini_boss_floor/mini_boss_type - queen na tier 1-2)
 var is_mini_boss_floor: bool = false
+# NOVO: Ime figure, dodane v friendly_party/enemy_party TO bitko (za post-battle summary
+# "+" badge). Nastavi/počisti MapController._handle_event(), največ ena figura na bitko.
+var new_friendly_piece: String = ""
+var new_enemy_piece: String = ""
 
 func _ready():
 	print("PlayerManager naložen. Party size: %d" % [active_party.size()])
 
 # ----------------- PARTY MANAGEMENT (Aktivna ekipa) -----------------
 
-func add_to_friendly_party(character):
+func add_to_friendly_party(character) -> bool:
 	print("char name ", character)
 	if friendly_party.size() < max_party_size:
 		friendly_party.append(character)
 		print("PlayerManager: Dodana figura v aktivno ekipo. Nova velikost: %d" % friendly_party.size())
+		return true
 	else:
 		reserve_party.append(character)
 		print("PlayerManager: Aktivna ekipa polna (%d/%d) - figura shranjena v rezervo. Rezerva: %d" % [friendly_party.size(), max_party_size, reserve_party.size()])
+		return false
 
 # ----------------- REZERVA <-> AKTIVNA EKIPA (počivališče, CampfirePartyPanel) -----------------
 

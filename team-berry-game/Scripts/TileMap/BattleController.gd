@@ -554,14 +554,22 @@ func check_battle_end() -> bool:
 		_set_state(BattleState.GAME_OVER)
 		# Zmaga prinese upgrade iteme (boss bitke več) - porabijo se na
 		# počivališču (glej CampfireUpgradePanel.gd).
-		if player_manager.is_boss_floor:
+		var was_boss_floor: bool = player_manager.is_boss_floor
+		var upgrade_items_before: int = player_manager.upgrade_items
+		if was_boss_floor:
 			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_BOSS_WIN)
-			GF.call_deferred("advance_map_tier")
 		else:
 			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_WIN)
-			GF.call_deferred("return_to_map")
 
 		_maybe_pay_courier_reward()
+		# Delta, ne konstanta - _maybe_pay_courier_reward() lahko doda dodatne
+		# iteme na vrh win/boss-win nagrade (glej njeno definicijo zgoraj).
+		var upgrade_items_gained: int = player_manager.upgrade_items - upgrade_items_before
+
+		GF.call_deferred("show_victory_summary",
+			player_manager.friendly_party.duplicate(), player_manager.enemy_party.duplicate(),
+			player_manager.new_friendly_piece, player_manager.new_enemy_piece,
+			upgrade_items_gained, was_boss_floor)
 		return true
 
 	if player_manager.activeGone():
@@ -573,8 +581,13 @@ func check_battle_end() -> bool:
 			print("DIVINE_INTERVENTION: rešeni pred porazom")
 			GF.call_deferred("return_to_map_after_escape")
 			return true
+		# current_map_tier/current_map_floor je treba zajeti PRED
+		# reset_floor_number() - ta sinhrono ponastavi floor na 0, tier pa
+		# se ponastavi kasneje v _end_run() (klican iz game_over(), odloženo).
+		var final_tier: int = player_manager.current_map_tier
+		var final_floor: int = player_manager.current_map_floor
 		player_manager.reset_floor_number()
-		GF.call_deferred("game_over")
+		GF.call_deferred("show_defeat_summary", final_tier, final_floor)
 		return true
 
 	return false
