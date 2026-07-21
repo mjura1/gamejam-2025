@@ -15,7 +15,7 @@ const START_FLOOR: int = 0
 
 # Vizualna postavitev, povecaj za vec nodes
 const X_DISTANCE: int = 150
-const Y_DISTANCE: int = 100
+const Y_DISTANCE: int = 280
 const PLACEMENT_RANDOMNESS: float = 5.0
 
 # --- Uteži za prijateljske sobe: enake na vseh 3 mapah, niso omejene po nivoju ---

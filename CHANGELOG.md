@@ -1,3 +1,59 @@
+# Winter March — map visual overhaul: bigger/centered icons, spacing, auto-scroll, hover tooltips → features/map-visual-overhaul (awaiting review)
+
+New feature on `features/map-visual-overhaul` (NOT merged — left for review): the
+map/floor-select screen was hard to read without zooming in — node icons were
+small, weren't visually centered on the connector lines pointing at them, and
+floors were packed close together. Also adds a bigger UX change: mouse-edge
+auto-scroll (Slay the Spire/RTS-style) and a hover tooltip on each node.
+Scroll-wheel zoom and click-drag pan are untouched — Miha may remove them later
+once auto-scroll play-tests well, but that's a separate, deferred decision.
+
+- **Bigger icons + centering fix**: `map_node_icon.gd`'s icon scale doubled
+  (`3.0` → `ICON_SCALE := 6.0`). Root cause of the off-center look: nodes were
+  positioned by their top-left corner (`room_node.position =
+  room_resource.position`), so the connector lines drawn in `_draw()` pointed at
+  a corner, not the visible icon's center. `MapController._visualize_rooms()` now
+  offsets by `room_node.size * room_node.scale / 2.0` so the icon's visual center
+  lands exactly on the line endpoint, at every zoom level.
+- **Bigger floor spacing**: `MapGenerator.Y_DISTANCE` `100` → `280`. `X_DISTANCE`
+  left unchanged — the bigger icons still fit comfortably within a row at the
+  existing horizontal spacing, no overlap observed. Camera framing/zoom-to-fit
+  code needed no changes (already derives from room positions dynamically).
+- **Mouse-edge auto-scroll**: new `MapController._process()` — top/bottom 1/5 of
+  the screen is a "hot" zone (middle 3/5 dead), scroll speed ramps up linearly
+  closer to the edge, disabled while a click-drag pan is active. Reuses the
+  existing `_clamp_camera_position()` so it respects the same map boundaries as
+  drag/zoom.
+- **Hover tooltip bubble**: reuses the battle UI's ability-bubble visual pattern
+  (same dark `StyleBoxFlat`, same clamped up-and-left positioning), but with a
+  new 3s `HoverTimer` per icon (`map_node_icon.tscn`/`.gd`) instead of showing
+  instantly, and a new `Room.RoomDescriptions` dict (`map_point.gd`) for the
+  per-room-type text (e.g. "Adds a Pawn to the enemy army"). The bubble's Label
+  is built lazily in code on first hover rather than baked into `map.tscn` — see
+  Deviations below. Repositions every frame while visible so it stays glued to
+  its icon during auto-scroll/pan.
+
+**Deviation from `plans/MAP_VISUAL_OVERHAUL_PLAN.md`'s M4 spec**: the plan called
+for baking `MapBubbleLabel` directly into `map.tscn`. Doing so broke ~20
+unrelated smoke tests (`smoke_battle`, `smoke_placement`, `smoke_ai*`, etc.) with
+new `ERROR: N RID allocations of type 'DummyTexture'/'FontAdvanced' were leaked
+at exit"` failures — bisected to the `Label`'s `autowrap_mode` triggering
+TextServer font/glyph RID allocation that never gets released, because
+`GameFlow` caches the `MapController` instance for the whole run and it's never
+freed before a headless test's forced `--quit-after` shutdown. The identical
+`AbilityBubbleLabel` pattern in `battle_ui.tscn` doesn't hit this because that
+scene is freed normally when a battle ends. Fixed by constructing the Label in
+GDScript (`MapController._ensure_map_bubble_label()`) the first time a hover
+tooltip is actually requested, instead of at scene-load time — the
+`MapBubble` `PanelContainer` + `StyleBoxFlat` stay in `map.tscn` as planned.
+
+Tests: `./tests/run_all.sh` clean after every milestone except the pre-existing,
+unrelated `smoke_ability_ui_pipeline` flake (documented in prior plans, e.g.
+`plans/AI_DIFFICULTY_PLAN.md`) — see `plans/MAP_VISUAL_OVERHAUL_PLAN.md` §6 for
+the per-milestone log. Manual playtest (icon centering at min/max zoom, spacing,
+auto-scroll feel, tooltip behavior) not yet done — left for Miha per repo
+convention.
+
 # Winter March — post-battle summary overlays (VICTORY/DEFEAT) → features/post-battle-summary (awaiting review)
 
 New feature on `features/post-battle-summary`: playtesting surfaced that battle end

@@ -21,17 +21,11 @@ mono_crash.*.json
 graphify-out/
 
 # Local-only audit/progress-tracking docs — not meant to be committed
-plans/CODE_AUDIT.md
-plans/FIX_TODO.md
-plans/FIX_PROGRESS.md
-plans/ABILITY_TIER_NOTES.md
 code_review.txt
 
-# Plan docs — untracked going forward, still present in past history
-plans/BATTLE_UI_ABILITY_PANEL_PLAN.md
-plans/ENEMY_CURSES_PLAN.md
-plans/ITEM_SHOP_PLAN.md
-plans/PLAY_MODES_PLAN.md
-plans/SHOP_V2_PLAN.md
-plans/SKILL_TREE_PLAN.md
-plans/SNOW_REWORK_PLAN.md
+# Plan docs — local-only, not meant to be committed. Files already tracked
+# before this line was added (e.g. plans/AI_DIFFICULTY_PLAN.md,
+# plans/POST_BATTLE_SUMMARY_PLAN.md, plans/SNOW_REWORK_PLAN.md) stay tracked
+# until explicitly untracked (git rm --cached) — gitignore only stops NEW
+# files from being picked up.
+plans/

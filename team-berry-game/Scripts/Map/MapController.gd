@@ -7,6 +7,18 @@ const MapGenerator = preload("res://Scripts/Map/MapGenerator.gd")
 const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 
 @onready var map_camera: Camera2D = $MapCamera
+@onready var map_bubble: PanelContainer = %MapBubble
+
+# NEW: ustvarjen šele ob prvem hover-u (glej _ensure_map_bubble_label) - ne
+# takoj v .tscn, ker Label z autowrap_mode takoj sproži TextServer/font
+# inicializacijo, katere RID-i ostanejo alocirani, dokler MapController živi
+# (GameFlow ga drži v predpomnilniku ves čas teka). Ker se MapController
+# nikoli ne sprosti, so ti RID-i pri headless testih, ki mapo sploh ne
+# hoverajo (skoraj vsi - battle/placement/ai/... testi), zaznani kot "leaked
+# at exit" s strani Godota - lažno pozitivno, a run_all.sh ga vseeno prijavi
+# kot FAIL. Odloženo ustvarjanje popolnoma odpravi težavo za vse teste, ki
+# hover sploh ne sprožijo.
+var map_bubble_label: Label = null
 
 var map_data: Array = []
 var room_node_map: Dictionary = {}
@@ -27,6 +39,13 @@ var pending_tier: int = 0
 var pan_start_position: Vector2 = Vector2.ZERO
 var is_panning: bool = false
 
+# NEW: Rob zaslona (auto-scroll), glej _process()
+const AUTO_SCROLL_MAX_SPEED := 600.0
+
+# NEW: Hover tooltip balon (glej map_node_icon.gd signala hover_bubble_*)
+const MAP_BUBBLE_MARGIN := 8.0
+var _hovered_icon: MapNodeIcon = null
+
 # NEW: Meje celotne mape za omejitev kamere
 var map_boundary_min: Vector2 = Vector2.ZERO
 var map_boundary_max: Vector2 = Vector2.ZERO
@@ -40,6 +59,39 @@ func _ready():
 func _on_button_pressed():
 	UiAudio.play_click()
 	print("predvajam zvok")
+
+## Rob zaslona (mouse-edge auto-scroll): zgornja/spodnja 1/5 zaslona je "vroča"
+## cona, sredinskih 3/5 je mrtvih. Hitrost premika narašča linearno bliže robu.
+## Med aktivnim click-drag panom (is_panning) se auto-scroll izklopi, da si ne
+## nasprotujeta.
+func _process(delta):
+	if is_panning:
+		return
+
+	var viewport_size = get_viewport_rect().size
+	var mouse_y = get_viewport().get_mouse_position().y
+	var zone = viewport_size.y / 5.0
+
+	var direction = 0.0
+	var intensity = 0.0
+
+	if mouse_y < zone:
+		direction = -1.0
+		intensity = (zone - mouse_y) / zone
+	elif mouse_y > viewport_size.y - zone:
+		direction = 1.0
+		intensity = (mouse_y - (viewport_size.y - zone)) / zone
+
+	if direction != 0.0:
+		var new_position = map_camera.position
+		new_position.y += direction * intensity * AUTO_SCROLL_MAX_SPEED * delta / map_camera.zoom.y
+		map_camera.position = _clamp_camera_position(new_position, map_camera.zoom)
+
+	# Balon je ročno pozicioniran glede na ikono v zaslonskem prostoru - dokler
+	# je viden, ga je treba vsak frame preračunati, sicer med auto-scrollom
+	# (ali click-drag panom) "odplava" stran od ikone, ki jo opisuje.
+	if is_instance_valid(_hovered_icon):
+		_reposition_map_bubble()
 
 # =========================================================
 # METODE ZA ZAGON, VIZUALIZACIJO IN STANJE 
@@ -177,8 +229,10 @@ func _visualize_rooms():
 			
 			room_node.initialize(room_resource)
 			room_node.room_clicked.connect(_on_room_selected)
+			room_node.hover_bubble_requested.connect(_on_hover_bubble_requested)
+			room_node.hover_bubble_dismissed.connect(_on_hover_bubble_dismissed)
 			
-			room_node.position = room_resource.position
+			room_node.position = room_resource.position - room_node.size * room_node.scale / 2.0
 			room_node_map[room_resource] = room_node
 
 
@@ -375,5 +429,58 @@ func _handle_event(room_data: Room):
 	# preklopi na campfire sceno (glej GameFlow.start_event()).
 
 	PlayerManager.addSnow()
-	
+
 	GF.start_event(room_data.type)
+
+
+# =========================================================
+# HOVER TOOLTIP BALON (glej map_node_icon.gd, ~3s po mouse_entered)
+# =========================================================
+
+func _ensure_map_bubble_label() -> void:
+	if map_bubble_label != null:
+		return
+
+	map_bubble_label = Label.new()
+	map_bubble_label.name = "MapBubbleLabel"
+	map_bubble_label.custom_minimum_size = Vector2(260, 0)
+	map_bubble_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_bubble_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	map_bubble.add_child(map_bubble_label)
+
+
+func _on_hover_bubble_requested(icon: MapNodeIcon) -> void:
+	var text: String = Room.RoomDescriptions.get(icon.room_resource.type, "")
+	if text == "":
+		return
+
+	_ensure_map_bubble_label()
+	map_bubble_label.text = text
+	map_bubble.visible = true
+	# Ročno pozicioniran PanelContainer se ne re-sizea sam iz frame v frame -
+	# brez tega klica bi obdržal velikost prejšnjega besedila (glej battle_ui.gd).
+	map_bubble.reset_size()
+	_hovered_icon = icon
+	_reposition_map_bubble()
+
+
+func _on_hover_bubble_dismissed() -> void:
+	map_bubble.visible = false
+	_hovered_icon = null
+
+
+## Pozicionira balon levo+navzgor od ikone, vedno znotraj vidnega polja -
+## kliče se ob prikazu IN vsak frame dokler je viden (glej _process()), ker
+## auto-scroll/pan lahko premakne kamero (in s tem ikonino zaslonsko pozicijo)
+## medtem ko je balon prikazan.
+func _reposition_map_bubble() -> void:
+	var icon_rect := _hovered_icon.get_global_rect()
+	var viewport_size := get_viewport().get_visible_rect().size
+	var bubble_size := map_bubble.size
+
+	var desired := icon_rect.position - bubble_size - Vector2(MAP_BUBBLE_MARGIN, MAP_BUBBLE_MARGIN)
+	var clamped := Vector2(
+		clampf(desired.x, MAP_BUBBLE_MARGIN, viewport_size.x - bubble_size.x - MAP_BUBBLE_MARGIN),
+		clampf(desired.y, MAP_BUBBLE_MARGIN, viewport_size.y - bubble_size.y - MAP_BUBBLE_MARGIN)
+	)
+	map_bubble.global_position = clamped
