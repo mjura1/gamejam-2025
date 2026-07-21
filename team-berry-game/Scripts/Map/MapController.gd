@@ -315,14 +315,18 @@ func _draw():
 	var line_width = 4.0
 
 	for current_room_resource in room_node_map.keys():
-		var start_node = room_node_map[current_room_resource]
-		var start_pos = start_node.position
-		
+		# NEW: room_resource.position (the original grid anchor), NOT
+		# room_node.position - _visualize_rooms() offsets the node's position
+		# so the ICON's visual center lands on room_resource.position, which
+		# means room_node.position is now the icon's shifted top-left corner,
+		# not the line endpoint. Using room_resource.position directly keeps
+		# the lines pointing at the same anchor the icon is centered on.
+		var start_pos = current_room_resource.position
+
 		for next_room_resource in current_room_resource.next_rooms:
 			if room_node_map.has(next_room_resource):
-				var end_node = room_node_map[next_room_resource]
-				var end_pos = end_node.position
-				
+				var end_pos = next_room_resource.position
+
 				draw_line(start_pos, end_pos, color_line, line_width)
 
 func _center_and_zoom_camera():
@@ -474,7 +478,21 @@ func _on_hover_bubble_dismissed() -> void:
 ## auto-scroll/pan lahko premakne kamero (in s tem ikonino zaslonsko pozicijo)
 ## medtem ko je balon prikazan.
 func _reposition_map_bubble() -> void:
-	var icon_rect := _hovered_icon.get_global_rect()
+	# NEW: icon.get_global_rect() is in CANVAS space (composed through the
+	# Node2D parent chain), NOT actual screen pixels - it does NOT include the
+	# separate camera_transform the Camera2D writes onto the viewport each
+	# frame. map_bubble lives under a CanvasLayer (screen-space, ignores the
+	# camera entirely), so its global_position must be in real screen pixels.
+	# Without this transform the bubble was placed at raw world coordinates
+	# (e.g. near (0,0) for early floors), which is why it always showed up
+	# pinned to the top-left corner regardless of where the hovered icon
+	# actually was on screen.
+	var canvas_xform: Transform2D = get_viewport().canvas_transform
+	var icon_rect_world := _hovered_icon.get_global_rect()
+	var top_left := canvas_xform * icon_rect_world.position
+	var bottom_right := canvas_xform * (icon_rect_world.position + icon_rect_world.size)
+	var icon_rect := Rect2(top_left, bottom_right - top_left)
+
 	var viewport_size := get_viewport().get_visible_rect().size
 	var bubble_size := map_bubble.size
 

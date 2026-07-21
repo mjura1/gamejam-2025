@@ -14,7 +14,13 @@ once auto-scroll play-tests well, but that's a separate, deferred decision.
   room_resource.position`), so the connector lines drawn in `_draw()` pointed at
   a corner, not the visible icon's center. `MapController._visualize_rooms()` now
   offsets by `room_node.size * room_node.scale / 2.0` so the icon's visual center
-  lands exactly on the line endpoint, at every zoom level.
+  lands exactly on the line endpoint, at every zoom level. **Follow-up fix after
+  first playtest**: this alone wasn't enough — `_draw()` was still reading
+  `room_node.position` (now the icon's shifted top-left corner) for the line
+  endpoints instead of the original anchor, so the lines just followed the same
+  offset the icon did. `_draw()` now uses `room_resource.position`/
+  `next_room_resource.position` directly (the stable grid anchor both the icon's
+  center and the line endpoint are meant to share).
 - **Bigger floor spacing**: `MapGenerator.Y_DISTANCE` `100` → `280`. `X_DISTANCE`
   left unchanged — the bigger icons still fit comfortably within a row at the
   existing horizontal spacing, no overlap observed. Camera framing/zoom-to-fit
@@ -26,12 +32,33 @@ once auto-scroll play-tests well, but that's a separate, deferred decision.
   drag/zoom.
 - **Hover tooltip bubble**: reuses the battle UI's ability-bubble visual pattern
   (same dark `StyleBoxFlat`, same clamped up-and-left positioning), but with a
-  new 3s `HoverTimer` per icon (`map_node_icon.tscn`/`.gd`) instead of showing
-  instantly, and a new `Room.RoomDescriptions` dict (`map_point.gd`) for the
-  per-room-type text (e.g. "Adds a Pawn to the enemy army"). The bubble's Label
-  is built lazily in code on first hover rather than baked into `map.tscn` — see
-  Deviations below. Repositions every frame while visible so it stays glued to
-  its icon during auto-scroll/pan.
+  new `HoverTimer` per icon (`map_node_icon.tscn`/`.gd`, `wait_time = 1.5` —
+  tuned down from the initial 3s starting point after playtest feedback) instead
+  of showing instantly, and a new `Room.RoomDescriptions` dict (`map_point.gd`)
+  for the per-room-type text (e.g. "Adds a Pawn to the enemy army"). The
+  bubble's Label is built lazily in code on first hover rather than baked into
+  `map.tscn` — see Deviations below. Repositions every frame while visible so it
+  stays glued to its icon during auto-scroll/pan.
+  **Follow-up fixes after first playtest**:
+  - The bubble always appeared pinned to the screen's top-left corner instead
+    of near the hovered icon. Root cause: `MapNodeIcon.get_global_rect()`
+    returns *canvas*-space coordinates (composed through the `Node2D` parent
+    chain), not actual screen pixels — it does not include the separate
+    `canvas_transform` `Camera2D` writes onto the viewport each frame. Since
+    `MapBubble` lives under a `CanvasLayer` (screen-space, camera-agnostic),
+    feeding it raw canvas coordinates placed it at/near world-origin regardless
+    of where the icon actually was on screen. `_reposition_map_bubble()` now
+    transforms the icon's rect through `get_viewport().canvas_transform` before
+    computing the bubble's position, matching what the camera actually shows.
+  - Locked/already-visited room icons never showed a tooltip at all. Root
+    cause: `MapNodeIcon.update_look()` set `disabled = true` for those states,
+    and a disabled `Button` does not reliably receive `mouse_entered`/
+    `mouse_exited` hover signals (the plan's original assumption that it does
+    was wrong). `update_look()` no longer touches `disabled` at all — the Button
+    stays hover-active in every state, and click-through-to-battle stays
+    correctly gated by the pre-existing manual check already in
+    `_on_room_pressed()` (`room_resource.is_unlocked and not
+    room_resource.selected`), so nothing about click behavior changed.
 
 **Deviation from `plans/MAP_VISUAL_OVERHAUL_PLAN.md`'s M4 spec**: the plan called
 for baking `MapBubbleLabel` directly into `map.tscn`. Doing so broke ~20
