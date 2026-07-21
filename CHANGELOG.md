@@ -1,3 +1,54 @@
+# Winter March — post-battle summary overlays (VICTORY/DEFEAT) → features/post-battle-summary (awaiting review)
+
+New feature on `features/post-battle-summary`: playtesting surfaced that battle end
+was silent and confusing for a new player — winning silently dropped you back on
+the map, losing silently dumped you at the main menu, with no explanation of what
+happened. Adds VICTORY and DEFEAT overlay screens, shown the instant a battle
+ends (before the existing automatic scene transition), reusing the pause menu's
+blurred-backdrop visual pattern.
+
+- **VICTORY**: a "SUMMARY" section shows both parties (enemy + mine) as rows of
+  piece icons — pieces already owned before the battle are grayed out, a piece
+  newly recruited/added *this battle* is highlighted with a "+" badge. A generic,
+  data-driven "REWARDS" list shows items gained (today just upgrade items,
+  computed as a before/after delta so it correctly includes the conditional
+  courier_package bonus on top of the win/boss-win constant) — built as
+  `{label, amount}` rows so a future reward type (e.g. artifacts, not implemented
+  anywhere in this codebase yet) is just another row, not a redesign. CONTINUE
+  re-triggers whatever the existing win logic already does (`return_to_map()` or
+  `advance_map_tier()`, including the run-ending final-boss case) — no new
+  transition logic, the summary is purely a view.
+- **DEFEAT**: shows "Final Floor"/"Final Room" (map tier / room depth, captured
+  into locals *before* `PlayerManager.reset_floor_number()` zeroes them). BACK
+  ends the run and lands directly on the already-implemented game-mode-select
+  overlay, skipping the bare main-menu title screen.
+- New `PlayerManager.new_friendly_piece`/`new_enemy_piece` track which single
+  piece (if any) was added to a roster this battle, set in
+  `MapController._handle_event()`; `add_to_friendly_party()` now returns `bool`
+  (joined the active roster vs. overflowed to reserve) so a benched piece isn't
+  wrongly flagged "new". `GameFlow.game_over()` now returns the instantiated main
+  menu `Control` so the defeat handler can chain `open_mode_select()` on it.
+
+Along the way, fixed a latent bug in the shared `tests/framework/battle_boot.gd`
+test helper (not a gameplay bug): `BattleBoot.boot()` connected its placement
+auto-complete listener *after* adding the battle to the tree, which only worked
+because `add_child()` during a `-s` script's `_initialize()` defers `_ready()` a
+frame — calling `boot()` again later from `_process()` (needed by the new
+multi-battle summary smoke test) runs `_ready()` synchronously instead, so the
+listener could miss the PLACEMENT signal entirely and strand the battle forever.
+Now connects before `add_child()`. Also widened `complete_placement()`'s
+placement-cell search from the bottom 3 rows to the whole map height (still
+filtered through the real placement-zone legality check), since randomly-spawned
+"House" obstacles could occasionally block all 3 bottom rows.
+
+Tests: `run_all.sh` gained `smoke_post_battle_summary` (victory non-boss/boss
+CONTINUE branches, defeat BACK → mode-select, badge/reward/delta assertions) plus
+2 new `test_player_manager.gd` unit cases for the `add_to_friendly_party()` return
+value. Updated `smoke_battle_end`/`smoke_battle_loss`/`smoke_courier_package` to
+drive the new overlay's signals directly before their existing post-transition
+assertions. Full rationale, verified code map, and every design decision
+documented in `plans/POST_BATTLE_SUMMARY_PLAN.md`.
+
 # Winter March — snow rework: bug fix + risk/reward freeze mechanic → features/snow-rework (awaiting review)
 
 New feature on `features/snow-rework` (NOT merged — left for review): fixes a
