@@ -27,7 +27,12 @@ func setup_defeat(final_tier: int, final_floor: int) -> void:
 func _populate_party_row(row: Container, roster: Array, new_piece_name: String) -> void:
 	for child in row.get_children():
 		child.queue_free()
+	# The new/highlighted icon (if any) is always added LAST, regardless of
+	# where it falls in the roster array - keeps it on the same side of the
+	# row for both MINE and ENEMY (their roster arrays don't share ordering
+	# conventions for where a freshly-appended piece lands).
 	var claimed := false
+	var new_icon: PieceIcon = null
 	for roster_name in roster:
 		var icon := PieceIcon.new()
 		icon.setup(roster_name, null)
@@ -35,9 +40,12 @@ func _populate_party_row(row: Container, roster: Array, new_piece_name: String) 
 			icon.set_highlighted(true)
 			icon.set_slot_label("+")
 			claimed = true
+			new_icon = icon
 		else:
 			icon.set_benched(true)
-		row.add_child(icon)
+			row.add_child(icon)
+	if new_icon != null:
+		row.add_child(new_icon)
 
 func _populate_rewards(upgrade_items_gained: int) -> void:
 	for child in %RewardsList.get_children():
