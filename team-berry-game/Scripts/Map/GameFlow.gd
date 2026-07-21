@@ -15,7 +15,22 @@ const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
 const TUTORIAL_HUB_SCENE = preload("res://Scenes/Menu/tutorial_hub_menu.tscn")
 const POST_BATTLE_SUMMARY_SCENE = preload("res://Scenes/Menu/post_battle_summary.tscn")
 
+# NOVO: Fiksno zaporedje tipov sob za tutorial mapo (glej
+# plans/TUTORIAL_MAP_PLAN.md) - MapGenerator.generate_fixed_map() ga prebere
+# preko MapController.pending_fixed_rooms.
+const TUTORIAL_ROOM_SEQUENCE: Array = [
+	Room.RoomType.friendly_pawn, Room.RoomType.enemy_pawn, Room.RoomType.friendly_rook,
+	Room.RoomType.item, Room.RoomType.shop, Room.RoomType.enemy_pawn,
+]
+
 var game_initialized: bool = false
+# NOVO: True med celotnim tutorial-map runom (auto-trigger ali replay iz huba)
+# - preusmerja defeat/victory handlerje spodaj na tutorial-specifično logiko
+# namesto normalnega advance_map_tier()/game_over().
+var tutorial_map_active: bool = false
+# NOVO: "new_game" (avtomatski prvi zagon) ali "replay" (iz tutorial huba,
+# glej M6) - določa, kam _land_after_tutorial() pristane po zaključku/skipu.
+var tutorial_map_source: String = "new_game"
 var current_map_instance: Node = null
 var pause_menu_instance: Control = null
 var pause_menu_layer: CanvasLayer = null
@@ -121,10 +136,23 @@ func _initialize_game():
 	# 1. Ustvarimo in shranimo instanco mape
 	current_map_instance = MAP_SCENE.instantiate()
 	current_map_instance.name = "MapInstance"
-	# pending_tier (ne initialize_map() neposredno!) - vozlišče še ni v drevesu,
-	# zato @onready sklici (map_camera ipd.) še niso na voljo. _ready() bo
-	# initialize_map(pending_tier) poklical sam, ko bo vozlišče dodano.
-	current_map_instance.pending_tier = PlayerManager.current_map_tier
+
+	if not MetaProgress.tutorial_seen:
+		# Igralčev prvi kadarkoli zagnan run (Classic ali Infinite) - namesto
+		# normalne naključne tier-0 mape dobi fiksno linearno tutorial mapo.
+		# mode_select_menu.gd je pred tem klicem že pognal setStarting() in
+		# napolnil normalne 3-kmetske defaulte - tu ju izpraznimo nazaj, da je
+		# učinek vsakega vozlišča viden izolirano (glej §1 plana).
+		tutorial_map_active = true
+		tutorial_map_source = "new_game"
+		PlayerManager.friendly_party = []
+		PlayerManager.enemy_party = []
+		current_map_instance.pending_fixed_rooms = TUTORIAL_ROOM_SEQUENCE
+	else:
+		# pending_tier (ne initialize_map() neposredno!) - vozlišče še ni v drevesu,
+		# zato @onready sklici (map_camera ipd.) še niso na voljo. _ready() bo
+		# initialize_map(pending_tier) poklical sam, ko bo vozlišče dodano.
+		current_map_instance.pending_tier = PlayerManager.current_map_tier
 
 	# 2. Naložimo shranjeno instanco mape kot prvo sceno
 	# (S tem preklopimo sceno iz Main Menu na Mapo)
@@ -149,6 +177,20 @@ func start_event(room_type: int):
 	if room_type == Room.RoomType.item:
 		# Ni bitke in ni menjave scene - nagrada je bila že dodeljena v
 		# MapController._handle_event(), igralec ostane na mapi.
+		return
+
+	if tutorial_map_active and Room.RoomTypeNames[room_type].begins_with("friendly_") \
+			and PlayerManager.enemy_party.is_empty():
+		# Tutorial node 1 (friendly_pawn): rekrutiranje PREDEN sploh obstaja
+		# sovražnik - ni koga se boriti. Izpeljano iz trenutnega stanja igre (ne
+		# hardcoded "prvo vozlišče"), zato se namerno NE sproži za node 3
+		# (friendly_rook), ker takrat enemy_party že vsebuje kmeta iz node 2 -
+		# tisti recruit gre v pravo (če lahko) bitko, kar je nameren nauk
+		# ("rekrutiranje sredi runa še vedno pomeni boj z obstoječimi sovražniki").
+		# Prikažemo normalni victory overlay neposredno namesto battle.tscn +
+		# placement, da igralec vseeno dobi vidno povratno informacijo.
+		GF.call_deferred("show_victory_summary", PlayerManager.friendly_party.duplicate(),
+			PlayerManager.enemy_party.duplicate(), PlayerManager.new_friendly_piece, "", 0, false)
 		return
 
 	PlayerManager.resetActives()
@@ -263,7 +305,9 @@ func show_victory_summary(friendly_party: Array, enemy_party: Array,
 func _on_victory_continue_pressed(summary_layer: CanvasLayer, is_boss_floor: bool) -> void:
 	summary_layer.queue_free()
 	post_battle_summary_layer = null
-	if is_boss_floor:
+	if is_boss_floor and tutorial_map_active:
+		_finish_tutorial_map()
+	elif is_boss_floor:
 		advance_map_tier()
 	else:
 		return_to_map()
@@ -282,6 +326,12 @@ func show_defeat_summary(final_tier: int, final_floor: int) -> void:
 func _on_defeat_back_pressed(summary_layer: CanvasLayer) -> void:
 	summary_layer.queue_free()
 	post_battle_summary_layer = null
+	if tutorial_map_active:
+		# Isti divine_intervention mehanizem (glej return_to_map_after_escape
+		# zgoraj) namesto normalnega "končaj run" - DEFEAT zaslon se je že
+		# prikazal normalno, spremeni se samo kaj se zgodi ob BACK.
+		return_to_map_after_escape()
+		return
 	var new_menu := game_over()
 	new_menu.call_deferred("open_mode_select")
 
@@ -298,6 +348,7 @@ func return_to_main_menu():
 # zato je get_tree() ne sprosti sam - brez tega klica pušča spomin (leak).
 func _end_run():
 	game_initialized = false
+	tutorial_map_active = false
 	PlayerManager.current_map_tier = 0
 	get_tree().paused = false
 	if is_instance_valid(pause_menu_instance):
@@ -305,6 +356,46 @@ func _end_run():
 	if is_instance_valid(current_map_instance) and not current_map_instance.is_inside_tree():
 		current_map_instance.queue_free()
 	current_map_instance = null
+
+
+# =========================================================
+# 3c. TUTORIAL MAP: DOKONČANJE / SKIP
+# =========================================================
+# Glej plans/TUTORIAL_MAP_PLAN.md §3 M3. _finish_tutorial_map (pravo
+# dokončanje) in skip_tutorial_map (SKIP gumb, glej M4) se razlikujeta samo v
+# tem, ali se sproži trajna nagrada (MetaProgress.tutorial_reward_granted).
+
+func _finish_tutorial_map() -> void:
+	tutorial_map_active = false
+	MetaProgress.mark_tutorial_completed()
+	_land_after_tutorial()
+
+func skip_tutorial_map() -> void:
+	tutorial_map_active = false
+	MetaProgress.mark_tutorial_skipped()
+	_land_after_tutorial()
+
+func _land_after_tutorial() -> void:
+	if tutorial_map_source == "replay":
+		game_initialized = false
+		if is_instance_valid(current_map_instance):
+			current_map_instance.queue_free()
+			current_map_instance = null
+		return_to_tutorial_hub()
+		return
+	if is_instance_valid(current_map_instance):
+		current_map_instance.queue_free()
+	# Roster zgradimo znova prek normalne poti (namesto da bi prevzeli, kar je
+	# tutorialov lasten friendly_party/enemy_party nazadnje vseboval) - to je
+	# edino mesto, ki dosledno uveljavi trajno nagrado (glej M5), in se izogne
+	# podvojenemu štetju, če je igralec kak tutorial node ponovil po
+	# divine-intervention odboju.
+	PlayerManager.setStarting(PlayerManager.game_mode)
+	current_map_instance = MAP_SCENE.instantiate()
+	current_map_instance.name = "MapInstance"
+	current_map_instance.pending_tier = 0
+	PlayerManager.reset_floor_number()
+	_change_scene_instance(current_map_instance)
 
 
 # =========================================================
