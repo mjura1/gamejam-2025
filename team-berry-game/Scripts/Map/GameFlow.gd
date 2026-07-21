@@ -414,3 +414,25 @@ func start_tutorial_stage(stage_scene: PackedScene):
 
 func return_to_tutorial_hub():
 	_change_scene_instance(TUTORIAL_HUB_SCENE.instantiate())
+
+## Manualni "replay" vstop v tutorial mapo iz huba (glej
+## Scripts/Menu/tutorial_hub_menu.gd) - za razliko od _initialize_game()'s
+## avtomatskega prvega-zagona veje (M3) NE preverja MetaProgress.tutorial_seen
+## in se po zaključku/skipu vrne v hub, ne v pravi run (glej _land_after_tutorial).
+func replay_tutorial_map() -> void:
+	if game_initialized:
+		push_error("GF: Igra je že inicializirana.")
+		return
+	game_initialized = true
+	tutorial_map_active = true
+	tutorial_map_source = "replay"
+	PlayerManager.setStarting("classic")
+	PlayerManager.friendly_party = []
+	PlayerManager.enemy_party = []
+	call_deferred("_initialize_replayed_tutorial_map")
+
+func _initialize_replayed_tutorial_map() -> void:
+	current_map_instance = MAP_SCENE.instantiate()
+	current_map_instance.name = "MapInstance"
+	current_map_instance.pending_fixed_rooms = TUTORIAL_ROOM_SEQUENCE
+	_change_scene_instance(current_map_instance)
