@@ -56,7 +56,7 @@ var pan_start_position: Vector2 = Vector2.ZERO
 var is_panning: bool = false
 
 # NEW: Rob zaslona (auto-scroll), glej _process()
-const AUTO_SCROLL_MAX_SPEED := 600.0
+const AUTO_SCROLL_MAX_SPEED := 1500.0
 
 # NEW: Hover tooltip balon (glej map_node_icon.gd signala hover_bubble_*)
 const MAP_BUBBLE_MARGIN := 8.0
