@@ -12,6 +12,7 @@ extends SceneTree
 # actually take effect before the process ever stops.
 
 var killed_allies := false
+var summary_handled := false
 var old_map_instance: Node = null
 var frames_since_transition := 0
 var checked_result := false
@@ -39,27 +40,40 @@ func _process(_delta: float) -> bool:
 				print(">>> SMOKE TEST: old (detached) map instance was freed - no leak <<<")
 		return false
 
-	if killed_allies:
-		return false # give the deferred call more frames to fire
+	if not killed_allies:
+		var grid_manager = battle_instance.get_node_or_null("GridManager")
+		var battle_controller = battle_instance.get_node_or_null("BattleController")
+		if grid_manager == null or battle_controller == null:
+			return false # still spawning
 
-	var grid_manager = battle_instance.get_node_or_null("GridManager")
-	var battle_controller = battle_instance.get_node_or_null("BattleController")
-	if grid_manager == null or battle_controller == null:
-		return false # still spawning
+		var allies: Array = []
+		for character in grid_manager.get_all_characters():
+			if character is BaseCharacter and not character.is_enemy and not character.is_obstacle:
+				allies.append(character)
 
-	var allies: Array = []
-	for character in grid_manager.get_all_characters():
-		if character is BaseCharacter and not character.is_enemy and not character.is_obstacle:
-			allies.append(character)
+		if allies.is_empty():
+			return false # pieces haven't spawned yet
 
-	if allies.is_empty():
-		return false # pieces haven't spawned yet
+		print(">>> SMOKE TEST: killing %d allies to force a LOSS <<<" % allies.size())
+		for ally in allies:
+			ally.die()
+		killed_allies = true
 
-	print(">>> SMOKE TEST: killing %d allies to force a LOSS <<<" % allies.size())
-	for ally in allies:
-		ally.die()
-	killed_allies = true
+		# Same check the real turn loop runs right after an action resolves.
+		battle_controller.check_battle_end()
+		return false
 
-	# Same check the real turn loop runs right after an action resolves.
-	battle_controller.check_battle_end()
+	if not summary_handled:
+		# check_battle_end() now shows the post-battle summary instead of
+		# calling game_over() directly - the Battle scene stays in the tree
+		# until BACK is driven, which is what actually triggers game_over()
+		# (and therefore _end_run()'s map-instance cleanup this test checks).
+		var summary_layer = root.get_node_or_null("PostBattleSummaryLayer")
+		if summary_layer == null or summary_layer.get_child_count() == 0:
+			return false # summary overlay not up yet
+		print(">>> SMOKE TEST: post-battle summary shown, emitting back_pressed <<<")
+		summary_layer.get_child(0).back_pressed.emit()
+		summary_handled = true
+		return false
+
 	return false

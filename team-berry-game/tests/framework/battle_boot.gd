@@ -9,20 +9,38 @@ class_name BattleBoot
 # programmatically (places the whole roster, up to the UI's max, then confirms)
 # so tests land in PLAYER_TURN like before. Use boot_placement_only() to get
 # a battle still sitting in the PLACEMENT state.
-# NOTE: in a -s MainLoop script, add_child() during _initialize() does NOT run
-# _ready() synchronously - the scene wakes up on the first frame. Placement
-# completion is therefore hooked (deferred) onto the PLACEMENT state signal,
-# and tests should poll for PLAYER_TURN in _process() as they already do.
 static func boot(tree: SceneTree) -> Node:
-	var battle_instance = boot_placement_only(tree)
+	var battle_instance = _build_battle_instance(tree)
 	var battle_controller = battle_instance.get_node("BattleController")
+	# MUST connect before the instance enters the tree (see _build_battle_instance's
+	# note) - add_child() can run _ready()/initialize_battle() synchronously
+	# and emit the PLACEMENT state_changed signal before a listener attached
+	# afterwards would ever see it, stranding the battle in PLACEMENT forever
+	# with nothing to auto-complete it (hit when boot() is called a second
+	# time from _process() rather than _initialize()).
 	battle_controller.state_changed.connect(func(new_state):
 		if new_state == battle_controller.BattleState.PLACEMENT:
 			Callable(BattleBoot, "complete_placement").call_deferred(battle_instance)
 	)
+	tree.root.add_child(battle_instance)
+	tree.current_scene = battle_instance
 	return battle_instance
 
 static func boot_placement_only(tree: SceneTree) -> Node:
+	var battle_instance = _build_battle_instance(tree)
+	tree.root.add_child(battle_instance)
+	tree.current_scene = battle_instance
+	return battle_instance
+
+# Builds (instantiates, does NOT add to the tree) a battle instance plus the
+# PlayerManager/GameFlow state it expects to find. Kept as a separate step
+# from add_child() so boot() can connect its state_changed listener first -
+# see the note there.
+# NOTE: in a -s MainLoop script, add_child() during _initialize() does NOT run
+# _ready() synchronously - the scene wakes up on the first frame. Called later
+# (e.g. from _process(), as a test booting a second battle would), add_child()
+# instead runs _ready() (and therefore initialize_battle()) immediately.
+static func _build_battle_instance(tree: SceneTree) -> Node:
 	var player_manager = tree.root.get_node("PlayerManager")
 	player_manager.setStarting()
 	player_manager.resetActives()
@@ -34,10 +52,7 @@ static func boot_placement_only(tree: SceneTree) -> Node:
 	gf.game_initialized = true
 
 	var battle_scene: PackedScene = load("res://Scenes/Map/battle.tscn")
-	var battle_instance = battle_scene.instantiate()
-	tree.root.add_child(battle_instance)
-	tree.current_scene = battle_instance
-	return battle_instance
+	return battle_scene.instantiate()
 
 # Places pieces from the roster onto the bottom rows via the battle UI's own
 # placement API, then presses START. No-op if the battle skipped placement
@@ -55,11 +70,19 @@ static func complete_placement(battle_instance: Node) -> void:
 	for roster_name in player_manager.friendly_party:
 		to_place[roster_name] = to_place.get(roster_name, 0) + 1
 
+	# Search the WHOLE map height, bottom row first, not just the usual
+	# bottom-3 rows - place_piece() already rejects any cell outside the
+	# real placement zone (battle_ui._is_free_placement_cell() delegates to
+	# placement_highlighter), so this is just a wider search, not a legality
+	# change. Needed because randomly-spawned "House" obstacles can
+	# occasionally block all of the bottom 3 rows, which used to leave the
+	# battle stuck in PLACEMENT forever (found via a test that boots several
+	# battles in one process, multiplying the odds of an unlucky map).
 	var used_rect: Rect2i = battle_instance.get_node("Map/TileMapLayer").get_used_rect()
 	for roster_name in to_place:
 		for i in range(to_place[roster_name]):
 			var placed := false
-			for y in range(used_rect.end.y - 1, used_rect.end.y - 4, -1):
+			for y in range(used_rect.end.y - 1, used_rect.position.y - 1, -1):
 				for x in range(used_rect.position.x, used_rect.end.x):
 					if battle_ui.place_piece(roster_name, Vector2i(x, y)):
 						placed = true

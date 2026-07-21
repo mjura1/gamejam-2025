@@ -13,6 +13,7 @@ extends SceneTree
 var player_manager
 var picked := false
 var killed_enemy := false
+var summary_handled := false
 var checked_result := false
 
 func _check(label: String, ok: bool):
@@ -42,6 +43,31 @@ func _process(_delta: float) -> bool:
 				player_manager.upgrade_items == player_manager.UPGRADE_ITEMS_PER_WIN \
 					+ item_data.get_reward("courier_package"))
 			print(">>> SMOKE TEST: courier_package mark + victory reward works <<<")
+		return false
+
+	if killed_enemy and not summary_handled:
+		# check_battle_end() now shows the post-battle summary instead of
+		# transitioning immediately - assert the delta-computed reward while
+		# the summary is still reachable, then drive its CONTINUE button
+		# (same "drive handlers directly" style as smoke_mode_select.gd).
+		var summary_layer = root.get_node_or_null("PostBattleSummaryLayer")
+		if summary_layer == null or summary_layer.get_child_count() == 0:
+			return false # summary overlay not up yet
+		var summary_instance = summary_layer.get_child(0)
+		var item_data = root.get_node("ItemData")
+		var expected_gained: int = player_manager.UPGRADE_ITEMS_PER_WIN + item_data.get_reward("courier_package")
+		var rewards_list = summary_instance.get_node("%RewardsList")
+		var found_row := false
+		for row in rewards_list.get_children():
+			var row_children = row.get_children()
+			if row_children.size() >= 2 and row_children[0].text == "UPGRADE ITEMS":
+				found_row = true
+				_check("summary rewards row shows upgrade_items_gained delta (win + courier bonus)",
+					row_children[row_children.size() - 1].text == "x%d" % expected_gained)
+		_check("summary rewards list included an UPGRADE ITEMS row", found_row)
+		print(">>> SMOKE TEST: post-battle summary shown, emitting continue_pressed <<<")
+		summary_instance.continue_pressed.emit()
+		summary_handled = true
 		return false
 
 	if killed_enemy:
