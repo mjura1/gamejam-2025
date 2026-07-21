@@ -75,7 +75,7 @@ func _update_icon():
 	if ICON_LOOKUP.has(room_resource.type):
 		icon_display.texture = ICON_LOOKUP[room_resource.type]
 
-const ICON_SCALE := 6.0
+const ICON_SCALE := 7.5
 
 func _update_scale():
 	scale = Vector2(ICON_SCALE, ICON_SCALE)

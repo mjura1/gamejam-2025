@@ -9,32 +9,35 @@ Scroll-wheel zoom and click-drag pan are untouched — Miha may remove them late
 once auto-scroll play-tests well, but that's a separate, deferred decision.
 
 - **Bigger icons + centering fix**: `map_node_icon.gd`'s icon scale doubled
-  (`3.0` → `ICON_SCALE := 6.0`). Root cause of the off-center look: nodes were
-  positioned by their top-left corner (`room_node.position =
-  room_resource.position`), so the connector lines drawn in `_draw()` pointed at
-  a corner, not the visible icon's center. `MapController._visualize_rooms()` now
-  offsets by `room_node.size * room_node.scale / 2.0` so the icon's visual center
-  lands exactly on the line endpoint, at every zoom level. **Follow-up fix after
-  first playtest**: this alone wasn't enough — `_draw()` was still reading
-  `room_node.position` (now the icon's shifted top-left corner) for the line
-  endpoints instead of the original anchor, so the lines just followed the same
-  offset the icon did. `_draw()` now uses `room_resource.position`/
-  `next_room_resource.position` directly (the stable grid anchor both the icon's
-  center and the line endpoint are meant to share).
-- **Bigger floor spacing**: `MapGenerator.Y_DISTANCE` `100` → `280`. `X_DISTANCE`
-  left unchanged — the bigger icons still fit comfortably within a row at the
-  existing horizontal spacing, no overlap observed. Camera framing/zoom-to-fit
-  code needed no changes (already derives from room positions dynamically).
-- **Mouse-edge auto-scroll**: new `MapController._process()` — top/bottom 1/5 of
-  the screen is a "hot" zone (middle 3/5 dead), scroll speed ramps up linearly
+  (`3.0` → `6.0`, then → `7.5` after round-2 feedback). Root cause of the
+  off-center look: nodes were positioned by their top-left corner
+  (`room_node.position = room_resource.position`), so the connector lines drawn
+  in `_draw()` pointed at a corner, not the visible icon's center.
+  `MapController._visualize_rooms()` now offsets by `room_node.size *
+  room_node.scale / 2.0` so the icon's visual center lands exactly on the line
+  endpoint, at every zoom level. **Follow-up fix after first playtest**: this
+  alone wasn't enough — `_draw()` was still reading `room_node.position` (now
+  the icon's shifted top-left corner) for the line endpoints instead of the
+  original anchor, so the lines just followed the same offset the icon did.
+  `_draw()` now uses `room_resource.position`/`next_room_resource.position`
+  directly (the stable grid anchor both the icon's center and the line
+  endpoint are meant to share). Confirmed fixed in round-2 feedback.
+- **Bigger floor spacing**: `MapGenerator.Y_DISTANCE` `100` → `280` → `350`
+  (round 2). `X_DISTANCE` left unchanged — the bigger icons still fit
+  comfortably within a row at the existing horizontal spacing, no overlap
+  observed. Camera framing/zoom-to-fit code needed no changes (already derives
+  from room positions dynamically).
+- **Mouse-edge auto-scroll**: new `MapController._process()` — top/bottom 2/5 of
+  the screen is a "hot" zone (middle 1/5 dead — widened from the initial 1/5
+  hot / 3/5 dead split after round-2 feedback), scroll speed ramps up linearly
   closer to the edge, disabled while a click-drag pan is active. Reuses the
   existing `_clamp_camera_position()` so it respects the same map boundaries as
   drag/zoom.
 - **Hover tooltip bubble**: reuses the battle UI's ability-bubble visual pattern
   (same dark `StyleBoxFlat`, same clamped up-and-left positioning), but with a
-  new `HoverTimer` per icon (`map_node_icon.tscn`/`.gd`, `wait_time = 1.5` —
-  tuned down from the initial 3s starting point after playtest feedback) instead
-  of showing instantly, and a new `Room.RoomDescriptions` dict (`map_point.gd`)
+  new `HoverTimer` per icon (`map_node_icon.tscn`/`.gd`, `wait_time` tuned down
+  across two playtest rounds: `3.0` → `1.5` → `1.0`) instead of showing
+  instantly, and a new `Room.RoomDescriptions` dict (`map_point.gd`)
   for the per-room-type text (e.g. "Adds a Pawn to the enemy army"). The
   bubble's Label is built lazily in code on first hover rather than baked into
   `map.tscn` — see Deviations below. Repositions every frame while visible so it

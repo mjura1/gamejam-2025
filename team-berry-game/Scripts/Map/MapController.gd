@@ -60,8 +60,8 @@ func _on_button_pressed():
 	UiAudio.play_click()
 	print("predvajam zvok")
 
-## Rob zaslona (mouse-edge auto-scroll): zgornja/spodnja 1/5 zaslona je "vroča"
-## cona, sredinskih 3/5 je mrtvih. Hitrost premika narašča linearno bliže robu.
+## Rob zaslona (mouse-edge auto-scroll): zgornja/spodnja 2/5 zaslona je "vroča"
+## cona, sredinska 1/5 je mrtva. Hitrost premika narašča linearno bliže robu.
 ## Med aktivnim click-drag panom (is_panning) se auto-scroll izklopi, da si ne
 ## nasprotujeta.
 func _process(delta):
@@ -70,7 +70,7 @@ func _process(delta):
 
 	var viewport_size = get_viewport_rect().size
 	var mouse_y = get_viewport().get_mouse_position().y
-	var zone = viewport_size.y / 5.0
+	var zone = viewport_size.y * 2.0 / 5.0
 
 	var direction = 0.0
 	var intensity = 0.0
