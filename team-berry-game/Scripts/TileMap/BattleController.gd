@@ -178,7 +178,14 @@ func initialize_battle():
 	# je zdaj rezervirana za kralja - glej battle.gd._apply_curses.
 	if is_instance_valid(grid_manager):
 		grid_manager.clear_all_curse_fog()
-		grid_manager.initialize_all_fog(current_floor)
+		var fog_floor: int = current_floor
+		if GF.tutorial_map_active and current_floor == 1:
+			# Tutorial node 2 (prvi pravi boj, glej plans/TUTORIAL_MAP_PLAN.md) -
+			# namerno brez snega/megle za ta konkreten, prvi boj (Mihov ask) -
+			# ostala tutorial nadstropja (node 3/6) in normalni runi obdržijo
+			# normalno stopnjevanje megle po current_map_floor.
+			fog_floor = 0
+		grid_manager.initialize_all_fog(fog_floor)
 
 	# 3. Placement faza - igralec sam postavi figure v spodnje 3 vrstice.
 	# Če so zavezniki že na plošči (test_sandbox / testi s predpostavljenimi
