@@ -14,6 +14,12 @@ signal ability_activated(character)
 # podrobnostni panel (status/prekletstvo), move_highlighter na rdeč predogled
 # dosega.
 signal enemy_inspected(character)
+# Sproži se, ko se HOVER-predogled sovražnika konča (miška se je premaknila
+# stran), NE ob kliku - klik na sovražnika ostane "sticky" (glej _inspect_enemy
+# spodaj) dokler ga ne prekine drug klik. battle_ui.gd poveže to na
+# _clear_detail_panel, da se desni panel ne zatakne na sovražniku, ki ga
+# igralec samo mimogrede prehoveria.
+signal enemy_inspection_cleared
 
 # ===============================================
 # REFERENCE
@@ -32,6 +38,24 @@ var selected_character: BaseCharacter = null
 # ponovno izbere). Samo igralčeve poteze - AI premiki gredo naravnost skozi
 # BattleController._take_enemy_action(), ne skozi to datoteko.
 var last_moved_character: BaseCharacter = null
+
+# ===============================================
+# HOVER PREDOGLED (nov igralec pogosto samo pomakne miško čez figuro, ne da
+# bi kliknil) - po HOVER_DELAY sekundah miritve nad isto figuro prikažemo
+# povsem isti predogled kot bi ga dobili s klikom (glej _update_hover spodaj),
+# a BREZ dejanske izbire/akcije. Deluje samo, ko ni prave izbire ali sposobnosti
+# v teku - te vedno same upravljajo move_highlighter in imajo prednost.
+# ===============================================
+const HOVER_DELAY := 0.2
+
+var _hover_character: BaseCharacter = null
+var _hover_elapsed: float = 0.0
+var _hover_shown_for: BaseCharacter = null # figura, katere predogled TRENUTNO kaže hover (ne pravi klik)
+
+# True, če je TRENUTNO prikazano sovražnikovo _inspect_enemy stanje (predogled
+# + desni panel) sprožil hover, ne klik - klik ostane sticky, zato hover-out
+# sme počistiti panel SAMO, če je bil on tisti, ki ga je nazadnje prikazal.
+var _inspect_via_hover: bool = false
 
 # ===============================================
 # SPOSOBNOSTI, KI ZAHTEVAJO DODATEN KLIK (Bishop.Longshot, Knight.Reposition)
@@ -143,9 +167,10 @@ func _clear_selection():
 # nastavi selected_character, zato vsi premik/zajemi tokovi ostanejo
 # nespremenjeni. Ponovni klik na isto ali drugo sovražnikovo figuro samo
 # osveži predogled (kliče se znova od tam).
-func _inspect_enemy(character: BaseCharacter):
+func _inspect_enemy(character: BaseCharacter, via_hover: bool = false):
 	move_highlighter.show_enemy_preview(character.calculate_valid_targets())
 	enemy_inspected.emit(character)
+	_inspect_via_hover = via_hover
 
 # Izbira figure preko UI (klik na ikono v battle UI panelu).
 func select_character_via_ui(character):
@@ -164,6 +189,70 @@ func select_character_via_ui(character):
 func select_last_moved():
 	if is_instance_valid(last_moved_character):
 		select_character_via_ui(last_moved_character)
+
+# ===============================================
+# HOVER PREDOGLED
+# ===============================================
+
+func _process(delta: float) -> void:
+	_update_hover(delta)
+
+# Vsako sličico preveri, katera figura je pod miško. Po HOVER_DELAY sekundah
+# nad ISTO figuro pokaže enak predogled kot klik (glej _unhandled_input LOGIKA
+# 1.D in _inspect_enemy) - za sovražnika torej DEJANSKO pokliče _inspect_enemy
+# (kot bi igralec kliknil nanj), za zaveznika pa samo prikaže valid_moves brez
+# nastavitve selected_character (display-only, da se ne prekriva s pravo izbiro).
+func _update_hover(delta: float) -> void:
+	var blocked: bool = (is_instance_valid(battle_controller) and battle_controller.current_state == battle_controller.BattleState.PLACEMENT) \
+		or selected_character != null or not pending_ability.is_empty()
+
+	if blocked:
+		# Prava izbira/sposobnost/placement upravlja prikaz sama (in ga je
+		# morda pravkar nastavila na isto figuro, ki jo je prej kazal hover) -
+		# zato tu SAMO opustimo sledenje, ne kličemo clear_*.
+		_hover_character = null
+		_hover_elapsed = 0.0
+		_hover_shown_for = null
+		return
+
+	var mouse_world_pos = get_global_mouse_position()
+	var hovered_grid = grid_manager.world_to_grid(mouse_world_pos)
+	var used_rect = tile_map.get_used_rect()
+	var hovered_character: BaseCharacter = null
+	if grid_manager.is_inside_boundary(hovered_grid, used_rect):
+		hovered_character = grid_manager.get_character_at(hovered_grid)
+
+	if hovered_character != _hover_character:
+		if is_instance_valid(_hover_shown_for):
+			if _hover_shown_for.is_enemy:
+				move_highlighter.clear_enemy_preview()
+				# Desni panel počistimo SAMO, če ga je nazadnje prikazal hover
+				# (ne klik) - glej _inspect_via_hover zgoraj.
+				if _inspect_via_hover:
+					enemy_inspection_cleared.emit()
+			else:
+				move_highlighter.clear_moves()
+		_hover_character = hovered_character
+		_hover_elapsed = 0.0
+		_hover_shown_for = null
+
+	if not is_instance_valid(hovered_character) or hovered_character.is_obstacle:
+		return
+
+	_hover_elapsed += delta
+	if _hover_elapsed < HOVER_DELAY or _hover_shown_for == hovered_character:
+		return
+
+	# Isto pravilo kot pri kliku (LOGIKA 1.D): sneg skrije sovražnika, hover
+	# ga torej ne sme razkriti.
+	if hovered_character.is_enemy and grid_manager.has_snow_at(hovered_grid):
+		return
+
+	_hover_shown_for = hovered_character
+	if hovered_character.is_enemy:
+		_inspect_enemy(hovered_character, true)
+	else:
+		move_highlighter.show_moves(hovered_character.calculate_valid_targets())
 
 # ===============================================
 # VNOS (INPUT)

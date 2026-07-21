@@ -15,6 +15,11 @@ export_credentials.cfg
 data_*/
 mono_crash.*.json
 
+# Local macOS export output - unzipped .app bundle from exporting in the
+# editor. The distributed build is committed as a zip instead (see
+# winter_march_macos.zip), so the raw .app here is just a local artifact.
+*.app/
+
 # graphify (knowledge graph) — derived outputs, regenerate with /graphify
 # .gd_mirror kept OUT of gitignore's reach for graphify itself via .graphifyignore — see that file
 .gd_mirror/

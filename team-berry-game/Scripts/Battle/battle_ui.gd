@@ -110,6 +110,7 @@ func _ready():
 	map_behaviour.selection_changed.connect(_on_selection_changed)
 	map_behaviour.ability_activated.connect(_on_ability_activated)
 	map_behaviour.enemy_inspected.connect(_show_enemy)
+	map_behaviour.enemy_inspection_cleared.connect(_clear_detail_panel)
 	battle_controller.state_changed.connect(_on_battle_state_changed)
 	battle_controller.moves_changed.connect(_on_moves_changed)
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
