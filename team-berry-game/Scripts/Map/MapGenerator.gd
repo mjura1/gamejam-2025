@@ -109,6 +109,29 @@ func generate_map(tier: int = 0) -> Array:
 	# 6. Vrnemo generirano mapo
 	return map_data
 
+## Fiksna, enostolpčna mapa (tutorial) - eno vozlišče na nadstropje, brez
+## vejanja, tipi sob podani vnaprej namesto uteženo naključno izbrani (glej
+## _assign_room_types). Ne kliče _configure_tier/_initialize_grid/
+## _generate_paths/_assign_room_types - te predpostavljajo MAP_WIDTH stolpcev.
+func generate_fixed_map(room_types: Array) -> Array:
+	FLOORS = room_types.size()
+	mini_boss_floor = -1
+	map_data = []
+	var rooms: Array[Room] = []
+	for i in range(FLOORS):
+		var room := Room.new()
+		room.grid_position = Vector2i(i, 0)
+		var jitter_x := randf_range(-PLACEMENT_RANDOMNESS, PLACEMENT_RANDOMNESS)
+		var jitter_y := randf_range(-PLACEMENT_RANDOMNESS, PLACEMENT_RANDOMNESS)
+		room.position = Vector2(jitter_x, i * Y_DISTANCE * -1.0 + jitter_y)
+		room.type = room_types[i]
+		map_data.append([room])
+		rooms.append(room)
+	for i in range(rooms.size() - 1):
+		rooms[i].next_rooms = [rooms[i + 1]]
+	return map_data
+
+
 ## 1.1 Nastavi globino, sovražnike in posebna nadstropja glede na TIER_CONFIGS[tier]
 func _configure_tier(tier: int) -> void:
 	var config: Dictionary = TIER_CONFIGS[clampi(tier, 0, TIER_CONFIGS.size() - 1)]
