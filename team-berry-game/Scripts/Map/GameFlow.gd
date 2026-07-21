@@ -13,6 +13,7 @@ const SHOP_SCENE = preload("res://Scenes/Map/shop.tscn")
 const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
 const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
 const TUTORIAL_HUB_SCENE = preload("res://Scenes/Menu/tutorial_hub_menu.tscn")
+const POST_BATTLE_SUMMARY_SCENE = preload("res://Scenes/Menu/post_battle_summary.tscn")
 
 var game_initialized: bool = false
 var current_map_instance: Node = null
@@ -20,6 +21,7 @@ var pause_menu_instance: Control = null
 var pause_menu_layer: CanvasLayer = null
 var floor_counter_layer: CanvasLayer = null
 var floor_counter_label: Label = null
+var post_battle_summary_layer: CanvasLayer = null
 
 # =========================================================
 # 2. INICIALIZACIJA IN ZAGON IGRE (POPRVEK ZA MENU)
@@ -228,10 +230,60 @@ func _change_scene_instance(new_instance: Node):
 
 	print("--- Uspešno naložena scena: %s ---" % new_instance.name)
 
-func game_over():
+func game_over() -> Control:
 	print("GF: Player lost. Returning to Main Menu.")
 	_end_run()
-	_change_scene_instance(MAIN_MENU_SCENE.instantiate())
+	var new_menu := MAIN_MENU_SCENE.instantiate()
+	_change_scene_instance(new_menu)
+	return new_menu
+
+
+# =========================================================
+# 3b. POST-BATTLE SUMMARY
+# =========================================================
+# Dumb-view overlay (Scripts/Menu/post_battle_summary.gd) - GameFlow ostaja
+# lastnik prehodne logike, scena samo oddaja signale ob pritisku gumbov.
+# Layer 11: en nad pause_menu_layer (10), da pavza meni (če bi po nesreči
+# pognan) ne prekrije summary-ja - bitka je itak že blokirana preko
+# BattleState.GAME_OVER, zato tu NE nastavljamo get_tree().paused.
+
+func show_victory_summary(friendly_party: Array, enemy_party: Array,
+		new_friendly_piece: String, new_enemy_piece: String,
+		upgrade_items_gained: int, is_boss_floor: bool) -> void:
+	var summary_instance := POST_BATTLE_SUMMARY_SCENE.instantiate()
+	var summary_layer := CanvasLayer.new()
+	summary_layer.name = "PostBattleSummaryLayer"
+	summary_layer.layer = 11
+	summary_layer.add_child(summary_instance)
+	post_battle_summary_layer = summary_layer
+	get_tree().root.call_deferred("add_child", summary_layer)
+	summary_instance.setup_victory(friendly_party, enemy_party, new_friendly_piece, new_enemy_piece, upgrade_items_gained)
+	summary_instance.continue_pressed.connect(_on_victory_continue_pressed.bind(summary_layer, is_boss_floor))
+
+func _on_victory_continue_pressed(summary_layer: CanvasLayer, is_boss_floor: bool) -> void:
+	summary_layer.queue_free()
+	post_battle_summary_layer = null
+	if is_boss_floor:
+		advance_map_tier()
+	else:
+		return_to_map()
+
+func show_defeat_summary(final_tier: int, final_floor: int) -> void:
+	var summary_instance := POST_BATTLE_SUMMARY_SCENE.instantiate()
+	var summary_layer := CanvasLayer.new()
+	summary_layer.name = "PostBattleSummaryLayer"
+	summary_layer.layer = 11
+	summary_layer.add_child(summary_instance)
+	post_battle_summary_layer = summary_layer
+	get_tree().root.call_deferred("add_child", summary_layer)
+	summary_instance.setup_defeat(final_tier, final_floor)
+	summary_instance.back_pressed.connect(_on_defeat_back_pressed.bind(summary_layer))
+
+func _on_defeat_back_pressed(summary_layer: CanvasLayer) -> void:
+	summary_layer.queue_free()
+	post_battle_summary_layer = null
+	var new_menu := game_over()
+	new_menu.call_deferred("open_mode_select")
 
 
 ## Kliče se iz pavza menija (gumb "Main Menu"), da se izognemo isti sceni,
