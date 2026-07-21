@@ -11,6 +11,13 @@ class_name Room
 # Stanje sobe (KLJUČNO ZA INTERAKTIVNOST)
 @export var selected: bool = false
 @export var is_unlocked: bool = false
+# NOVO: True potem, ko je MapController._handle_event() enkrat obdelal to
+# sobo (dodal figuro/sneg/item). Soba ostane "selected=false" po divine
+# intervention bounce-backu (glej revert_current_room_selection), zato je
+# znova klikljiva - brez tega flaga bi vsak ponovni poskus PONOVNO dodal
+# figuro v enemy_party/friendly_party (glej bug: umri na 1. bitki, se vrni,
+# poskusi znova -> vsak poskus doda še eno sovražno figuro).
+@export var event_triggered: bool = false
 
 # Definirajte enumerator RoomType, če ga še nimate (Godot 4.x)
 enum RoomType {

@@ -301,6 +301,12 @@ func resetActives():
 func setStarting(mode: String = "classic") -> void:
 	game_mode = mode
 	friendly_party = default_friends.duplicate()
+	if MetaProgress.tutorial_reward_granted:
+		# Trajna nagrada za dokončan (ne skip-an) tutorial map (glej
+		# plans/TUTORIAL_MAP_PLAN.md M5) - eno mesto za VSAK nov run, saj
+		# tako Classic kot Infinite kličeta samo setStarting().
+		friendly_party.append("friendly_pawn")
+		friendly_party.append("friendly_rook")
 	enemy_party = default_enemies.duplicate()
 	# Nov run: nadgradnje in itemi se ne prenašajo iz prejšnjega runa.
 	piece_upgrades = {}

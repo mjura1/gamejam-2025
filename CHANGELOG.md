@@ -1,3 +1,66 @@
+# Winter March — first-run tutorial map: fixed 6-node linear map, reused divine_intervention defeat flow, permanent +pawn+rook reward → features/tutorial-map (awaiting review)
+
+New feature on `features/tutorial-map` (NOT merged — left for review): brand-new
+players used to get dropped straight into a normal randomized tier-0 map. Now,
+the very first time a player ever starts a game (Classic or Infinite), they get
+a fixed, linear, 6-node map instead — one path, one node per floor: recruit a
+pawn, fight an enemy pawn, recruit a rook (fights the standing enemy), a free
+item, the shop, and a final fight. Both parties start empty so each node's
+effect is visible in isolation. Almost entirely new glue between existing
+systems — no new gameplay code, just a new fixed-room generator path, a few
+`GameFlow` branches, one new persistence autoload, and one UI button.
+
+- **`MetaProgress` autoload** (`Scripts/MetaProgress.gd`): new `user://progress.cfg`-backed
+  singleton (same `ConfigFile` pattern as `SettingsManager`/`KeybindManager`).
+  `tutorial_seen` gates the auto-trigger (set by either skip or completion);
+  `tutorial_reward_granted` gates the permanent reward (set only by real
+  completion, not skip).
+- **`MapGenerator.generate_fixed_map(room_types)`**: builds a 1-wide,
+  N-tall `map_data` from an explicit list of room types instead of the
+  normal weighted/branching algorithm — reuses the same `Y_DISTANCE`/jitter
+  positioning formula as the random generator. `MapController` gained
+  `pending_fixed_rooms`/`is_tutorial_map` (same "set before entering tree"
+  pattern as `pending_tier`) to opt into this path; everything downstream
+  (`_visualize_rooms`, camera framing, click handling) needed no changes —
+  already generic over `map_data`'s shape.
+- **`GameFlow` tutorial lifecycle**: `_initialize_game()` auto-triggers the
+  tutorial map on `not MetaProgress.tutorial_seen`, clearing both parties to
+  empty first. `start_event()` special-cases node 1 (`friendly_pawn` with no
+  enemy yet) to show the victory overlay directly instead of an empty,
+  pointless placement screen — the check is derived from live game state
+  (`enemy_party.is_empty()`), not a hardcoded node index, so it correctly
+  does NOT fire for node 3 (`friendly_rook`, which by then has a real enemy
+  to fight — the intended "recruiting mid-run still means fighting whatever
+  already exists" lesson). Losing a tutorial battle still shows the normal
+  DEFEAT screen, but its BACK button now reuses `return_to_map_after_escape()`
+  verbatim (the exact `divine_intervention` mechanism) instead of ending the
+  run. Winning the final node calls a new `_finish_tutorial_map()` instead of
+  `advance_map_tier()`, which rebuilds the roster via `PlayerManager.setStarting()`
+  (rather than carrying over the tutorial's own accumulated party) and lands
+  on a real tier-0 map.
+- **SKIP button**: lazily-created `Button` added to `MapController`'s existing
+  `UI` CanvasLayer, visible only on the tutorial map. **Gotcha hit**: an eager
+  `Button` with `text` set directly in `map.tscn` reproduced the exact
+  font/TextServer RID leak the map-visual-overhaul plan hit with
+  `MapBubbleLabel` — but worse, since this button would exist in *every*
+  `MapController` instance (not just on hover), it broke ~20 previously-clean
+  smoke tests. Fixed by creating it lazily in script (`_ensure_skip_button()`),
+  same pattern as `map_bubble_label`, only when `is_tutorial_map` is true.
+- **Permanent reward**: `PlayerManager.setStarting()` appends one
+  `"friendly_pawn"` and one `"friendly_rook"` to the starting roster when
+  `MetaProgress.tutorial_reward_granted` is true — the single hook point for
+  every future run (Classic and Infinite both call `setStarting()`).
+- **Tutorial hub replay entry**: new `GF.replay_tutorial_map()` and a
+  hardcoded "The Chessboard" row in `tutorial_hub_menu.gd` (not a
+  `TutorialData` stage, since it's a full map+battle run, not a standalone
+  battle scene) so the tutorial map isn't only a one-shot first-launch thing.
+
+`./tests/run_all.sh`: clean except the pre-existing `smoke_ability_ui_pipeline`
+flake and the pre-existing random-tier `smoke_shop_map_flow`/`smoke_campfire_flow`
+flake (tier 0 has no `shop_floor`/forces a re-roll — both previously documented
+in `plans/MAP_VISUAL_OVERHAUL_PLAN.md`). All 948 unit tests pass. Manual
+in-editor playtest of the M7 checklist not yet run — left for Miha.
+
 # Winter March — map visual overhaul: bigger/centered icons, spacing, auto-scroll, hover tooltips → features/map-visual-overhaul (awaiting review)
 
 New feature on `features/map-visual-overhaul` (NOT merged — left for review): the

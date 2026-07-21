@@ -8,6 +8,7 @@ const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 
 @onready var map_camera: Camera2D = $MapCamera
 @onready var map_bubble: PanelContainer = %MapBubble
+@onready var ui_layer: CanvasLayer = $UI
 
 # NEW: ustvarjen šele ob prvem hover-u (glej _ensure_map_bubble_label) - ne
 # takoj v .tscn, ker Label z autowrap_mode takoj sproži TextServer/font
@@ -19,6 +20,13 @@ const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 # kot FAIL. Odloženo ustvarjanje popolnoma odpravi težavo za vse teste, ki
 # hover sploh ne sprožijo.
 var map_bubble_label: Label = null
+
+# NEW: enak lazy-creation vzorec kot map_bubble_label zgoraj - Button z
+# nastavljenim text takoj sproži isti font/TextServer RID leak, samo tokrat bi
+# prizadel VSE teste (button bi obstajal v vsakem MapController, ne le ob
+# hoverju), zato se ustvari šele, ko je mapa dejansko tutorial mapa (glej
+# initialize_map()).
+var skip_button: Button = null
 
 var map_data: Array = []
 var room_node_map: Dictionary = {}
@@ -36,11 +44,19 @@ var generator: MapGenerator = null
 # (map_camera in drugi @onready sklici tedaj še niso na voljo).
 var pending_tier: int = 0
 
+# NOVO: Fiksno zaporedje tipov sob za tutorial mapo - GF ga nastavi takoj po
+# instantiate(), enak "pred-drevesni" vzorec kot pending_tier zgoraj. Prazno
+# = normalna naključna mapa (pending_tier se uporabi).
+var pending_fixed_rooms: Array = []
+# NOVO: True, ko je initialize_map() zgradila fiksno tutorial mapo namesto
+# naključne - uporablja se za vidnost SKIP gumba (glej M4).
+var is_tutorial_map: bool = false
+
 var pan_start_position: Vector2 = Vector2.ZERO
 var is_panning: bool = false
 
 # NEW: Rob zaslona (auto-scroll), glej _process()
-const AUTO_SCROLL_MAX_SPEED := 600.0
+const AUTO_SCROLL_MAX_SPEED := 1500.0
 
 # NEW: Hover tooltip balon (glej map_node_icon.gd signala hover_bubble_*)
 const MAP_BUBBLE_MARGIN := 8.0
@@ -59,6 +75,10 @@ func _ready():
 func _on_button_pressed():
 	UiAudio.play_click()
 	print("predvajam zvok")
+
+func _on_skip_pressed():
+	UiAudio.play_click()
+	GF.skip_tutorial_map()
 
 ## Rob zaslona (mouse-edge auto-scroll): zgornja/spodnja 2/5 zaslona je "vroča"
 ## cona, sredinska 1/5 je mrtva. Hitrost premika narašča linearno bliže robu.
@@ -101,16 +121,40 @@ func initialize_map(tier: int = 0):
 	if is_initialized: return
 
 	generator = MapGenerator.new()
-	map_data = generator.generate_map(tier)
+	if not pending_fixed_rooms.is_empty():
+		is_tutorial_map = true
+		map_data = generator.generate_fixed_map(pending_fixed_rooms)
+	else:
+		map_data = generator.generate_map(tier)
 
 	_visualize_rooms()
 	_set_initial_state()
-	
+
 	_calculate_map_boundaries() # NEW: Izračun meje celotne mape
-	_center_and_zoom_camera() 
-	
+	_center_and_zoom_camera()
+
+	# NOVO: SKIP gumb (glej plans/TUTORIAL_MAP_PLAN.md M4) - ustvarjen SAMO na
+	# tutorial mapi (glej _ensure_skip_button, isti lazy-creation razlog kot
+	# map_bubble_label).
+	if is_tutorial_map:
+		_ensure_skip_button()
+
 	is_initialized = true
 	queue_redraw()
+
+func _ensure_skip_button() -> void:
+	if skip_button != null:
+		return
+	skip_button = Button.new()
+	skip_button.name = "SkipButton"
+	skip_button.text = "Skip Tutorial"
+	skip_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	skip_button.offset_left = -160.0
+	skip_button.offset_top = -48.0
+	skip_button.offset_right = -16.0
+	skip_button.offset_bottom = -16.0
+	skip_button.pressed.connect(_on_skip_pressed)
+	ui_layer.add_child(skip_button)
 	
 func _set_initial_state():
 	for room in map_data[MapGenerator.START_FLOOR]:
@@ -419,20 +463,26 @@ func _handle_event(room_data: Room):
 	PlayerManager.is_boss_floor = room_data.grid_position.x == generator.FLOORS - 1
 	PlayerManager.is_mini_boss_floor = generator.mini_boss_floor != -1 and room_data.grid_position.x == generator.mini_boss_floor
 
-	if room_name.begins_with("enemy_"):
-		PlayerManager.add_to_enemy_party(room_name)
-		PlayerManager.new_enemy_piece = room_name
-	elif room_name.begins_with("friendly_"):
-		if PlayerManager.add_to_friendly_party(room_name):
-			PlayerManager.new_friendly_piece = room_name
-	elif room_name == "item":
-		# Item soba: takojšnja nagrada, brez bitke - GF.start_event() za
-		# ta tip sobe ne zamenja scene, igralec ostane na mapi.
-		PlayerManager.add_upgrade_items(PlayerManager.UPGRADE_ITEMS_PER_ITEM_ROOM)
-	# campfire: ne dodaja v enemy_party/friendly_party, samo GF.start_event()
-	# preklopi na campfire sceno (glej GameFlow.start_event()).
+	# BUG FIX: soba lahko po divine-intervention bounce-backu (glej
+	# revert_current_room_selection) postane znova klikljiva, ne da bi bila
+	# kdaj dejansko premagana - brez tega guarda bi vsak ponovni poskus
+	# PONOVNO dodal figuro/sneg (glej Room.event_triggered).
+	if not room_data.event_triggered:
+		if room_name.begins_with("enemy_"):
+			PlayerManager.add_to_enemy_party(room_name)
+			PlayerManager.new_enemy_piece = room_name
+		elif room_name.begins_with("friendly_"):
+			if PlayerManager.add_to_friendly_party(room_name):
+				PlayerManager.new_friendly_piece = room_name
+		elif room_name == "item":
+			# Item soba: takojšnja nagrada, brez bitke - GF.start_event() za
+			# ta tip sobe ne zamenja scene, igralec ostane na mapi.
+			PlayerManager.add_upgrade_items(PlayerManager.UPGRADE_ITEMS_PER_ITEM_ROOM)
+		# campfire: ne dodaja v enemy_party/friendly_party, samo GF.start_event()
+		# preklopi na campfire sceno (glej GameFlow.start_event()).
 
-	PlayerManager.addSnow()
+		PlayerManager.addSnow()
+		room_data.event_triggered = true
 
 	GF.start_event(room_data.type)
 
