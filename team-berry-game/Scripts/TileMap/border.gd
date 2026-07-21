@@ -7,7 +7,7 @@ var cell_size: Vector2 = Vector2.ZERO
 func _ready():
 	grid_manager = get_parent()
 
-func _process(delta):
+func _process(_delta):
 	# Najprej preverite veljavnost in tip
 	if not is_instance_valid(grid_manager) or not grid_manager is GridManager:
 		return

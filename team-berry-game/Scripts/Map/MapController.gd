@@ -3,7 +3,6 @@ extends Node2D
 class_name MapController
 
 # Sklici na generator in vizualno predlogo
-const MapGenerator = preload("res://Scripts/Map/MapGenerator.gd")
 const RoomIconScene = preload("res://Scenes/Map/map_node_icon.tscn")
 
 @onready var map_camera: Camera2D = $MapCamera
@@ -243,19 +242,19 @@ func _min_zoom_to_fit_map() -> Vector2:
 ## namesto na sredino mape - zato je mapa pri zoom-outu izgledala majhna in
 ## odrinjena v kot namesto centrirana. Tu na taki osi namesto tega kamero
 ## postavimo na sredino mape.
-func _clamp_camera_position(position: Vector2, zoom: Vector2) -> Vector2:
+func _clamp_camera_position(cam_position: Vector2, zoom: Vector2) -> Vector2:
 	var half_viewport = (get_viewport_rect().size / zoom) / 2.0
 	var clamp_min = map_boundary_min + half_viewport
 	var clamp_max = map_boundary_max - half_viewport
 	var map_center = (map_boundary_min + map_boundary_max) / 2.0
 
-	var result = position
+	var result = cam_position
 	if clamp_min.x <= clamp_max.x:
-		result.x = clampf(position.x, clamp_min.x, clamp_max.x)
+		result.x = clampf(cam_position.x, clamp_min.x, clamp_max.x)
 	else:
 		result.x = map_center.x
 	if clamp_min.y <= clamp_max.y:
-		result.y = clampf(position.y, clamp_min.y, clamp_max.y)
+		result.y = clampf(cam_position.y, clamp_min.y, clamp_max.y)
 	else:
 		result.y = map_center.y
 	return result

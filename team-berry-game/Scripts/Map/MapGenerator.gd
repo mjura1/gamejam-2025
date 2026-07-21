@@ -238,6 +238,7 @@ func _connect_paths(current_floor_rooms: Array[Room]):
 ## 3.2.2 Končna povezava s sobo Boss
 func _connect_to_boss():
 	var boss_floor_index = FLOORS - 1
+	@warning_ignore("integer_division")
 	var boss_room = map_data[boss_floor_index][MAP_WIDTH / 2]
 
 	# Iteriramo skozi predzadnje nadstropje (FLOORS - 2)
@@ -259,6 +260,7 @@ func _cleanup_unconnected_rooms():
 				rooms_to_keep.append(room)
 				
 	# 2. Dodamo Boss sobo
+	@warning_ignore("integer_division")
 	rooms_to_keep.append(map_data[FLOORS - 1][MAP_WIDTH / 2])
 	
 	# 3. Ustvarimo novo, čisto map_data, kjer so vsi prostori, ki niso del poti, NULL
