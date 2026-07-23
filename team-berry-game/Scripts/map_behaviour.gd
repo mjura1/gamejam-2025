@@ -373,6 +373,7 @@ func _unhandled_input(event):
 	
 	if selected_character:
 		# Poskus premika na kliknjeno polje
+		var mover := selected_character
 		if selected_character.try_move(clicked_grid):
 			last_moved_character = selected_character
 
@@ -382,9 +383,11 @@ func _unhandled_input(event):
 			# Premik porabi 1 iz proračuna premikov te poteze - poteza se ne
 			# konča sama (glej consume_move()). consume_move_for() namesto
 			# consume_move() neposredno, da Queen.Command lahko preskoči
-			# porabo za svojo tarčo (glej free_move_character).
+			# porabo za svojo tarčo (glej free_move_character). Uporabimo
+			# `mover`, ujeto PRED _clear_selection(), ker ta selected_character
+			# nastavi na null (glej isti vzorec pri zajetju zgoraj).
 			if is_instance_valid(battle_controller):
-				battle_controller.consume_move_for(selected_character)
+				battle_controller.consume_move_for(mover)
 				battle_controller.check_battle_end()
 
 			return
