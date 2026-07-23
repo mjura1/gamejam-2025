@@ -242,6 +242,7 @@ func _on_battle_state_changed(new_state):
 			_refresh_stun_badges()
 			_refresh_root_badges()
 			_refresh_frozen_badges()
+			_refresh_war_council_badges()
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
@@ -715,6 +716,35 @@ func _refresh_frozen_badges():
 			_set_frozen_badge(character, character.effect_frozen_turns > 0)
 		else:
 			_set_frozen_badge(character, character.is_snow_frozen_now() or character.effect_frozen_turns > 0)
+
+
+const STATUS_WAR_COUNCIL_COLOR := Color(1.0, 0.9, 0.4, 0.85)
+
+# Item "war_council": prikaže vrstni red (1, 2, 3, ...), v katerem bo
+# BattleController.start_enemy_turn() dejansko obravnaval sovražnike TA
+# prihajajoča poteza - deli battle_controller.enemy_turn_order() z dejansko
+# izvedbo (eno mesto resnice, glej tam), zato predogled ne more zaiti iz
+# koraka. Osveži se samo ob vstopu v igralčevo potezo (glej
+# _on_battle_state_changed) - znotraj poteze se vrstni red ne spreminja razen
+# če igralec zajame sovražnika, kar samo izbriše njegovo značko (queue_free
+# jo pobere skupaj s figuro), preostale številke ostanejo kot so bile
+# izračunane (manjša kozmetična "luknja" v zaporedju, sprejemljivo - relativni
+# vrstni red preostalih ostane pravilen).
+func _refresh_war_council_badges():
+	if not is_instance_valid(grid_manager) or not is_instance_valid(battle_controller):
+		return
+	var order: Array = battle_controller.enemy_turn_order() if player_manager.has_passive("war_council") else []
+	var order_index: Dictionary = {}
+	for i in range(order.size()):
+		order_index[order[i]] = i + 1
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
+			continue
+		var n: int = order_index.get(character, 0)
+		_set_named_badge(character, "OrderBadge", str(n) if n > 0 else "",
+			STATUS_WAR_COUNCIL_COLOR, Vector2(2, 33))
 
 
 # ===============================================
@@ -1282,6 +1312,24 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		grid_manager.swap_characters(ally_a, ally_b)
 		battle_controller.drillmaster_used_this_battle = true
 		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Item "blink_step": consumable verzija drillmaster-jevega swapa (glej
+	# drillmaster opombo zgoraj za razlog, zakaj je logika tu inline) - a
+	# porabi se iz inventarja normalno (isti spodnji `remove_item()`), ne
+	# "1x na bitko" poseben primer.
+	if id == "blink_step":
+		if player_manager.get_item_count(id) <= 0:
+			return false
+		var ally_a: BaseCharacter = map_behaviour.selected_character
+		if not (is_instance_valid(ally_a) and not ally_a.is_enemy and not ally_a.is_obstacle):
+			return false
+		var ally_b = grid_manager.get_character_at(grid_pos)
+		if not (ally_b is BaseCharacter and not ally_b.is_enemy and not ally_b.is_obstacle and ally_b != ally_a):
+			return false
+		grid_manager.swap_characters(ally_a, ally_b)
+		player_manager.remove_item(id)
 		UiAudio.play_click()
 		return true
 

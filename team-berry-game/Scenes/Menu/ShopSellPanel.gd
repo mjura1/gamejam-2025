@@ -62,7 +62,11 @@ func _build_item_row(id: String, count: int) -> Control:
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(name_label)
 
+	# Artefakt "hoarders_ring": prikazana cena mora ustrezati dejanskemu izplačilu
+	# iz PlayerManager.try_sell_item (glej tam - podvoji vrednost itemov).
 	var sell_value: int = ItemData.get_sell_value(id)
+	if player_manager.has_passive("hoarders_ring"):
+		sell_value *= 2
 	var button := Button.new()
 	button.text = "SELL (%d)" % sell_value
 	button.pressed.connect(func(): player_manager.try_sell_item(id))

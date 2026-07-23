@@ -165,6 +165,22 @@ var knight_errant_used_this_turn: bool = false
 # battle_ui.gd.use_item() poseben primer).
 var drillmaster_used_this_battle: bool = false
 
+# Item "twin_strike": enkrat NA BITKO (za razliko od knight_errant/
+# vicious_knights, ki sta enkrat NA POTEZO) - glej map_behaviour.gd, isti
+# capture-success blok, ista _has_adjacent_enemy() pomožna funkcija.
+var twin_strike_used_this_battle: bool = false
+
+# Item "permafrost_flare": id-ji con (glej GridManager.zones/add_zone), ki jih
+# je ta item dodal - odstranijo se na NASLEDNJEM start_player_turn() (isti
+# "preživi natanko eno sovražnikovo potezo" vzorec kot decoys_active zgoraj).
+var timed_zone_ids: Array[int] = []
+
+# Item "storm_horn": kot warhorn (ista `_compute_enemy_planned_targets`
+# vizualizacija), a persistira skozi NASLEDNJI 2 sovražnikovi potezi namesto
+# ene - gejta clear_oracle_targets() klic v start_enemy_turn() spodaj namesto
+# da bi ga vsakič sprožil brezpogojno.
+var storm_horn_turns_remaining: int = 0
+
 # Item "decoy": vsaka postavljena vaba, ki je PREŽIVELA (ni bila zajeta), se
 # odstrani na začetku NASLEDNJE igralčeve poteze (glej start_player_turn) -
 # torej traja natanko skozi eno sovražnikovo potezo, ne dlje. Zajete vabe
@@ -248,6 +264,9 @@ func initialize_battle():
 	decoys_active.clear()
 	nightfall_ward_used_this_battle = false
 	drillmaster_used_this_battle = false
+	twin_strike_used_this_battle = false
+	timed_zone_ids.clear()
+	storm_horn_turns_remaining = 0
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -347,6 +366,14 @@ func start_player_turn():
 				grid_manager.vacate(decoy.grid_pos)
 			decoy.queue_free()
 	decoys_active.clear()
+
+	# Item "permafrost_flare": iste "preživi natanko eno sovražnikovo potezo"
+	# semantike kot decoy zgoraj - cone, dodane MED to isto igralčevo potezo
+	# (po tem klicu), se dodajo naprej in odstranijo šele ob NASLEDNJEM klicu.
+	if is_instance_valid(grid_manager):
+		for zone_id in timed_zone_ids:
+			grid_manager.remove_zone(zone_id)
+	timed_zone_ids.clear()
 
 	# Queen.Command: neporabljena brezplačna poteza se ne sme prenesti v
 	# naslednjo potezo.
@@ -627,6 +654,24 @@ func end_player_turn():
 	# Preklopimo na naslednjo fazo (nasprotnikovo potezo)
 	start_enemy_turn()
 
+# Item "war_council": VRSTNI RED, v katerem bo start_enemy_turn() spodaj
+# dejansko obravnaval sovražnike - eno mesto resnice, ki ga uporablja TAKO
+# dejanska izvedba (spodaj) KOT predogled (battle_ui._refresh_war_council_badges,
+# poklican na začetku igralčeve poteze). Vrstni red izhaja iz
+# grid_manager.occupied slovarja (insertion order) - figura, ki se premakne,
+# se efektivno prestavi na konec (vacate+occupy je erase+re-insert), zato
+# vrstni red NI "levo-desno"/"stabilen ID" temveč dejanski Dictionary red;
+# deljenje TE funkcije med predogledom in izvedbo je edini način, da se
+# predogled ne razsinhronizira z resničnim vrstnim redom.
+func enemy_turn_order() -> Array[BaseCharacter]:
+	var order: Array[BaseCharacter] = []
+	if not is_instance_valid(grid_manager):
+		return order
+	for character in grid_manager.get_all_characters():
+		if character is BaseCharacter and character.is_enemy and not character.is_obstacle:
+			order.append(character)
+	return order
+
 func start_enemy_turn():
 	_set_state(BattleState.ENEMY_TURN)
 	print(">>> ZAČETEK POTEZE SOVRAŽNIKA <<<")
@@ -642,14 +687,21 @@ func start_enemy_turn():
 		move_highlighter.clear_enemy_moves()
 		# Item "warhorn"/artefakt "oracle_glass": predogled velja samo do konca
 		# igralčeve poteze - dejanske sovražnikove poteze se zdaj izvedejo.
-		move_highlighter.clear_oracle_targets()
+		# Item "storm_horn": persistira skozi 2 sovražnikovi potezi namesto
+		# ene - dokler je counter > 0, PRESKOČIMO clear (isti snapshot ostane
+		# viden, glej storm_horn_item.gd - namerno statičen predogled, ne
+		# osvežen vsako potezo znova).
+		if storm_horn_turns_remaining > 0:
+			storm_horn_turns_remaining -= 1
+		else:
+			move_highlighter.clear_oracle_targets()
 
 	if not is_instance_valid(grid_manager):
 		push_error("GridManager ni veljaven za AI potezo.")
 		end_enemy_turn()
 		return
 
-	for character in grid_manager.get_all_characters():
+	for character in enemy_turn_order():
 		# Snapshot may contain a piece captured earlier in this same loop -
 		# await below means real frames pass, so queue_free() can have
 		# actually deallocated it by the time we get here (unlike the old

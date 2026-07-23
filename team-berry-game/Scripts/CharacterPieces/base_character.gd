@@ -364,6 +364,32 @@ func calculate_valid_targets() -> Array[Vector2i]:
 
 	return targets
 
+# Item "foresight_mirror": kot calculate_valid_targets() zgoraj, a od
+# POLJUBNEGA izhodišča namesto trenutnega grid_pos - uporablja se za
+# hipotetično "če bi ta figura stala TU po svoji naslednji potezi, kaj bi
+# lahko dosegla" napoved (glej GridManager.tiles_reachable_by_two_turns).
+# ZNANA POENOSTAVITEV (isti standard kot map_behaviour._compute_risk_tiles'
+# "opozorilni marker, ne garancija"): bere RESNIČNO trenutno zasedenost
+# plošče, torej tudi figurino LASTNO trenutno polje, čeprav bi se v tem
+# hipotetičnem scenariju že premaknila stran od njega - sprejemljivo za
+# napoved, ne za dejansko gibanje. Ne preverja freeze/stun/rooted/zone
+# statusov iz istega razloga (hipoteza, ne resnična poteza).
+func get_reachable_tiles_from(from_pos: Vector2i) -> Array[Vector2i]:
+	var targets: Array[Vector2i] = []
+	for dir in get_move_directions():
+		for step in range(1, move_range + 1):
+			var target_pos := from_pos + dir * step
+			if not grid_manager.is_inside_boundary(target_pos, tile_map.get_used_rect()):
+				break
+			if grid_manager.is_occupied(target_pos):
+				var target_char = grid_manager.get_character_at(target_pos)
+				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
+					if not (target_char.is_capture_immune or target_char.is_castle_protected()):
+						targets.append(target_pos)
+				break
+			targets.append(target_pos)
+	return targets
+
 const MOVE_SLIDE_DURATION := 0.18
 
 # Premakne figuro na dano svetovno pozicijo - drsenje (tween), razen če je v

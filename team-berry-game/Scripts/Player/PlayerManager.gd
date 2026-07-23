@@ -421,7 +421,13 @@ func try_buy_item(id: String) -> bool:
 func try_sell_item(id: String) -> bool:
 	if not remove_item(id):
 		return false
-	upgrade_items += ItemData.get_sell_value(id)
+	# Artefakt "hoarders_ring": podvoji prodajno vrednost ITEMOV (ne figur -
+	# glej try_sell_active_piece/try_sell_reserve_piece spodaj, namerno
+	# nedotaknjena, brainstorm pravi izrecno "selling items").
+	var value := ItemData.get_sell_value(id)
+	if has_passive("hoarders_ring"):
+		value *= 2
+	upgrade_items += value
 	items_changed.emit()
 	return true
 

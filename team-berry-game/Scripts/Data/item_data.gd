@@ -47,6 +47,13 @@ const ITEM_SCRIPTS: Dictionary = {
 	# Artefakt, ne pravi consumable - glej drillmaster_item.gd/battle_ui.use_item()
 	# poseben primer (ne porabi se iz inventarja, isti vzorec kot frozen_rampart).
 	"drillmaster": preload("res://Scripts/Items/drillmaster_item.gd"),
+	"permafrost_flare": preload("res://Scripts/Items/permafrost_flare_item.gd"),
+	"rampart": preload("res://Scripts/Items/rampart_item.gd"),
+	"howling_gale": preload("res://Scripts/Items/howling_gale_item.gd"),
+	"storm_horn": preload("res://Scripts/Items/storm_horn_item.gd"),
+	"frost_nova": preload("res://Scripts/Items/frost_nova_item.gd"),
+	"hunters_snare": preload("res://Scripts/Items/hunters_snare_item.gd"),
+	"blink_step": preload("res://Scripts/Items/blink_step_item.gd"),
 }
 
 var _items: Dictionary = {}

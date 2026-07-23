@@ -234,6 +234,26 @@ func tiles_reachable_by(is_enemy_side: bool) -> Array[Vector2i]:
 				reachable.append(t)
 	return reachable
 
+# Item "foresight_mirror": kot tiles_reachable_by() zgoraj, a 2 poteze naprej
+# namesto ene - za vsako figuro dane frakcije doda tudi vse, kar bi lahko
+# dosegla iz VSAKEGA svojega hipotetičnega naslednjega polja (glej
+# BaseCharacter.get_reachable_tiles_from - ista "opozorilni marker, ne
+# garancija" poenostavitev kot spodaj/spyglass).
+func tiles_reachable_by_two_turns(is_enemy_side: bool) -> Array[Vector2i]:
+	var reachable := tiles_reachable_by(is_enemy_side)
+	for character in get_all_characters():
+		if not is_instance_valid(character) or not (character is BaseCharacter):
+			continue
+		if character.is_enemy != is_enemy_side or character.is_obstacle:
+			continue
+		for hyp_pos in character.calculate_valid_targets():
+			var hp: Vector2i = hyp_pos
+			for target in character.get_reachable_tiles_from(hp):
+				var t: Vector2i = target
+				if t not in reachable:
+					reachable.append(t)
+	return reachable
+
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)
 # ===============================================

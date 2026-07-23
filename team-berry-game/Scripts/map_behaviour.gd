@@ -129,11 +129,16 @@ func _apply_selection(character: BaseCharacter):
 	var valid_moves = selected_character.calculate_valid_targets()
 	move_highlighter.show_moves(valid_moves)
 
+	# Item "foresight_mirror": kot farsight_lens spodaj, a 2 sovražnikovi
+	# potezi naprej namesto ene - prednost pred obema (najširši učinek), če
+	# ima igralec več teh hkrati.
+	if player_manager.has_passive("foresight_mirror"):
+		move_highlighter.show_risk_tiles(grid_manager.tiles_reachable_by_two_turns(true))
 	# Item "farsight_lens": kot spyglass spodaj, a NE presekano z valid_moves
 	# te figure - pokaže VSA polja, ki bi jih sovražnik lahko zajel naslednjo
 	# potezo, za katerokoli zavezniško figuro. Prednost pred spyglass (širši
 	# učinek), če ima igralec oba.
-	if player_manager.has_passive("farsight_lens"):
+	elif player_manager.has_passive("farsight_lens"):
 		move_highlighter.show_risk_tiles(grid_manager.tiles_reachable_by(true))
 	# Item "spyglass": obarva podmnožico valid_moves, ki bi jo sovražnik
 	# lahko zajel naslednjo potezo.
@@ -362,6 +367,18 @@ func _unhandled_input(event):
 								and not battle_controller.knight_errant_used_this_turn \
 								and _has_adjacent_enemy(mover):
 							battle_controller.knight_errant_used_this_turn = true
+							battle_controller.add_bonus_move()
+
+						# Item "twin_strike": ista "zajetje pristane sosednje
+						# drugemu sovražniku" ideja kot knight_errant, a za
+						# KATEROKOLI figuro (ne samo skakača) in enkrat NA
+						# BITKO namesto na potezo - lahko sproži OBENEM s
+						# knight_errant/vicious_knights na istem skakačevem
+						# zajetju (trije neodvisni itemi, additivno).
+						if player_manager.has_passive("twin_strike") \
+								and not battle_controller.twin_strike_used_this_battle \
+								and _has_adjacent_enemy(mover):
+							battle_controller.twin_strike_used_this_battle = true
 							battle_controller.add_bonus_move()
 
 						battle_controller.check_battle_end()
