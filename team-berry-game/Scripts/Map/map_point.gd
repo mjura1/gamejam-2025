@@ -72,6 +72,6 @@ static var RoomDescriptions: Dictionary = {
 	RoomType.friendly_queen : "Recruits a Queen to your army",
 	RoomType.friendly_king : "Recruits a King to your army",
 	RoomType.campfire : "Rest and upgrade your pieces",
-	RoomType.item : "Grants a free upgrade item",
+	RoomType.item : "Open a treasure chest",
 	RoomType.shop : "Opens the shop"
 }

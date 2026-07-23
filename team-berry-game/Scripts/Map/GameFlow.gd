@@ -10,6 +10,7 @@ const MAP_SCENE = preload("res://Scenes/Map/map.tscn")
 const BATTLE_SCENE = preload("res://Scenes/Map/battle.tscn")
 const CAMPFIRE_SCENE = preload("res://Scenes/Map/campfire.tscn")
 const SHOP_SCENE = preload("res://Scenes/Map/shop.tscn")
+const TREASURE_SCENE = preload("res://Scenes/Map/treasure.tscn")
 const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
 const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
 const TUTORIAL_HUB_SCENE = preload("res://Scenes/Menu/tutorial_hub_menu.tscn")
@@ -175,8 +176,9 @@ func start_event(room_type: int):
 		return
 
 	if room_type == Room.RoomType.item:
-		# Ni bitke in ni menjave scene - nagrada je bila že dodeljena v
-		# MapController._handle_event(), igralec ostane na mapi.
+		# Zaklad: nova scena z zabojem - glej Scripts/Map/treasure.gd. Nagrada se
+		# dodeli šele ob kliku na zaboj, ne tukaj (glej TREASURE_CHEST_PLAN.md).
+		_change_scene_instance(TREASURE_SCENE.instantiate())
 		return
 
 	if tutorial_map_active and Room.RoomTypeNames[room_type].begins_with("friendly_") \

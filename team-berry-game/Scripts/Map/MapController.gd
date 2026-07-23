@@ -473,10 +473,8 @@ func _handle_event(room_data: Room):
 		elif room_name.begins_with("friendly_"):
 			if PlayerManager.add_to_friendly_party(room_name):
 				PlayerManager.new_friendly_piece = room_name
-		elif room_name == "item":
-			# Item soba: takojšnja nagrada, brez bitke - GF.start_event() za
-			# ta tip sobe ne zamenja scene, igralec ostane na mapi.
-			PlayerManager.add_upgrade_items(PlayerManager.UPGRADE_ITEMS_PER_ITEM_ROOM)
+		# item: nagrada se podeli šele ob kliku na skrinjo (glej
+		# Scripts/Map/treasure.gd), ne tukaj.
 		# campfire: ne dodaja v enemy_party/friendly_party, samo GF.start_event()
 		# preklopi na campfire sceno (glej GameFlow.start_event()).
 
