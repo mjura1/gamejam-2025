@@ -1,3 +1,61 @@
+# Winter March — Permanent meta-progression: Legacy Points + shop → features/meta-progression (awaiting review)
+
+New branch `features/meta-progression` off `develop` (NOT merged — left for
+review, per repo policy). Implements `plans/META_PROGRESSION_PLAN.md` M0-M9 in
+full: a permanent "beat the game once" flag, a permanent cross-run currency
+("Legacy Points"), and a JSON-defined shop of permanent unlocks — separate
+from the existing per-run skill-tree/item systems, which are unchanged.
+
+- **`MetaProgress` (autoload)** gains `final_boss_beaten`, `legacy_points`,
+  `unlocked_upgrades`, persisted the same way `tutorial_seen` already was
+  (`user://progress.cfg`). `mark_final_boss_beaten()` fires exactly once;
+  `can_buy_upgrade`/`try_buy_upgrade` mirror `PlayerManager.can_buy_node`/
+  `try_buy_node`'s require/exclude/cost gating against the new
+  `unlocked_upgrades` state.
+- **New `MetaUpgradeData` autoload** reads `GameParameters/meta_upgrades.json`
+  (flat list, same schema as `skill_trees.json`) and
+  `GameParameters/meta_progression.json` (scoring config). Its
+  `calculate_battle_points()` is a pure function: base amount, a flawless
+  (no allies lost) multiplier, a depth bonus, an enemy-count bonus, and a
+  turn-count speed bonus, scaled way down until the player's first-ever
+  final-boss clear (then scaled up).
+- **Trigger** (`GameFlow._on_victory_continue_pressed`): mode-agnostic —
+  fires on the first tier-2+ boss floor clear in either Classic (where it's
+  the run-ending victory) or Infinite (the first time a tier-2+ boss is
+  cleared, since tiers repeat forever after that). Confirmed not to
+  false-positive on the tutorial map's own final node.
+- **`BattleController.check_battle_end()`** now awards Legacy Points on every
+  battle win (via the new `battle_start_enemy_count`, captured in
+  `initialize_battle()`) and applies the `earn_rate_1` unlock's
+  `bonus_upgrade_items_per_win` on top of the existing per-win `upgrade_items`
+  reward.
+- **`PlayerManager`** resets `moves_per_turn`/`abilities_per_turn`/
+  `base_luck`/`bonus_upgrade_items_per_win` to their base values in
+  `setStarting()` before re-applying every unlocked upgrade
+  (`_apply_meta_upgrades()`) — necessary so a bonus doesn't compound across
+  multiple runs started in the same session. Also adds `get_luck()`
+  (`base_luck` only for now — `plans/TREASURE_CHEST_PLAN.md` is expected to
+  extend it with an `owned_items` term when that plan lands).
+- **Starter unlock set** (`GameParameters/meta_upgrades.json`, first-draft
+  costs, not yet tuned): +1 move per turn, an extra starting Pawn, an extra
+  starting Rook (gated on owning the Pawn unlock), +3 starting upgrade
+  items, +1 upgrade item per battle win, +1 permanent luck.
+- **New mode-select LEGACY button** (`Scenes/Menu/mode_select_menu.tscn`),
+  hidden until `MetaProgress.final_boss_beaten`, opening a new full-screen
+  **Legacy shop scene** (`Scenes/Menu/legacy_shop_menu.tscn`/`.gd`) that
+  spends `legacy_points` against the unlock list — mirrors
+  `CampfireUpgradePanel`'s button-state logic.
+- **Tests**: `tests/unit/test_meta_progression.gd` (scoring formula edge
+  cases, buy/gating rules, reset-before-reapply behavior) and
+  `tests/smoke/smoke_legacy_shop_flow.gd` (Main Menu → Mode Select → Legacy
+  shop → BACK, with `final_boss_beaten` forced rather than simulating a real
+  boss clear). `./tests/run_all.sh` green aside from the two already-known
+  flakes (`smoke_ability_ui_pipeline`, `smoke_spyglass`).
+- **Not done**: the actual point/cost numbers are placeholders pending a
+  real multi-run playtest (see the plan's §5 deviations log), and no new
+  "you beat the game" victory screen was added — beating Classic mode still
+  silently returns to Main Menu, unchanged from before this branch.
+
 # Winter March — GDScript warning cleanup + missing project icon → fix/gdscript-warnings (awaiting review)
 
 New branch `fix/gdscript-warnings` (NOT merged — left for review): every

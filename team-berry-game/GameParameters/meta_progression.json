@@ -1,0 +1,10 @@
+{
+	"base_points_per_battle": 100,
+	"flawless_multiplier": 1.5,
+	"points_per_floor_depth": 10,
+	"points_per_enemy": 15,
+	"fast_win_turn_cap": 20,
+	"fast_win_points_per_turn": 2,
+	"pre_clear_points_scale": 0.15,
+	"post_clear_points_scale": 1.0
+}

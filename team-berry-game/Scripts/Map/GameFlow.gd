@@ -13,6 +13,7 @@ const SHOP_SCENE = preload("res://Scenes/Map/shop.tscn")
 const MAIN_MENU_SCENE = preload("res://Scenes/Menu/main_menu.tscn")
 const PAUSE_MENU_SCENE = preload("res://Scenes/Menu/pause_menu.tscn")
 const TUTORIAL_HUB_SCENE = preload("res://Scenes/Menu/tutorial_hub_menu.tscn")
+const LEGACY_SHOP_SCENE = preload("res://Scenes/Menu/legacy_shop_menu.tscn")
 const POST_BATTLE_SUMMARY_SCENE = preload("res://Scenes/Menu/post_battle_summary.tscn")
 
 # NOVO: Fiksno zaporedje tipov sob za tutorial mapo (glej
@@ -305,6 +306,13 @@ func show_victory_summary(friendly_party: Array, enemy_party: Array,
 func _on_victory_continue_pressed(summary_layer: CanvasLayer, is_boss_floor: bool) -> void:
 	summary_layer.queue_free()
 	post_battle_summary_layer = null
+	# Mode-agnostic prva-zmaga-nad-final-bossom detekcija (glej
+	# plans/META_PROGRESSION_PLAN.md §2a) - current_map_tier >= 2 pomeni tier-2
+	# (King) je bil PRAVKAR premagan, tako v Classic (kjer se run konča) kot v
+	# Infinite (kjer se tier-2 config ponavlja v nedogled). not final_boss_beaten
+	# zagotovi, da sproži samo enkrat; tutorial map nikoli ne doseže tier 2.
+	if is_boss_floor and PlayerManager.current_map_tier >= 2 and not MetaProgress.final_boss_beaten:
+		MetaProgress.mark_final_boss_beaten()
 	if is_boss_floor and tutorial_map_active:
 		_finish_tutorial_map()
 	elif is_boss_floor:
@@ -408,6 +416,9 @@ func _land_after_tutorial() -> void:
 
 func start_tutorial_hub():
 	_change_scene_instance(TUTORIAL_HUB_SCENE.instantiate())
+
+func start_legacy_shop():
+	_change_scene_instance(LEGACY_SHOP_SCENE.instantiate())
 
 func start_tutorial_stage(stage_scene: PackedScene):
 	_change_scene_instance(stage_scene.instantiate())

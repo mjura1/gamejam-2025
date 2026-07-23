@@ -92,6 +92,12 @@ var vicious_knight_used: bool = false
 var bounty_target: BaseCharacter = null
 var first_enemy_death_resolved: bool = false
 
+# Koliko sovražnikov je bilo na začetku TE bitke - active_enemies je ob
+# enemyGone() prazen po definiciji, enemy_party pa raste čez cel run, zato
+# nobeden od njiju ne odraža "koliko sovražnikov je bilo v tej bitki" (glej
+# plans/META_PROGRESSION_PLAN.md §2d). Uporabljeno za legacy points formulo.
+var battle_start_enemy_count: int = 0
+
 # Item "courier_package": naključen živ zaveznik je izbran ob začetku prve
 # poteze v bitki (izključuje volka - glej start_player_turn()); če preživi
 # bitko do zmage, igralec dobi nagrado (glej check_battle_end() victory
@@ -165,6 +171,7 @@ func initialize_battle():
 	bounty_target = null
 	first_enemy_death_resolved = false
 	courier = null
+	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
 	var current_floor = 0
@@ -564,14 +571,23 @@ func check_battle_end() -> bool:
 		var was_boss_floor: bool = player_manager.is_boss_floor
 		var upgrade_items_before: int = player_manager.upgrade_items
 		if was_boss_floor:
-			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_BOSS_WIN)
+			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_BOSS_WIN
+				+ player_manager.bonus_upgrade_items_per_win)
 		else:
-			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_WIN)
+			player_manager.add_upgrade_items(player_manager.UPGRADE_ITEMS_PER_WIN
+				+ player_manager.bonus_upgrade_items_per_win)
 
 		_maybe_pay_courier_reward()
 		# Delta, ne konstanta - _maybe_pay_courier_reward() lahko doda dodatne
 		# iteme na vrh win/boss-win nagrade (glej njeno definicijo zgoraj).
 		var upgrade_items_gained: int = player_manager.upgrade_items - upgrade_items_before
+
+		# Trajne "Legacy Points" (glej plans/META_PROGRESSION_PLAN.md §3 M4) -
+		# ločeno od upgrade_items zgoraj, ne resetira se med runi.
+		var battle_points := MetaUpgradeData.calculate_battle_points(
+			player_manager.current_map_floor, battle_start_enemy_count, turn_count,
+			player_manager.dead_party.is_empty(), MetaProgress.final_boss_beaten)
+		MetaProgress.add_legacy_points(battle_points)
 
 		GF.call_deferred("show_victory_summary",
 			player_manager.friendly_party.duplicate(), player_manager.enemy_party.duplicate(),

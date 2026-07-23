@@ -56,8 +56,18 @@ var piece_upgrades: Dictionary = {}
 # Ločena proračuna - deljen proračun je dovolil premakniti 3 različne figure
 # v eni potezi, kar je bilo preveč močno. Var, ne const - meta-progression
 # (upgrade) bo to lahko kasneje povečal.
-var moves_per_turn: int = 1
-var abilities_per_turn: int = 3
+const BASE_MOVES_PER_TURN := 1
+const BASE_ABILITIES_PER_TURN := 3
+var moves_per_turn: int = BASE_MOVES_PER_TURN
+var abilities_per_turn: int = BASE_ABILITIES_PER_TURN
+
+# Trajne meta-progression nadgradnje (glej plans/META_PROGRESSION_PLAN.md) -
+# base_luck se prišteje get_luck()-u, bonus_upgrade_items_per_win pa
+# BattleController.check_battle_end()-u na vsako zmago. Obe se resetirata na
+# 0 in ponovno uporabita v setStarting()/_apply_meta_upgrades(), tako kot
+# moves_per_turn/abilities_per_turn zgoraj.
+var base_luck: int = 0
+var bonus_upgrade_items_per_win: int = 0
 
 
 # Največ figur v AKTIVNI ekipi (vrstica "YOUR PIECES" v bitki, glej
@@ -312,7 +322,37 @@ func setStarting(mode: String = "classic") -> void:
 	piece_upgrades = {}
 	upgrade_items = 0
 	owned_items = {}
+	# Meta-progression trajne nadgradnje (glej plans/META_PROGRESSION_PLAN.md
+	# §2f) - reset na bazne vrednosti PRED ponovno uporabo je obvezen, sicer
+	# bi se bonus podvojil ob vsakem naslednjem setStarting() v isti seji.
+	moves_per_turn = BASE_MOVES_PER_TURN
+	abilities_per_turn = BASE_ABILITIES_PER_TURN
+	base_luck = 0
+	bonus_upgrade_items_per_win = 0
+	_apply_meta_upgrades()
 	items_changed.emit()
+
+# Uporabi vse trajno odklenjene MetaProgress nadgradnje na trenutni run -
+# klican iz setStarting() PO resetu baznih vrednosti zgoraj. Zrcali
+# CampfireUpgradePanel-jev vzorec branja effect.type, a proti
+# MetaUpgradeData/MetaProgress namesto SkillTreeData/piece_upgrades.
+func _apply_meta_upgrades() -> void:
+	for id in MetaProgress.unlocked_upgrades.keys():
+		var def: Dictionary = MetaUpgradeData.get_upgrade_def(id)
+		var effect: Dictionary = def.get("effect", {})
+		match effect.get("type", ""):
+			"moves_per_turn":
+				moves_per_turn += int(effect.get("amount", 0))
+			"abilities_per_turn":
+				abilities_per_turn += int(effect.get("amount", 0))
+			"starting_piece":
+				friendly_party.append(str(effect.get("roster_name", "")))
+			"starting_upgrade_items":
+				upgrade_items += int(effect.get("amount", 0))
+			"upgrade_items_per_win_bonus":
+				bonus_upgrade_items_per_win += int(effect.get("amount", 0))
+			"base_luck":
+				base_luck += int(effect.get("amount", 0))
 
 func addSnow():
 	snowCount += 2
@@ -335,6 +375,14 @@ func remove_item(id: String) -> bool:
 
 func get_item_count(id: String) -> int:
 	return owned_items.get(id, 0)
+
+# DEVIATION (glej plans/META_PROGRESSION_PLAN.md §2f/§3 M3): plan je
+# pričakoval, da plans/TREASURE_CHEST_PLAN.md do zdaj že doda get_luck() (vsota
+# owned_items lucky_bonusov); na tej veji (off develop) tega še ni, zato je tu
+# samo base_luck. Ko treasure-chest pristane, dodaj owned_items vsoto zraven -
+# ne prepisuj te funkcije.
+func get_luck() -> int:
+	return base_luck
 
 # Pasivni itemi: aktivni, dokler je v inventarju vsaj 1 kos.
 func has_passive(id: String) -> bool:

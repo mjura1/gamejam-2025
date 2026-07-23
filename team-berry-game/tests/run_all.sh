@@ -98,6 +98,11 @@ check_script "smoke_mode_select" "res://tests/smoke/smoke_mode_select.gd" 5 \
 	"SMOKE_MODE_SELECT_OK"
 echo
 
+echo "== Legacy shop gating + navigation smoke test =="
+check_script "smoke_legacy_shop_flow" "res://tests/smoke/smoke_legacy_shop_flow.gd" 5 \
+	"SMOKE_LEGACY_SHOP_FLOW_OK"
+echo
+
 echo "== Infinite mode tier-3 continuation smoke test =="
 check_script "smoke_infinite_mode" "res://tests/smoke/smoke_infinite_mode.gd" 8 \
 	"SMOKE_INFINITE_MODE_OK"

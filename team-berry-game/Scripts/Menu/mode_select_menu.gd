@@ -8,6 +8,7 @@ signal back_pressed
 
 @onready var difficulty_option: OptionButton = %DifficultyOption
 @onready var ai_difficulty_option: OptionButton = %AiDifficultyOption
+@onready var legacy_button: Button = %LegacyButton
 
 const DIFFICULTY_IDS := ["easy", "normal", "hard"]
 const DIFFICULTY_TOOLTIP := "EASY - enemies get curses half as often (0.5x) and never play it safe.\nNORMAL - standard curse rate, enemies sometimes retreat to safety (50%).\nHARD - enemies get curses 50% more often (1.5x) and always retreat to safety."
@@ -23,6 +24,7 @@ func _ready():
 	difficulty_option.tooltip_text = DIFFICULTY_TOOLTIP
 	ai_difficulty_option.selected = AI_DIFFICULTY_IDS.find(SettingsManager.ai_difficulty)
 	ai_difficulty_option.item_selected.connect(_on_ai_difficulty_selected)
+	legacy_button.visible = MetaProgress.final_boss_beaten
 
 func _on_difficulty_selected(index: int):
 	UiAudio.play_click()
@@ -49,6 +51,10 @@ func _on_infinite_pressed():
 func _on_tutorial_pressed():
 	UiAudio.play_click()
 	GF.start_tutorial_hub()
+
+func _on_legacy_pressed():
+	UiAudio.play_click()
+	GF.start_legacy_shop()
 
 func _on_back_pressed():
 	UiAudio.play_click()
