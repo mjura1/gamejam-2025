@@ -569,6 +569,17 @@ func start_player_turn():
 					old_guard_sentry = og_allies.pick_random()
 					old_guard_marked.emit(old_guard_sentry)
 
+		# Artefakt "starlit_vanguard" (Phase 6): +1 premik v skupni proračun
+		# na PRVO potezo VSAKE bitke (ne enkratno kot winters_bargain's "next
+		# battle" bonus) - EN add_bonus_move() na živo zavezniško figuro
+		# (torej "vsi zavezniki dobijo +1 premik" bere se kot "skupni
+		# proračun naraste za toliko, kolikor je zaveznikov").
+		if player_manager.has_passive("starlit_vanguard"):
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and not character.is_enemy \
+						and not character.is_obstacle and not character.is_decoy:
+					add_bonus_move()
+
 	# Pasiva "battle_start_reveal" (skill tree): ob začetku bitke razkrij
 	# (2r+1)² kvadrat okoli vsake zavezniške figure s to pasivo. Vezano na
 	# prvo potezo, ker so figure postavljene šele po placement fazi.

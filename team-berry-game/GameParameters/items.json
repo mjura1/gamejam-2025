@@ -89,5 +89,6 @@
 	"marked_man":         {"name": "Marked Man", "description": "Each battle, gain upgrade items for every enemy captured after being marked by one of your vision items.", "buy_cost": 4, "sell_value": 2, "rarity": "rare", "kind": "artifact", "reward": 2, "stackable": false},
 	"winter_kings_crown": {"name": "Winter King's Crown", "description": "A relic of a forgotten king, said to protect its wearer.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
 	"crown_of_the_long_night": {"name": "Crown of the Long Night", "description": "Surviving a party wipe with Divine Intervention also grants 3 upgrade items.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "reward": 3, "stackable": false},
-	"oracle_glass":       {"name": "Oracle Glass", "description": "Reveals the enemy's actual planned move for the turn, not just the tiles they threaten.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}
+	"oracle_glass":       {"name": "Oracle Glass", "description": "Reveals the enemy's actual planned move for the turn, not just the tiles they threaten.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
+	"starlit_vanguard":   {"name": "Starlit Vanguard", "description": "All allies grant an extra move on the first turn of every battle.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}
 }
