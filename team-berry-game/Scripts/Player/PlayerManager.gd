@@ -37,6 +37,13 @@ var revive_items: int = 0
 # med runi (glej reset v setStarting()) - enako pravilo kot upgrade_items.
 var owned_items: Dictionary = {}
 
+# Artefakt "winters_bargain": +1 premik, obljubljen za PRVO potezo NASLEDNJE
+# bitke (torej mora preživeti battle-scene menjavo, ne samo
+# BattleController.initialize_battle() - zato živi tu, na avtoload nivoju, ne
+# na BattleController). Edini bralec: BattleController.start_player_turn()
+# (turn_count == 1), ki ga takoj po uporabi počisti nazaj na false.
+var pending_move_bonus_next_battle: bool = false
+
 # Nagrade v upgrade itemih (glej BattleController.check_battle_end in
 # MapController._handle_event za item sobo).
 const UPGRADE_ITEMS_PER_WIN := 1
@@ -321,6 +328,7 @@ func setStarting(mode: String = "classic") -> void:
 	piece_upgrades = {}
 	upgrade_items = 0
 	owned_items = {}
+	pending_move_bonus_next_battle = false
 	# Meta-progression trajne nadgradnje (glej plans/META_PROGRESSION_PLAN.md
 	# §2f) - reset na bazne vrednosti PRED ponovno uporabo je obvezen, sicer
 	# bi se bonus podvojil ob vsakem naslednjem setStarting() v isti seji.

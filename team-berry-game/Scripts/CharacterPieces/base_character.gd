@@ -149,6 +149,25 @@ var snow_frozen: bool = false
 # BattleController.end_player_turn (glej tam).
 var effect_frozen_turns: int = 0
 
+# Item "cold_case" (Phase 5b reward family): "was this ENEMY ever frozen by a
+# player-caused effect" - unlike effect_frozen_turns itself (which thaws),
+# this never clears once set, so a capture long after the freeze wore off
+# still counts. Set by every item/passive that sets effect_frozen_turns on an
+# ENEMY due to player action (frost_nova/stormcaller/avalanche/winter_general
+# item scripts, GridManager.trigger_trap for frozen_lure/hunters_snare) - NOT
+# the ally-side self-freezes (frozen_vanguard/queens_gambit in capture()
+# below), those aren't "an enemy status I caused." Read by
+# BattleController.on_enemy_died().
+var was_frozen_by_player: bool = false
+
+# Item "marked_man" (Phase 5b reward family): "was this ENEMY ever marked by
+# one of the player's vision items" - set by night_watch/seers_horn's apply()
+# (the two items that target ONE specific enemy for a permanent reveal/
+# preview, as opposed to AOE fog-clear items like flare/keen_eye). Read by
+# BattleController.on_enemy_died() and battle_ui._refresh_marked_badges()
+# (Phase 0 §0.3's deferred marked-vision StatusIconBadge slot).
+var marked_by_vision_item: bool = false
+
 # Item "smoke_screen": ta figura je skrita sovražnikovemu ciljanju (AI je ne
 # izbere za zajetje/gonjo - glej calculate_best_move spodaj), dokler se ne
 # premakne ali zajame (glej execute_move, ki to počisti).
@@ -461,6 +480,13 @@ func execute_move(target: Vector2i):
 	# execute_move za dejanski premik napadalca) prekine skritost.
 	is_hidden = false
 
+	# Item "time_dilation": zabeleži TO figuro kot "premaknjena to potezo" -
+	# edini bralec je try_move()'s time_dilation_active_this_turn preverba
+	# spodaj (glej tam). Enako kot is_hidden zgoraj velja tudi za zajetja
+	# (capture() kliče execute_move() interno, glej §1a gotcha).
+	if not is_enemy and is_instance_valid(battle_controller) and self not in battle_controller.moved_this_turn:
+		battle_controller.moved_this_turn.append(self)
+
 	# Bishop.Traps/Rook.Reinforce: premik te figure sprosti njeno cono.
 	if owned_zone_id != -1 and is_instance_valid(grid_manager):
 		grid_manager.remove_zone(owned_zone_id)
@@ -546,7 +572,15 @@ func try_move(target: Vector2i) -> bool:
 	# igralčeve poteze.
 	if not is_enemy and not is_autonomous and not battle_controller.can_move():
 		return false
-	
+
+	# Item "time_dilation": dokler je aktiven TO potezo, mora biti DRUGA
+	# figura kot katerakoli, ki se je to potezo že premaknila - brez tega bi
+	# igralec lahko premaknil ISTO figuro dvakrat (glej moved_this_turn
+	# opombo v BattleController.gd).
+	if not is_enemy and not is_autonomous and is_instance_valid(battle_controller) \
+			and battle_controller.time_dilation_active_this_turn and self in battle_controller.moved_this_turn:
+		return false
+
 	# 1. Ali je tarča veljavna tarča za premik/zajetje?
 	if target not in calculate_valid_targets():
 		return false
@@ -608,6 +642,13 @@ func die():
 	# Item "bounty": prva sovražnikova smrt v bitki odloči zmago/poraz stave.
 	if is_enemy and not is_obstacle and is_instance_valid(battle_controller):
 		battle_controller.on_enemy_died(self)
+
+	# Item "undying_rank": vsaka zavezniška smrt (prava figura, obrnjena
+	# figura ALI vaba - glej maybe_trigger_undying_rank, ki vabe itak izloči
+	# iz preštevanja) je priložnost, da ostane natanko ena živa zavezniška
+	# figura.
+	if not is_enemy and is_instance_valid(battle_controller):
+		battle_controller.maybe_trigger_undying_rank()
 
 	queue_free() # Uniči vozlišče
 

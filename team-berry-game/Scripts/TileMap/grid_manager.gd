@@ -369,6 +369,12 @@ func trigger_trap(character) -> bool:
 		return false
 	trap_tiles.erase(character.grid_pos)
 	character.effect_frozen_turns = maxi(character.effect_frozen_turns, int(trap.freeze_turns))
+	# Item "cold_case": a player-owned trap catching an enemy (owner_is_enemy
+	# check above already guarantees this branch is player-vs-enemy) counts
+	# as "frozen by the player," even if freeze_turns is 0 for a reveal-only
+	# variant - guard on the actual freeze value to avoid a false tag.
+	if not trap.owner_is_enemy and character.is_enemy and int(trap.freeze_turns) > 0:
+		character.was_frozen_by_player = true
 	if trap.reveal:
 		reveal_area([character.grid_pos])
 	return true

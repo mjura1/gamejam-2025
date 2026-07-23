@@ -28,6 +28,7 @@ func apply(battle_controller, grid_pos: Vector2i) -> bool:
 	if is_instance_valid(battle_controller.move_highlighter):
 		var tiles: Array[Vector2i] = [action["target_pos"]]
 		battle_controller.move_highlighter.show_oracle_targets(tiles)
+	target.marked_by_vision_item = true # item "marked_man" (Phase 5b)
 	return true
 
 func get_aim_cells(grid_pos: Vector2i) -> Array[Vector2i]:

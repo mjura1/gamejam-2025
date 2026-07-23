@@ -59,6 +59,13 @@ const ITEM_SCRIPTS: Dictionary = {
 	"stormcaller": preload("res://Scripts/Items/stormcaller_item.gd"),
 	"seers_horn": preload("res://Scripts/Items/seers_horn_item.gd"),
 	"blizzard_ender": preload("res://Scripts/Items/blizzard_ender_item.gd"),
+	# Artefakt, ne pravi consumable - glej winter_general_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot drillmaster).
+	"winter_general": preload("res://Scripts/Items/winter_general_item.gd"),
+	"time_dilation": preload("res://Scripts/Items/time_dilation_item.gd"),
+	# Artefakt, ne pravi consumable - glej winters_bargain_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot drillmaster).
+	"winters_bargain": preload("res://Scripts/Items/winters_bargain_item.gd"),
 }
 
 var _items: Dictionary = {}

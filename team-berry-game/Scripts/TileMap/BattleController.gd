@@ -227,6 +227,36 @@ var vanguards_oath_used_this_battle: bool = false
 var vanguards_oath_armed_character: BaseCharacter = null
 var vanguards_oath_bonus_character: BaseCharacter = null
 
+# Artefakt "winter_general" (Phase 5b): 1x na bitko, drag-in-poraba brez
+# porabe iz inventarja - isti vzorec kot drillmaster_used_this_battle/
+# frozen_rampart_used_this_battle (glej battle_ui.gd.use_item() poseben primer).
+var winter_general_used_this_battle: bool = false
+
+# Artefakt "winters_bargain" (Phase 5b): enak "1x na bitko, drag-in-poraba
+# brez porabe iz inventarja" vzorec kot winter_general zgoraj.
+var winters_bargain_used_this_battle: bool = false
+
+# Item "time_dilation" (Phase 5b): AKTIVEN samo TO potezo (resetira se v
+# start_player_turn) - dokler je true, base_character.try_move() zavrne
+# ponovno izbiro figure, ki je že v moved_this_turn spodaj (glej tam).
+var time_dilation_active_this_turn: bool = false
+
+# Vsaka zavezniška figura, ki se je premaknila/zajela TO potezo (polni jo
+# base_character.execute_move(), resetira se v start_player_turn) - edini
+# porabnik je time_dilation_active_this_turn zgoraj; brez njega nič ne
+# preprečuje premika ISTE figure dvakrat (glej item's opombo).
+var moved_this_turn: Array[BaseCharacter] = []
+
+# Item "undying_rank" (Phase 5b): enkrat na bitko - ko ostane natanko ena
+# živa zavezniška figura, dobi is_capture_immune za 2 potezi (glej
+# maybe_trigger_undying_rank spodaj, klican iz base_character.die()).
+# active_until_turn primerja se z absolutnim turn_count (isti vzorec kot
+# spectral_queen's turn_count <= 2 zgoraj, a RELATIVNO na trigger-trenutek,
+# ne na začetek bitke).
+var undying_rank_triggered_this_battle: bool = false
+var undying_rank_character: BaseCharacter = null
+var undying_rank_active_until_turn: int = -1
+
 # Item "decoy": vsaka postavljena vaba, ki je PREŽIVELA (ni bila zajeta), se
 # odstrani na začetku NASLEDNJE igralčeve poteze (glej start_player_turn) -
 # torej traja natanko skozi eno sovražnikovo potezo, ne dlje. Zajete vabe
@@ -255,6 +285,25 @@ var lure_source: BaseCharacter = null
 # §4.5 popravek): NAMERNO ne skupni proračun kot add_bonus_move(), ker mora
 # biti brezplačna poteza vezana točno na izbranega zaveznika.
 var free_move_character: BaseCharacter = null
+
+# Item "undying_rank": called from base_character.die() after EVERY friendly
+# death (grid_manager.vacate() for the dying piece has already run by then,
+# so get_all_characters() naturally excludes it - no manual filtering needed
+# beyond the usual is_enemy/is_obstacle/is_decoy checks). Fires once, the
+# first time exactly ONE living ally remains.
+func maybe_trigger_undying_rank() -> void:
+	if undying_rank_triggered_this_battle or not is_instance_valid(player_manager) \
+			or not player_manager.has_passive("undying_rank") or not is_instance_valid(grid_manager):
+		return
+	var survivors: Array[BaseCharacter] = []
+	for character in grid_manager.get_all_characters():
+		if character is BaseCharacter and not character.is_enemy and not character.is_obstacle and not character.is_decoy:
+			survivors.append(character)
+	if survivors.size() == 1:
+		undying_rank_triggered_this_battle = true
+		undying_rank_character = survivors[0]
+		undying_rank_active_until_turn = turn_count + 1
+		undying_rank_character.is_capture_immune = true
 
 func _clear_expired_evade():
 	if not is_instance_valid(grid_manager):
@@ -323,6 +372,13 @@ func initialize_battle():
 	vanguards_oath_used_this_battle = false
 	vanguards_oath_armed_character = null
 	vanguards_oath_bonus_character = null
+	winter_general_used_this_battle = false
+	winters_bargain_used_this_battle = false
+	time_dilation_active_this_turn = false
+	moved_this_turn.clear()
+	undying_rank_triggered_this_battle = false
+	undying_rank_character = null
+	undying_rank_active_until_turn = -1
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -417,6 +473,18 @@ func start_player_turn():
 	# vzorec kot free_move_character zgoraj, glej consume_move_for spodaj.
 	vanguards_oath_bonus_character = vanguards_oath_armed_character
 	vanguards_oath_armed_character = null
+
+	# Item "time_dilation": velja SAMO to potezo - obe spodaj se ponastavita
+	# ob vsakem novem začetku igralčeve poteze.
+	time_dilation_active_this_turn = false
+	moved_this_turn.clear()
+
+	# Artefakt "winters_bargain": +1 premik obljubljen za PRVO potezo TE bitke
+	# (glej PlayerManager.pending_move_bonus_next_battle - postavljen med
+	# PREJŠNJO bitko, prebran in takoj počiščen tu).
+	if turn_count == 1 and is_instance_valid(player_manager) and player_manager.pending_move_bonus_next_battle:
+		player_manager.pending_move_bonus_next_battle = false
+		add_bonus_move()
 
 	# Item "decoy": vsaka vaba, ki je preživela do zdaj (ni bila zajeta med
 	# sovražnikovo potezo, ki je pravkar minila), izgine - glej decoys_active
@@ -563,6 +631,13 @@ func start_player_turn():
 					and character.strName == "queen":
 				character.is_capture_immune = true
 
+	# Item "undying_rank": reassert immunity while the 2-turn window (set by
+	# maybe_trigger_undying_rank() above) is still open - same "survive
+	# _clear_expired_evade()'s per-turn reset" pattern as spectral_queen, just
+	# relative to the trigger turn instead of the battle's start.
+	if is_instance_valid(undying_rank_character) and turn_count <= undying_rank_active_until_turn:
+		undying_rank_character.is_capture_immune = true
+
 	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
 	if is_instance_valid(move_highlighter):
 		move_highlighter.start_fade_out(ENEMY_MOVE_FADE_DURATION)
@@ -682,6 +757,30 @@ func on_enemy_died(character: BaseCharacter):
 			if is_instance_valid(player_manager):
 				player_manager.add_upgrade_items(ItemData.get_reward("golden_quarry"))
 				print("GOLDEN_QUARRY: ena od dveh tarč je padla prva - nagrada izplačana")
+
+	# Status-effect reward family (Phase 5b, all three stack, per-death, NOT
+	# gated to "first enemy" like bounty/golden_quarry above - see
+	# BaseCharacter.was_frozen_by_player/marked_by_vision_item for the two
+	# underlying flags, set once and never cleared for the rest of the battle).
+	if is_instance_valid(player_manager):
+		# Item "cold_case": specific to freeze, pays more than the general
+		# hexers_ledger below.
+		if player_manager.has_passive("cold_case") and character.was_frozen_by_player:
+			player_manager.add_upgrade_items(ItemData.get_reward("cold_case"))
+			print("COLD_CASE: sovražnik, ki je bil kdaj zamrznjen, je padel - nagrada izplačana")
+		# Item "marked_man": specific to vision-marks, pays more than the
+		# general hexers_ledger below.
+		if player_manager.has_passive("marked_man") and character.marked_by_vision_item:
+			player_manager.add_upgrade_items(ItemData.get_reward("marked_man"))
+			print("MARKED_MAN: označen sovražnik je padel - nagrada izplačana")
+		# Item "hexers_ledger": general - either flag counts (freeze OR
+		# vision-mark; this game's status effects a player can inflict on an
+		# enemy reduce to these two categories, see grid_manager.trigger_trap/
+		# item scripts that set was_frozen_by_player).
+		if player_manager.has_passive("hexers_ledger") \
+				and (character.was_frozen_by_player or character.marked_by_vision_item):
+			player_manager.add_upgrade_items(ItemData.get_reward("hexers_ledger"))
+			print("HEXERS_LEDGER: sovražnik pod prekletim učinkom je padel - nagrada izplačana")
 
 	# Item "salvage": VSAKO sovražnikovo smrt (ne samo prva) ima možnost
 	# dodatnega upgrade itema. SALVAGE_DROP_CHANCE je placeholder vrednost -

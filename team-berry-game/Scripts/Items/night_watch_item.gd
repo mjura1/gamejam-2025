@@ -20,6 +20,7 @@ func apply(battle_controller, grid_pos: Vector2i) -> bool:
 		return false
 	battle_controller.night_watch_targets.append(target)
 	battle_controller.grid_manager.reveal_area([grid_pos])
+	target.marked_by_vision_item = true # item "marked_man" (Phase 5b)
 	return true
 
 func get_aim_cells(grid_pos: Vector2i) -> Array[Vector2i]:

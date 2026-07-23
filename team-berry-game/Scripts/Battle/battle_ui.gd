@@ -68,6 +68,7 @@ const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
 const STATUS_STUNNED_COLOR := Color(0.8, 0.5, 1.0)
 const STATUS_ROOTED_COLOR := Color(0.45, 0.65, 0.25)
 const STATUS_FROZEN_COLOR := Color(0.55, 0.8, 1.0)
+const STATUS_MARKED_COLOR := Color(0.95, 0.55, 0.85)
 
 const ABILITY_ICON_PLACEHOLDER := preload("res://Assets/Sprites/ability_placeholder.png")
 # Isti "sivi" ton kot PieceIcon.COLOR_DEAD, da je "nedosegljivo" vizualno
@@ -243,6 +244,7 @@ func _on_battle_state_changed(new_state):
 			_refresh_stun_badges()
 			_refresh_root_badges()
 			_refresh_frozen_badges()
+			_refresh_marked_badges()
 			_refresh_war_council_badges()
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
@@ -719,6 +721,29 @@ func _refresh_frozen_badges():
 			_set_frozen_badge(character, character.is_snow_frozen_now() or character.effect_frozen_turns > 0)
 
 
+# Item "marked_man" (Phase 5b, Phase 0 §0.3's deferred marked-vision slot):
+# separate icon offset (Vector2(2, 33), below FrozenBadge) so a marked enemy
+# that's ALSO frozen/rooted/stunned doesn't lose any badge - same stacking
+# pattern as Stun/Root/Frozen above. ENEMY-only (marked_by_vision_item is
+# never set on an ally).
+func _set_marked_badge(character: BaseCharacter, marked: bool):
+	_set_status_icon(character, "MarkedBadge", marked, STATUS_MARKED_COLOR, Vector2(2, 33))
+
+
+# Called on entering PLAYER_TURN (like the other _refresh_* badges) AND right
+# after any consumable use (night_watch/seers_horn set the flag immediately
+# on use, not on a turn boundary - see use_item()'s generic consumable path).
+func _refresh_marked_badges():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
+			continue
+		_set_marked_badge(character, character.marked_by_vision_item)
+
+
 const STATUS_WAR_COUNCIL_COLOR := Color(1.0, 0.9, 0.4, 0.85)
 
 # Item "war_council": prikaže vrstni red (1, 2, 3, ...), v katerem bo
@@ -1193,7 +1218,9 @@ func _build_item_row(id: String, count: int) -> Control:
 	# že porabljena, vrstica ni več vlečljiva do naslednje bitke.
 	var frozen_rampart_used: bool = id == "frozen_rampart" and battle_controller.frozen_rampart_used_this_battle
 	var drillmaster_used: bool = id == "drillmaster" and battle_controller.drillmaster_used_this_battle
-	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used
+	var winter_general_used: bool = id == "winter_general" and battle_controller.winter_general_used_this_battle
+	var winters_bargain_used: bool = id == "winters_bargain" and battle_controller.winters_bargain_used_this_battle
+	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used or winter_general_used or winters_bargain_used
 	if not is_passive and not once_per_battle_used:
 		row.gui_input.connect(_on_item_row_input.bind(id))
 
@@ -1316,6 +1343,35 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		UiAudio.play_click()
 		return true
 
+	# Artefakt "winter_general": isti "1x na bitko, ne porabi se iz
+	# inventarja" vzorec kot frozen_rampart/drillmaster zgoraj - a brez
+	# ciljne figure/polja (učinek je vedno centriran na igralčevega kralja,
+	# glej winter_general_item.gd), zato ni potrebe po inline logiki tu -
+	# item skripta sama opravi vse (can_use/apply).
+	if id == "winter_general":
+		if not player_manager.has_passive("winter_general") or battle_controller.winter_general_used_this_battle:
+			return false
+		var winter_general: BaseItem = ItemData.create_item(id)
+		if winter_general == null or not (winter_general.can_use(battle_controller, grid_pos) and winter_general.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.winter_general_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Artefakt "winters_bargain": enak vzorec kot winter_general zgoraj - item
+	# skripta sama opravi vse (can_use/apply, glej winters_bargain_item.gd).
+	if id == "winters_bargain":
+		if not player_manager.has_passive("winters_bargain") or battle_controller.winters_bargain_used_this_battle:
+			return false
+		var winters_bargain: BaseItem = ItemData.create_item(id)
+		if winters_bargain == null or not (winters_bargain.can_use(battle_controller, grid_pos) and winters_bargain.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.winters_bargain_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
 	# Item "blink_step": consumable verzija drillmaster-jevega swapa (glej
 	# drillmaster opombo zgoraj za razlog, zakaj je logika tu inline) - a
 	# porabi se iz inventarja normalno (isti spodnji `remove_item()`), ne
@@ -1346,6 +1402,10 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 
 	player_manager.remove_item(id) # emits items_changed -> _rebuild_item_drawer
 	UiAudio.play_click()
+	# Items "night_watch"/"seers_horn": mark an enemy immediately on use (not
+	# on a turn boundary like the other _refresh_* badges) - harmless no-op
+	# call for every other consumable.
+	_refresh_marked_badges()
 	return true
 
 

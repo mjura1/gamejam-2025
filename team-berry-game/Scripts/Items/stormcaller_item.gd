@@ -19,6 +19,7 @@ func apply(battle_controller, grid_pos: Vector2i) -> bool:
 		var target = grid_manager.get_character_at(pos)
 		if target is BaseCharacter and target.is_enemy and not target.is_obstacle:
 			target.effect_frozen_turns = maxi(target.effect_frozen_turns, FREEZE_TURNS)
+			target.was_frozen_by_player = true # item "cold_case" (Phase 5b)
 	return true
 
 func get_aim_cells(grid_pos: Vector2i) -> Array[Vector2i]:
