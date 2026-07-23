@@ -41,7 +41,6 @@ var owned_items: Dictionary = {}
 # MapController._handle_event za item sobo).
 const UPGRADE_ITEMS_PER_WIN := 1
 const UPGRADE_ITEMS_PER_BOSS_WIN := 3
-const UPGRADE_ITEMS_PER_ITEM_ROOM := 2
 
 # Trajne nadgradnje PO TIPU figure (velja za vse figure istega tipa - roster
 # je seznam imen brez identitete posamezne figure, glej friendly_party).
@@ -338,7 +337,16 @@ func get_item_count(id: String) -> int:
 
 # Pasivni itemi: aktivni, dokler je v inventarju vsaj 1 kos.
 func has_passive(id: String) -> bool:
-	return owned_items.get(id, 0) > 0 and ItemData.get_kind(id) == "passive"
+	return owned_items.get(id, 0) > 0 and ItemData.get_kind(id) in ["passive", "artifact"]
+
+# Run-scoped luck stat: vsota luck_bonus prek trenutno lastnih itemov. Vpliva
+# na kvaliteto/količino zaklada (glej ItemData.roll_treasure_loot). Trajna
+# osnova pride kasneje iz META_PROGRESSION_PLAN.md - takrat samo dodaj en člen tukaj.
+func get_luck() -> int:
+	var luck := 0
+	for id in owned_items.keys():
+		luck += ItemData.get_luck_bonus(id) * owned_items[id]
+	return luck
 
 # Kupi 1x item po ceni iz ItemData. Zavrne, če ni dovolj upgrade_items.
 func try_buy_item(id: String) -> bool:
