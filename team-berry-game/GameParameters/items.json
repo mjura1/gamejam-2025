@@ -3,6 +3,9 @@
 	"barricade":    {"name": "Barricade", "description": "One use. Drop a wall on an empty tile to block enemy movement and line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"flare":        {"name": "Flare", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"snowshoes":    {"name": "Snowshoes", "description": "One use. This turn, snow melts on every tile you step onto as you move.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"smoke_screen": {"name": "Smoke Screen", "description": "One use. Hides one of your pieces from enemy targeting until it moves or attacks.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"quick_step":   {"name": "Quick Step", "description": "One use. Removes the frozen status from one piece and lets it move normally this turn.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"warm_cloak":   {"name": "Warm Cloak", "description": "One use. Protects one piece from ever being frozen by snow for the rest of the battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 
 	"warhorn":      {"name": "Warhorn", "description": "One use. Reveals every move the enemy could make this turn.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
 	"bastion":      {"name": "Bastion", "description": "One use. Drop two walls on empty tiles to block enemy movement and line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},

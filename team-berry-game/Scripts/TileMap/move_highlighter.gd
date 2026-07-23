@@ -29,6 +29,12 @@ const ENEMY_PREVIEW_COLOR = Color(0.8, 0.15, 0.15, 0.5)
 # RISK_COLOR (spyglass/farsight_lens).
 const ORACLE_COLOR = Color(1.0, 0.85, 0.2, 0.55)
 
+# Wave 2 items: predogled ciljnega polja/območja med vlečenjem itema (pred
+# spustom) - npr. 3x3 za frost_nova, cela vrstica za howling_gale (glej
+# BaseItem.get_aim_cells / battle_ui._input). Ledeno modra, da se vizualno
+# loči od vseh zgornjih (zelena/rdeča/siva/zlata/oranžna/temno rdeča).
+const AIM_COLOR = Color(0.25, 0.75, 0.95, 0.5)
+
 # Veljavne tarče za trenutno "pending" sposobnost (glej map_behaviour.gd).
 # Ločeno od valid_moves, da se barvno (in pomensko) razlikuje od navadnega
 # premika/zajetja - npr. Bishop.Longshot ne premakne figure.
@@ -46,6 +52,9 @@ var enemy_preview: Array[Vector2i] = []
 
 # Item "warhorn"/artefakt "oracle_glass": glej ORACLE_COLOR zgoraj.
 var oracle_targets: Array[Vector2i] = []
+
+# Wave 2 items: glej AIM_COLOR zgoraj.
+var aim_tiles: Array[Vector2i] = []
 
 # ===============================================
 # VIZUALIZACIJA SOVRAŽNIKOVIH POTEZ (NOVO)
@@ -131,6 +140,14 @@ func clear_oracle_targets():
 	oracle_targets.clear()
 	queue_redraw()
 
+func show_aim(tiles: Array[Vector2i]):
+	aim_tiles = tiles
+	queue_redraw()
+
+func clear_aim():
+	aim_tiles.clear()
+	queue_redraw()
+
 # Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih).
 func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_capture: bool) -> void:
 	enemy_move_flashes.append({
@@ -178,3 +195,6 @@ func _draw():
 
 	for grid_pos in oracle_targets:
 		_draw_cell(grid_pos, ORACLE_COLOR)
+
+	for grid_pos in aim_tiles:
+		_draw_cell(grid_pos, AIM_COLOR)

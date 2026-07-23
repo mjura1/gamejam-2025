@@ -17,6 +17,7 @@ const MAX_PLACED := 5
 @onready var map_behaviour = get_node("../Map")
 @onready var battle_controller = get_node("../BattleController")
 @onready var placement_highlighter = get_node("../PlacementHighlighter")
+@onready var move_highlighter = get_node("../MoveHighlighter")
 # Koren battle scene - battle.gd nosi friendly_pieces slovar (ime -> scena).
 @onready var battle_root = get_node("..")
 
@@ -472,6 +473,7 @@ func _input(event):
 	if dragging_item:
 		if event is InputEventMouseMotion:
 			drag_ghost.position = event.position - drag_ghost.size / 2
+			_update_item_aim(event.position)
 		elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_resolve_item_drop(event.position)
 			get_viewport().set_input_as_handled()
@@ -704,9 +706,15 @@ func _refresh_frozen_badges():
 	for character in grid_manager.get_all_characters():
 		if not is_instance_valid(character):
 			continue
-		if not (character is BaseCharacter) or character.is_enemy or character.is_obstacle:
+		if not (character is BaseCharacter) or character.is_obstacle:
 			continue
-		_set_frozen_badge(character, character.is_snow_frozen_now())
+		# Wave 2 items: effect_frozen_turns velja tudi za sovražnike (snow_frozen
+		# ne - glej is_snow_frozen_now/_update_snow_freeze_states, ki ga
+		# omejujeta na zaveznike), zato se je_enemy veja tu prvič pojavi.
+		if character.is_enemy:
+			_set_frozen_badge(character, character.effect_frozen_turns > 0)
+		else:
+			_set_frozen_badge(character, character.is_snow_frozen_now() or character.effect_frozen_turns > 0)
 
 
 # ===============================================
@@ -853,7 +861,7 @@ func _show_character(character: BaseCharacter):
 	if character.stunned_turns > 0:
 		status_value.text = "STUNNED"
 		status_value.add_theme_color_override("font_color", STATUS_STUNNED_COLOR)
-	elif character.is_snow_frozen_now():
+	elif character.is_snow_frozen_now() or character.effect_frozen_turns > 0:
 		status_value.text = "FROZEN"
 		status_value.add_theme_color_override("font_color", STATUS_FROZEN_COLOR)
 	elif character.rooted_turns > 0:
@@ -878,7 +886,13 @@ func _show_enemy(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/enemy_%s.png" % character.strName)
 	_shown_character = character
 	_clear_ability_rows()
-	if character.curse:
+	# Wave 2 items (frost_nova, stormcaller, ...): effect_frozen_turns lahko
+	# zamrzne sovražnika - prednost pred prekletstvom, saj onemogoča gibanje
+	# ne glede na to.
+	if character.effect_frozen_turns > 0:
+		status_value.text = "FROZEN"
+		status_value.add_theme_color_override("font_color", STATUS_FROZEN_COLOR)
+	elif character.curse:
 		status_value.text = character.curse.status_text()
 		status_value.add_theme_color_override("font_color", character.curse.color())
 		ability1_name.text = character.curse.display_name()
@@ -1198,10 +1212,29 @@ func _on_item_row_input(event: InputEvent, id: String):
 		drag_ghost.visible = true
 
 
+# Wave 2 items: dokler vlečemo item nad ploščo, predogledamo njegova ciljna
+# polja (glej BaseItem.get_aim_cells) pod kazalcem - izven plošče/brez veljavnega
+# itema se predogled počisti.
+func _update_item_aim(screen_pos: Vector2) -> void:
+	if not is_instance_valid(move_highlighter):
+		return
+	if not board_area.get_global_rect().has_point(screen_pos):
+		move_highlighter.clear_aim()
+		return
+	var item: BaseItem = ItemData.create_item(drag_item_id)
+	if item == null:
+		move_highlighter.clear_aim()
+		return
+	var grid_pos := _screen_to_grid(screen_pos)
+	move_highlighter.show_aim(item.get_aim_cells(grid_pos))
+
+
 # Spuščeno izven plošče (BoardArea) = no-op, item ostane v inventarju.
 func _resolve_item_drop(screen_pos: Vector2):
 	dragging_item = false
 	drag_ghost.visible = false
+	if is_instance_valid(move_highlighter):
+		move_highlighter.clear_aim()
 
 	if board_area.get_global_rect().has_point(screen_pos):
 		var grid_pos := _screen_to_grid(screen_pos)

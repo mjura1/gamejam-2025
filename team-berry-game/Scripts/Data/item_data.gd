@@ -33,6 +33,9 @@ const ITEM_SCRIPTS: Dictionary = {
 	# Artefakt, ne consumable - glej frozen_rampart_item.gd/battle_ui.use_item()
 	# poseben primer (ne porabi se iz inventarja).
 	"frozen_rampart": preload("res://Scripts/Items/frozen_rampart_item.gd"),
+	"smoke_screen": preload("res://Scripts/Items/smoke_screen_item.gd"),
+	"quick_step": preload("res://Scripts/Items/quick_step_item.gd"),
+	"warm_cloak": preload("res://Scripts/Items/warm_cloak_item.gd"),
 }
 
 var _items: Dictionary = {}

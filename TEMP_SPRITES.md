@@ -31,3 +31,6 @@ real asset replaces it.
 | `team-berry-game/Assets/Sprites/item_frozen_rampart.png` | The `frozen_rampart` item's icon, e.g. an ice wall. | ImageMagick: 256x256, icy blue-gray `#2a4a5a` background, white "FRP" text, white border. |
 | `team-berry-game/Assets/Sprites/item_crown_of_the_long_night.png` | The `crown_of_the_long_night` item's icon, e.g. a dark starlit crown. | ImageMagick: 256x256, deep indigo `#151540` background, gold "CLN" text, gold border. |
 | `team-berry-game/Assets/Sprites/item_oracle_glass.png` | The `oracle_glass` item's icon, e.g. a seer's crystal. | ImageMagick: 256x256, deep violet-blue `#2a1a5a` background, tan "ORG" text, tan border. |
+| `team-berry-game/Assets/Sprites/item_smoke_screen.png` | The `smoke_screen` item's icon, e.g. a smoke cloud. | ImageMagick: 256x256, dark gray `#3a3a3a` background, pale gray "SMK" text, pale gray border. |
+| `team-berry-game/Assets/Sprites/item_quick_step.png` | The `quick_step` item's icon, e.g. a hurried footprint. | ImageMagick: 256x256, forest green `#1a5a3a` background, pale mint "QST" text, pale mint border. |
+| `team-berry-game/Assets/Sprites/item_warm_cloak.png` | The `warm_cloak` item's icon, e.g. a fur-lined cloak. | ImageMagick: 256x256, rust brown `#7a3a1a` background, pale peach "WCL" text, pale peach border. |

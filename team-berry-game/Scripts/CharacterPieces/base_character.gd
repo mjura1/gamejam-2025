@@ -141,6 +141,24 @@ var snow_trapped_turns: int = 0
 # "leno" (lazy) odmrzovanje, ki dovoljuje reševanje SREDI poteze.
 var snow_frozen: bool = false
 
+# Wave 2 items (frost_nova, camp_kit, stormcaller, ...): NEODVISEN fiksno-
+# trajajoč "zamrznjen" status, ločen od snow_frozen zgoraj - snow_frozen se
+# leno odmrzne takoj, ko se snežni obroč prekine (is_snow_frozen_now), kar ni
+# uporabno za "zamrzni za natanko N potez" učinke. Za razliko od snega velja
+# za OBE strani (igralec lahko zamrzne sovražnika). Tik-tok v
+# BattleController.end_player_turn (glej tam).
+var effect_frozen_turns: int = 0
+
+# Item "smoke_screen": ta figura je skrita sovražnikovemu ciljanju (AI je ne
+# izbere za zajetje/gonjo - glej calculate_best_move spodaj), dokler se ne
+# premakne ali zajame (glej execute_move, ki to počisti).
+var is_hidden: bool = false
+
+# Item "warm_cloak": ta figura za PRESTANEK BITKE ne more biti zamrznjena od
+# snega (glej BattleController._update_snow_freeze_states - preskoči snow_frozen
+# nastavitev, snow_trapped_turns pa še vedno šteje).
+var is_freeze_immune: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -270,6 +288,11 @@ func calculate_valid_targets() -> Array[Vector2i]:
 	if not is_enemy and is_snow_frozen_now():
 		return targets
 
+	# Wave 2 items: effect_frozen_turns (glej deklaracijo zgoraj) - za razliko
+	# od snega velja za OBE strani.
+	if effect_frozen_turns > 0:
+		return targets
+
 	# Bishop.Traps: dokler je ta figura ujeta v sovražnikovo cono, se ne more
 	# premakniti nikamor.
 	if is_instance_valid(grid_manager) and grid_manager.is_frozen(grid_pos, is_enemy):
@@ -344,6 +367,10 @@ func execute_move(target: Vector2i):
 	# Item "snowshoes"/"iron_pawns": zajameta IZVORNO polje PRED premikom
 	# (grid_pos spodaj postane target).
 	var from_pos: Vector2i = grid_pos
+
+	# Item "smoke_screen": premik ALI zajetje (capture() spodaj samo pokliče
+	# execute_move za dejanski premik napadalca) prekine skritost.
+	is_hidden = false
 
 	# Bishop.Traps/Rook.Reinforce: premik te figure sprosti njeno cono.
 	if owned_zone_id != -1 and is_instance_valid(grid_manager):
@@ -848,7 +875,10 @@ func calculate_best_move() -> Dictionary:
 		if not nearby_char is BaseCharacter:
 			continue
 
-		if nearby_char.is_enemy == is_enemy or nearby_char.is_obstacle:
+		# Item "smoke_screen": skrita figura se ne šteje kot "closest_player" za
+		# gonjo (heuristika HARD/NORMAL) - minimax (IMPOSSIBLE) tega ne pozna,
+		# glej opombo pri is_hidden deklaraciji.
+		if nearby_char.is_enemy == is_enemy or nearby_char.is_obstacle or nearby_char.is_hidden:
 			continue
 
 		var dist = grid_pos.distance_to(nearby_char.grid_pos)
@@ -880,7 +910,7 @@ func calculate_best_move() -> Dictionary:
 		var target_char = grid_manager.get_character_at(pos)
 		if target_char and target_char.is_obstacle:
 			continue # skip any obstacle entirely
-		if target_char and target_char.is_enemy != is_enemy:
+		if target_char and target_char.is_enemy != is_enemy and not target_char.is_hidden:
 			capture_candidates.append(pos)
 
 	var strategy = ai_strategy_data.get_strategy(settings_manager.ai_difficulty)

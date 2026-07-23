@@ -533,6 +533,12 @@ func end_player_turn():
 				continue
 			if not (character is BaseCharacter):
 				continue
+			# Wave 2 items: effect_frozen_turns tika za OBE strani (igralec
+			# lahko zamrzne sovražnika) - en tik na konec igralčeve poteze
+			# pomeni "zamrznjen natanko eno naslednjo potezo" za katerokoli
+			# stran, saj med dvema tikoma mine natanko ena sovražnikova poteza.
+			if character.effect_frozen_turns > 0:
+				character.effect_frozen_turns -= 1
 			if character.is_enemy:
 				continue
 			if character.stunned_turns > 0:
@@ -815,7 +821,11 @@ func _update_snow_freeze_states() -> void:
 			if character.snow_trapped_turns >= SNOW_DEATH_TURNS:
 				character.die()
 				continue
-			if character.snow_trapped_turns >= SNOW_FREEZE_TURNS and not character.snow_frozen:
+			# Item "warm_cloak": imuna figura šteje snow_trapped_turns naprej
+			# (smrtni odštevalnik zgoraj še vedno velja), a se dejansko nikoli
+			# ne zamrzne (glej is_freeze_immune deklaracijo).
+			if character.snow_trapped_turns >= SNOW_FREEZE_TURNS and not character.snow_frozen \
+					and not character.is_freeze_immune:
 				character.snow_frozen = true
 				piece_frozen.emit(character)
 		else:
