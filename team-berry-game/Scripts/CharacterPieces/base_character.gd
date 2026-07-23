@@ -658,6 +658,19 @@ func capture(target: BaseCharacter):
 		target.is_capture_immune = true
 		return
 
+	# Item "royal_guard": kralj, ki bi bil zajet, 1x na bitko namesto tega
+	# preusmeri zajetje na SOSEDNJO (8 smeri, katerakoli figura, ne samo
+	# pešec - za razliko od loyal_pawns spodaj) zavezniško figuro. Substitucija
+	# PRED "shranimo pozicijo tarče" spodaj, isti vzorec kot loyal_pawns -
+	# ostanek funkcije potem deluje na substitutu brez sprememb.
+	if not target.is_enemy and not target.is_obstacle and target.strName == "king" \
+			and is_instance_valid(player_manager) and player_manager.has_passive("royal_guard") \
+			and is_instance_valid(battle_controller) and not battle_controller.royal_guard_used_this_battle:
+		var guard: BaseCharacter = target._find_adjacent_ally()
+		if guard:
+			battle_controller.royal_guard_used_this_battle = true
+			target = guard
+
 	# Item "loyal_pawns": sovražnikovo zajetje zavezniške figure se, 1x na
 	# bitko, preusmeri na sosednjega zavezniškega pešca - napadalec pristane
 	# NA PEŠCU (ne na prvotni tarči), ki torej preživi (isti vzorec kot
@@ -720,6 +733,21 @@ func _find_adjacent_pawn(piece: BaseCharacter) -> BaseCharacter:
 		if neighbor and neighbor is BaseCharacter and not neighbor.is_enemy \
 				and not neighbor.is_obstacle and neighbor.strName == "pawn" and neighbor != piece:
 			return neighbor
+	return null
+
+# Item "royal_guard": prva sosednja (8 smeri) zavezniška figura KATEREGAKOLI
+# tipa (ne samo pešec, za razliko od _find_adjacent_pawn zgoraj) - null, če
+# je ni.
+func _find_adjacent_ally() -> BaseCharacter:
+	if not is_instance_valid(grid_manager):
+		return null
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and not neighbor.is_enemy and not neighbor.is_obstacle and neighbor != self:
+				return neighbor
 	return null
 
 

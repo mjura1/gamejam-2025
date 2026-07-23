@@ -57,6 +57,8 @@ const ITEM_SCRIPTS: Dictionary = {
 	"avalanche_horn": preload("res://Scripts/Items/avalanche_horn_item.gd"),
 	"avalanche": preload("res://Scripts/Items/avalanche_item.gd"),
 	"stormcaller": preload("res://Scripts/Items/stormcaller_item.gd"),
+	"seers_horn": preload("res://Scripts/Items/seers_horn_item.gd"),
+	"blizzard_ender": preload("res://Scripts/Items/blizzard_ender_item.gd"),
 }
 
 var _items: Dictionary = {}
@@ -284,8 +286,11 @@ func _roll_loot_batch(count: int, kinds: Array, weights: Dictionary, rerolls: in
 # max_bonus_items, bonus_artifacts prek luck_per_bonus_artifact/
 # max_bonus_artifacts - slednji namerno dražji, saj so artefakti močnejša
 # nagrada). excluded_ids: glej roll_shop_stock zgoraj (isti namen).
+# min_artifact_count: item "fate_weaver" (Phase 5) - "vedno vsaj en artefakt"
+# garancija, klicatelj (treasure.gd) poda 1, če ima igralec ta passive,
+# sicer 0 (privzeto, obstoječe obnašanje nespremenjeno).
 func roll_treasure_loot(tier: int, luck: int, rng: RandomNumberGenerator = null,
-		excluded_ids: Array = []) -> Array:
+		excluded_ids: Array = [], min_artifact_count: int = 0) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
@@ -299,7 +304,7 @@ func roll_treasure_loot(tier: int, luck: int, rng: RandomNumberGenerator = null,
 	var bonus_artifacts: int = clampi(luck / int(_treasure_config.get("luck_per_bonus_artifact", 6)),
 		0, int(_treasure_config.get("max_bonus_artifacts", 1)))
 	var item_count: int = get_treasure_item_count(tier) + bonus_items
-	var artifact_count: int = get_treasure_artifact_count(tier) + bonus_artifacts
+	var artifact_count: int = maxi(get_treasure_artifact_count(tier) + bonus_artifacts, min_artifact_count)
 
 	var picked: Array = excluded_ids.duplicate()
 	var loot: Array = []

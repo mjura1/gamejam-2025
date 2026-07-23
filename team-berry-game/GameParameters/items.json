@@ -30,6 +30,8 @@
 
 	"avalanche":    {"name": "Avalanche", "description": "One use. Pushes every enemy on the board back 3 tiles; any pushed into a wall or obstacle are frozen instead.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "consumable"},
 	"stormcaller":  {"name": "Stormcaller", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice and freezes any enemy standing in it.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "consumable"},
+	"seers_horn":   {"name": "Seer's Horn", "description": "One use. Reveals one chosen enemy's actual planned move for the turn.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "consumable"},
+	"blizzard_ender": {"name": "Blizzard Ender", "description": "One use. Clears the snow across the entire battlefield.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "consumable"},
 
 	"aurora_flare": {"name": "Aurora Flare", "description": "One use. Clears all snow on the current floor.", "buy_cost": 1, "sell_value": 1, "rarity": "legendary", "kind": "consumable"},
 
@@ -64,6 +66,9 @@
 	"queens_gambit": {"name": "Queen's Gambit", "description": "Once per battle, your queen may capture through blocking pieces - after her next capture, she freezes and can't act next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 	"frozen_vanguard": {"name": "Frozen Vanguard", "description": "The first friendly piece captured each battle is frozen in place instead, and cannot be captured again for the rest of that turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 
+	"spectral_queen": {"name": "Spectral Queen", "description": "Your queen cannot be captured during the first 2 turns of each battle.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "passive", "stackable": false},
+	"royal_guard":  {"name": "Royal Guard", "description": "Once per battle, if your king would be captured, an adjacent friendly piece is captured in its place instead.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "passive", "stackable": false},
+
 	"lucky_charm":        {"name": "Lucky Charm", "description": "Treasure chests are more likely to hold rarer items, and sometimes hold an extra one.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "luck_bonus": 2},
 	"drillmaster":        {"name": "Drillmaster", "description": "Once per battle, drag onto an ally while another ally is selected to swap their positions.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "stackable": false},
 	"prospectors_pick":   {"name": "Prospector's Pick", "description": "Each battle a random enemy is marked. If it is the first enemy to fall, gain upgrade items.", "buy_cost": 4, "sell_value": 2, "rarity": "rare", "kind": "artifact", "reward": 2, "stackable": false},
@@ -72,6 +77,9 @@
 	"frostbite_ward":     {"name": "Frostbite Ward", "description": "A shard of the Winter March, cold to the touch.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
 	"ravens_eye":         {"name": "Raven's Eye", "description": "Tiles you've cleared of snow can never be covered by snowfall/blizzard fog again for the rest of the battle.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
 	"frozen_rampart":     {"name": "Frozen Rampart", "description": "Once per battle, drop a wall on an empty tile to block enemy movement and line of sight, without spending an item.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
+	"golden_quarry":      {"name": "Golden Quarry", "description": "Each battle two random enemies are marked. If either is the first to fall, gain upgrade items.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "reward": 3, "stackable": false},
+	"fate_weaver":        {"name": "Fate Weaver", "description": "Treasure chests are much more likely to hold rarer items, sometimes hold an extra one, and always contain at least one artifact-tier item.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "luck_bonus": 6},
+	"vanguards_oath":     {"name": "Vanguard's Oath", "description": "Each battle, the first ally to threaten an enemy gains a free extra move on your following turn.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
 	"winter_kings_crown": {"name": "Winter King's Crown", "description": "A relic of a forgotten king, said to protect its wearer.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
 	"crown_of_the_long_night": {"name": "Crown of the Long Night", "description": "Surviving a party wipe with Divine Intervention also grants 3 upgrade items.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "reward": 3, "stackable": false},
 	"oracle_glass":       {"name": "Oracle Glass", "description": "Reveals the enemy's actual planned move for the turn, not just the tiles they threaten.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}

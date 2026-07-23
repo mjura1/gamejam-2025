@@ -38,6 +38,10 @@ signal bounty_marked(character: BaseCharacter)
 # Artefakt "prospectors_pick": enako kot bounty_marked, glej spodaj.
 signal prospectors_pick_marked(character: BaseCharacter)
 
+# Artefakt "golden_quarry" (Phase 5): enako kot bounty_marked, a sproži se
+# DVAKRAT na bitko (glej start_player_turn - dve neodvisni naključni tarči).
+signal golden_quarry_marked(character: BaseCharacter)
+
 # Item "courier_package": enako kot bounty_marked, a za kurirja (glej
 # start_player_turn()).
 signal courier_marked(character: BaseCharacter)
@@ -195,6 +199,34 @@ var iron_resolve_used_this_battle: bool = false
 var frozen_vanguard_used_this_battle: bool = false
 var queens_gambit_used_this_battle: bool = false
 
+# Item "royal_guard" (Phase 5): enak "1x na bitko" capture-redirect vzorec
+# kot zgoraj - glej base_character.capture() za dejansko logiko (kralj ->
+# katerakoli sosednja zavezniška figura, za razliko od loyal_pawns, ki
+# preusmeri SAMO na pešca).
+var royal_guard_used_this_battle: bool = false
+
+# Artefakt "golden_quarry" (Phase 5): dve neodvisni naključni tarči, izbrani
+# ob začetku prve poteze (isti vzorec kot bounty_target/prospectors_pick_target
+# zgoraj) - nagrada, če PRVI sovražnik, ki umre v tej bitki, je ena od njiju
+# (glej on_enemy_died). Ena sama "resolved" zastavica (ne dve), ker gre za en
+# sam item - obe tarči se izplačata na isto (prvo) smrt, kot pri drugih
+# bounty-družinskih itemih.
+var golden_quarry_target_a: BaseCharacter = null
+var golden_quarry_target_b: BaseCharacter = null
+var golden_quarry_resolved: bool = false
+
+# Artefakt "vanguards_oath" (Phase 5): enkrat na bitko - PRVI zaveznik, ki v
+# svojem dosegu ogroža sovražnika (preverjeno ob začetku vsake igralčeve
+# poteze, glej start_player_turn), je "oborožen" za brezplačno dodatno potezo
+# NA NASLEDNJI potezi (restricted-target vzorec, enak Queen.Command's
+# free_move_character - glej consume_move_for spodaj). armed_character:
+# nastavljen TO potezo, prenese se v bonus_character na NASLEDNJI klic
+# start_player_turn (torej "next turn" bonus). bonus_character: aktiven TO
+# potezo, porabi ga consume_move_for spodaj.
+var vanguards_oath_used_this_battle: bool = false
+var vanguards_oath_armed_character: BaseCharacter = null
+var vanguards_oath_bonus_character: BaseCharacter = null
+
 # Item "decoy": vsaka postavljena vaba, ki je PREŽIVELA (ni bila zajeta), se
 # odstrani na začetku NASLEDNJE igralčeve poteze (glej start_player_turn) -
 # torej traja natanko skozi eno sovražnikovo potezo, ne dlje. Zajete vabe
@@ -284,6 +316,13 @@ func initialize_battle():
 	iron_resolve_used_this_battle = false
 	frozen_vanguard_used_this_battle = false
 	queens_gambit_used_this_battle = false
+	royal_guard_used_this_battle = false
+	golden_quarry_target_a = null
+	golden_quarry_target_b = null
+	golden_quarry_resolved = false
+	vanguards_oath_used_this_battle = false
+	vanguards_oath_armed_character = null
+	vanguards_oath_bonus_character = null
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -373,6 +412,12 @@ func start_player_turn():
 	knight_errant_used_this_turn = false
 	snowshoes_active_this_turn = false
 
+	# Artefakt "vanguards_oath": bonus armiran na PREJŠNJI potezi (glej
+	# detekcijsko zanko spodaj) postane aktiven TO potezo - restricted-target
+	# vzorec kot free_move_character zgoraj, glej consume_move_for spodaj.
+	vanguards_oath_bonus_character = vanguards_oath_armed_character
+	vanguards_oath_armed_character = null
+
 	# Item "decoy": vsaka vaba, ki je preživela do zdaj (ni bila zajeta med
 	# sovražnikovo potezo, ki je pravkar minila), izgine - glej decoys_active
 	# deklaracijo. Vaba, uporabljena MED to isto igralčevo potezo (po tem
@@ -417,6 +462,22 @@ func start_player_turn():
 				prospectors_pick_target = pp_enemies.pick_random()
 				prospectors_pick_marked.emit(prospectors_pick_target)
 
+		# Artefakt "golden_quarry": kot bounty/prospectors_pick zgoraj, a
+		# DVE neodvisni naključni tarči namesto ene (glej on_enemy_died -
+		# nagrada, če katerakoli od njiju umre prva).
+		if player_manager.has_passive("golden_quarry"):
+			var gq_enemies: Array = []
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and character.is_enemy and not character.is_obstacle:
+					gq_enemies.append(character)
+			gq_enemies.shuffle()
+			if gq_enemies.size() >= 1:
+				golden_quarry_target_a = gq_enemies[0]
+				golden_quarry_marked.emit(golden_quarry_target_a)
+			if gq_enemies.size() >= 2:
+				golden_quarry_target_b = gq_enemies[1]
+				golden_quarry_marked.emit(golden_quarry_target_b)
+
 		if player_manager.has_passive("bloodhounds"):
 			_spawn_bloodhound_wolf()
 
@@ -450,6 +511,30 @@ func start_player_turn():
 					if effect.get("type", "") == "battle_start_reveal":
 						var radius: int = int(effect.get("radius", 1))
 						grid_manager.reveal_area(GridManager.square_radius_tiles(character.grid_pos, radius))
+
+	# Artefakt "vanguards_oath": preverimo VSAKO igralčevo potezo (dokler se
+	# enkrat ne sproži - ne samo prvo, glej vanguards_oath_used_this_battle),
+	# ali kak zaveznik trenutno ogroža sovražnika - PRVI najden dobi bonus na
+	# NASLEDNJI potezi (glej vanguards_oath_bonus_character prenos na vrhu te
+	# funkcije). ZNANA POENOSTAVITEV (isti standard kot spyglass/
+	# foresight_mirror): preverjeno samo TU, ob začetku poteze, ne
+	# sproti med igralčevimi lastnimi premiki znotraj iste poteze.
+	if not vanguards_oath_used_this_battle and is_instance_valid(player_manager) \
+			and player_manager.has_passive("vanguards_oath") and is_instance_valid(grid_manager):
+		for character in grid_manager.get_all_characters():
+			if not (character is BaseCharacter) or character.is_enemy or character.is_obstacle:
+				continue
+			var threatens_enemy := false
+			for pos in character.calculate_valid_targets():
+				var t = grid_manager.get_character_at(pos)
+				if t and t is BaseCharacter and t.is_enemy:
+					threatens_enemy = true
+					break
+			if threatens_enemy:
+				vanguards_oath_used_this_battle = true
+				vanguards_oath_armed_character = character
+				break
+
 	moves_changed.emit(moves_remaining, player_manager.moves_per_turn)
 	abilities_changed.emit(abilities_remaining, player_manager.abilities_per_turn)
 
@@ -464,6 +549,19 @@ func start_player_turn():
 	# Knight.Evade: imuniteta velja "za eno potezo" - torej natanko čez
 	# sovražnikovo potezo, ki se je pravkar iztekla.
 	_clear_expired_evade()
+
+	# Item "spectral_queen": kraljica je nezajemljiva PRVI 2 potezi bitke -
+	# PONOVNO nastavljeno vsako potezo, dokler turn_count <= 2 (mora priti
+	# TAKOJ PO _clear_expired_evade() zgoraj, ki bi sicer to prepisala nazaj
+	# na false vsako potezo - isto "traja do naslednjega start_player_turn()"
+	# pravilo kot Knight.Evade/iron_pawns, glej is_capture_immune deklaracijo
+	# v base_character.gd).
+	if turn_count <= 2 and is_instance_valid(player_manager) \
+			and player_manager.has_passive("spectral_queen") and is_instance_valid(grid_manager):
+		for character in grid_manager.get_all_characters():
+			if character is BaseCharacter and not character.is_enemy and not character.is_obstacle \
+					and character.strName == "queen":
+				character.is_capture_immune = true
 
 	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
 	if is_instance_valid(move_highlighter):
@@ -490,6 +588,11 @@ func consume_move():
 func consume_move_for(character: BaseCharacter) -> void:
 	if character == free_move_character:
 		free_move_character = null
+		return
+	# Artefakt "vanguards_oath": ista "restricted-target free skip" logika kot
+	# free_move_character zgoraj, glej vanguards_oath_bonus_character deklaracijo.
+	if character == vanguards_oath_bonus_character:
+		vanguards_oath_bonus_character = null
 		return
 	consume_move()
 
@@ -569,6 +672,16 @@ func on_enemy_died(character: BaseCharacter):
 		if character == prospectors_pick_target and is_instance_valid(player_manager):
 			player_manager.add_upgrade_items(ItemData.get_reward("prospectors_pick"))
 			print("PROSPECTORS_PICK: tarča je padla prva - nagrada izplačana")
+
+	# Artefakt "golden_quarry": ena "resolved" zastavica pokriva OBE tarči (za
+	# razliko od bounty/prospectors_pick zgoraj, ki imata vsak svojo) - to je
+	# EN item, obe tarči se izplačata na isto (prvo od njiju) smrt.
+	if not golden_quarry_resolved:
+		if character == golden_quarry_target_a or character == golden_quarry_target_b:
+			golden_quarry_resolved = true
+			if is_instance_valid(player_manager):
+				player_manager.add_upgrade_items(ItemData.get_reward("golden_quarry"))
+				print("GOLDEN_QUARRY: ena od dveh tarč je padla prva - nagrada izplačana")
 
 	# Item "salvage": VSAKO sovražnikovo smrt (ne samo prva) ima možnost
 	# dodatnega upgrade itema. SALVAGE_DROP_CHANCE je placeholder vrednost -

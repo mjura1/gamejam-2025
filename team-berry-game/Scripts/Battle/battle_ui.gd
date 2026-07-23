@@ -119,6 +119,7 @@ func _ready():
 	battle_controller.prospectors_pick_marked.connect(func(character): _set_board_badge(character, "$"))
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
 	battle_controller.old_guard_marked.connect(func(character): _set_board_badge(character, "OG"))
+	battle_controller.golden_quarry_marked.connect(func(character): _set_board_badge(character, "GQ"))
 	battle_controller.piece_stunned.connect(_on_piece_stunned)
 	battle_controller.piece_rooted.connect(_on_piece_rooted)
 	battle_controller.piece_frozen.connect(_on_piece_frozen)
