@@ -151,3 +151,27 @@ func test_has_passive_false_for_consumable_even_if_owned():
 	var pm = PlayerManagerScript.new()
 	pm.add_item("extra_move", 1)
 	assert_false(pm.has_passive("extra_move"), "has_passive should be false for consumable-kind items")
+
+func test_has_passive_true_for_artifact_kind_when_owned():
+	var pm = PlayerManagerScript.new()
+	pm.add_item("lucky_charm", 1)
+	assert_true(pm.has_passive("lucky_charm"), "has_passive should be true for artifact-kind items too")
+
+func test_get_luck_zero_with_no_items_owned():
+	var pm = PlayerManagerScript.new()
+	assert_eq(pm.get_luck(), 0, "get_luck should be 0 with no items owned")
+
+func test_get_luck_sums_luck_bonus_across_owned_items():
+	var pm = PlayerManagerScript.new()
+	pm.add_item("lucky_charm", 1)
+	assert_eq(pm.get_luck(), ItemData.get_luck_bonus("lucky_charm"), "get_luck should sum luck_bonus of owned items")
+
+func test_get_luck_stacks_with_item_count():
+	var pm = PlayerManagerScript.new()
+	pm.add_item("lucky_charm", 3)
+	assert_eq(pm.get_luck(), ItemData.get_luck_bonus("lucky_charm") * 3, "get_luck should scale with owned count")
+
+func test_get_luck_ignores_items_with_no_luck_bonus():
+	var pm = PlayerManagerScript.new()
+	pm.add_item("spyglass", 5)
+	assert_eq(pm.get_luck(), 0, "items without luck_bonus should not contribute to get_luck")
