@@ -6,12 +6,6 @@
 # onemogočen (brez re-buy) do naslednjega obiska trgovine.
 extends CanvasLayer
 
-const RARITY_COLORS := {
-	"common": Color.WHITE,
-	"uncommon": Color(0.4, 0.9, 0.4),
-	"rare": Color(0.45, 0.65, 1.0),
-}
-
 @onready var player_manager = get_node("/root/PlayerManager")
 
 @onready var items_label: Label = %ItemsLabel
@@ -57,7 +51,7 @@ func _build_item_row(slot: Dictionary) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name_label := Label.new()
 	name_label.text = ItemData.get_item_name(id)
-	name_label.add_theme_color_override("font_color", RARITY_COLORS.get(ItemData.get_rarity(id), Color.WHITE))
+	name_label.add_theme_color_override("font_color", ItemData.get_rarity_color(id))
 	info.add_child(name_label)
 	var desc_label := Label.new()
 	desc_label.text = ItemData.get_item_description(id)

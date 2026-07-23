@@ -133,6 +133,11 @@ check_script "smoke_shop" "res://tests/smoke/smoke_shop.gd" 8 \
 	"SMOKE TEST: shop buy/sell flow completed cleanly"
 echo
 
+echo "== Item room -> Treasure scene -> chest -> reveal -> map smoke test =="
+check_script "smoke_treasure_flow" "res://tests/smoke/smoke_treasure_flow.gd" 8 \
+	"SMOKE TEST: treasure flow completed cleanly, back on the map"
+echo
+
 echo "== Battle smoke test (res://tests/smoke/smoke_battle.gd) =="
 check_script "smoke_battle" "res://tests/smoke/smoke_battle.gd" 4 \
 	"SMOKE TEST: battle booted through placement into PLAYER_TURN"

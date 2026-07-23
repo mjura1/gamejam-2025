@@ -1,0 +1,12 @@
+{
+	"base_item_count": 1,
+	"luck_per_bonus_item": 3,
+	"max_bonus_items": 2,
+	"luck_per_reroll": 2,
+	"max_rerolls": 3,
+	"rarity_weights_by_tier": [
+		{"common": 70, "uncommon": 25, "rare": 5},
+		{"common": 40, "uncommon": 35, "rare": 20, "epic": 5},
+		{"common": 20, "uncommon": 30, "rare": 30, "epic": 15, "legendary": 5}
+	]
+}

@@ -41,7 +41,6 @@ var owned_items: Dictionary = {}
 # MapController._handle_event za item sobo).
 const UPGRADE_ITEMS_PER_WIN := 1
 const UPGRADE_ITEMS_PER_BOSS_WIN := 3
-const UPGRADE_ITEMS_PER_ITEM_ROOM := 2
 
 # Trajne nadgradnje PO TIPU figure (velja za vse figure istega tipa - roster
 # je seznam imen brez identitete posamezne figure, glej friendly_party).
@@ -376,17 +375,21 @@ func remove_item(id: String) -> bool:
 func get_item_count(id: String) -> int:
 	return owned_items.get(id, 0)
 
-# DEVIATION (glej plans/META_PROGRESSION_PLAN.md §2f/§3 M3): plan je
-# pričakoval, da plans/TREASURE_CHEST_PLAN.md do zdaj že doda get_luck() (vsota
-# owned_items lucky_bonusov); na tej veji (off develop) tega še ni, zato je tu
-# samo base_luck. Ko treasure-chest pristane, dodaj owned_items vsoto zraven -
-# ne prepisuj te funkcije.
-func get_luck() -> int:
-	return base_luck
-
 # Pasivni itemi: aktivni, dokler je v inventarju vsaj 1 kos.
 func has_passive(id: String) -> bool:
-	return owned_items.get(id, 0) > 0 and ItemData.get_kind(id) == "passive"
+	return owned_items.get(id, 0) > 0 and ItemData.get_kind(id) in ["passive", "artifact"]
+
+# Luck: trajni base_luck (meta-progression unlocks, glej
+# plans/META_PROGRESSION_PLAN.md §2f/§3 M3) plus run-scoped vsota luck_bonus
+# prek trenutno lastnih itemov (glej plans/TREASURE_CHEST_PLAN.md §3 M2).
+# Vpliva na kvaliteto/količino zaklada (ItemData.roll_treasure_loot). Ta
+# funkcija je bila neodvisno zgrajena na obeh planih - združena tu, ker sta
+# oba pristala na develop hkrati (glej ta merge commit).
+func get_luck() -> int:
+	var luck := base_luck
+	for id in owned_items.keys():
+		luck += ItemData.get_luck_bonus(id) * owned_items[id]
+	return luck
 
 # Kupi 1x item po ceni iz ItemData. Zavrne, če ni dovolj upgrade_items.
 func try_buy_item(id: String) -> bool:

@@ -115,6 +115,7 @@ func _ready():
 	battle_controller.moves_changed.connect(_on_moves_changed)
 	battle_controller.abilities_changed.connect(_on_abilities_changed)
 	battle_controller.bounty_marked.connect(func(character): _set_board_badge(character, "☠"))
+	battle_controller.prospectors_pick_marked.connect(func(character): _set_board_badge(character, "$"))
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
 	battle_controller.piece_stunned.connect(_on_piece_stunned)
 	battle_controller.piece_rooted.connect(_on_piece_rooted)
