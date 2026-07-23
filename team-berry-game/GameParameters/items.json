@@ -13,5 +13,10 @@
 	"divine_intervention": {"name": "Divine Intervention", "description": "Consumed on party wipe: return to the map instead of game over.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive"},
 
 	"fortress":     {"name": "Fortress", "description": "Enemies cannot cross the line between a friendly rook and a house in its line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive"},
-	"mounted_hunters": {"name": "Mounted Hunters", "description": "Your queen and bishops may also move like knights.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive"}
+	"mounted_hunters": {"name": "Mounted Hunters", "description": "Your queen and bishops may also move like knights.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive"},
+
+	"lucky_charm":        {"name": "Lucky Charm", "description": "Treasure chests are more likely to hold rarer items, and sometimes hold an extra one.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "luck_bonus": 2},
+	"prospectors_pick":   {"name": "Prospector's Pick", "description": "Each battle a random enemy is marked. If it is the first enemy to fall, gain upgrade items.", "buy_cost": 4, "sell_value": 2, "rarity": "rare", "kind": "artifact", "reward": 2},
+	"frostbite_ward":     {"name": "Frostbite Ward", "description": "A shard of the Winter March, cold to the touch.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact"},
+	"winter_kings_crown": {"name": "Winter King's Crown", "description": "A relic of a forgotten king, said to protect its wearer.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact"}
 }
