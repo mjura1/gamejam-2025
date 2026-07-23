@@ -277,6 +277,24 @@ func is_castle_protected() -> bool:
 			step += dir
 	return false
 
+# Item "steel_vanguard": pešec je nezajemljiv, DOKLER stoji sosednje (8 smeri)
+# drugemu zavezniškemu pešcu - za razliko od "iron_pawns" (shranjena
+# is_capture_immune zastavica, nastavljena samo po premiku natanko 1 polja),
+# to je ŽIVO preverjeno ob vsakem capture-checku, isti vzorec kot
+# is_castle_protected() zgoraj (ni stanja, samo trenutno geometrijsko dejstvo).
+func is_steel_vanguard_protected() -> bool:
+	if is_enemy or strName != "pawn": return false
+	if not is_instance_valid(player_manager) or not player_manager.has_passive("steel_vanguard"): return false
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and not neighbor.is_enemy and not neighbor.is_obstacle \
+					and neighbor.strName == "pawn" and neighbor != self:
+				return true
+	return false
+
 # Snow rework: PRAVI vir resnice za "ali je figura trenutno zamrznjena" -
 # leno (lazy) preveri, ali se je obroč snega že prekinil, in če DA, takoj
 # odmrzne (thaw je torej TAKOJŠNJI, znotraj iste poteze - npr. ko druga
@@ -339,8 +357,10 @@ func calculate_valid_targets() -> Array[Vector2i]:
 				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 					# Knight.Evade: imunska figura ne more biti zajeta z
 					# navadnim premikom/zajetjem. Item "castle": enako za
-					# kralja, dokler ga vidi prijateljska trdnjava.
-					if target_char.is_capture_immune or target_char.is_castle_protected():
+					# kralja, dokler ga vidi prijateljska trdnjava. Item
+					# "steel_vanguard": enako za pešca zraven drugega pešca.
+					if target_char.is_capture_immune or target_char.is_castle_protected() \
+							or target_char.is_steel_vanguard_protected():
 						break
 					# Rook.Reinforce: polje je znotraj sovražnikove cone - ni
 					# dovoljeno niti zajetje na to polje.
@@ -361,6 +381,33 @@ func calculate_valid_targets() -> Array[Vector2i]:
 		targets = targets.filter(func(pos):
 			var t = grid_manager.get_character_at(pos)
 			return t != null and t.is_enemy != is_enemy)
+
+	# Item "queens_gambit": dokler pasiva ni porabljena to bitko, kraljica
+	# "ignore capture-path limits" - lahko zajame KATEREGAKOLI sovražnika v
+	# svojih premikalnih smereh, tudi ČEZ vmesne figure (prijateljske ali
+	# sovražnikove, a NE čez ovire/zidove - tisti še vedno blokirajo v celoti).
+	# NAMERNO ADDITIVNO (nova ločena zanka, ne sprememba zgornje glavne zanke) -
+	# ne dotika se obnašanja NOBENE druge figure/pasive, samo doda dodatne
+	# zajetja kraljici, ko je aktivna. Dejanska "zamrzne se po zajetju"
+	# posledica se sproži v capture() (glej tam), ne tu (tu samo RAZŠIRIMO
+	# nabor veljavnih ciljev).
+	if not is_enemy and strName == "queen" and is_instance_valid(player_manager) \
+			and player_manager.has_passive("queens_gambit") and is_instance_valid(battle_controller) \
+			and not battle_controller.queens_gambit_used_this_battle:
+		for dir in get_move_directions():
+			for step in range(1, move_range + 1):
+				var target_pos: Vector2i = grid_pos + dir * step
+				if not grid_manager.is_inside_boundary(target_pos, tile_map.get_used_rect()):
+					break
+				var target_char = grid_manager.get_character_at(target_pos)
+				if target_char == null:
+					continue
+				if target_char.is_obstacle:
+					break
+				if target_char.is_enemy != is_enemy and not target_char.is_capture_immune \
+						and not target_char.is_castle_protected() and not target_char.is_steel_vanguard_protected() \
+						and not grid_manager.is_entry_denied(target_pos, is_enemy) and target_pos not in targets:
+					targets.append(target_pos)
 
 	return targets
 
@@ -577,6 +624,40 @@ func capture(target: BaseCharacter):
 		target.is_capture_warded = false
 		return
 
+	# Item "iron_resolve": tarča, ki stoji sosednje (8 smeri) SVOJEMU kralju,
+	# 1x na bitko preživi in se preseli na najbližje prosto polje (glej
+	# GridManager.find_nearest_empty_tile) namesto da umre - napadalec se NE
+	# premakne (isto polno-preklicano obnašanje kot mirror_ward zgoraj).
+	if not target.is_enemy and not target.is_obstacle and is_instance_valid(player_manager) \
+			and player_manager.has_passive("iron_resolve") and is_instance_valid(battle_controller) \
+			and not battle_controller.iron_resolve_used_this_battle and target._is_adjacent_to_own_king():
+		var escape: Vector2i = grid_manager.find_nearest_empty_tile(target.grid_pos)
+		if escape != Vector2i(-1, -1):
+			battle_controller.iron_resolve_used_this_battle = true
+			grid_manager.vacate(target.grid_pos)
+			target.grid_pos = escape
+			grid_manager.occupy(escape, target)
+			target.slide_to(grid_manager.grid_to_world(escape))
+			return
+
+	# Item "frozen_vanguard": PRVO zavezniško zajetje v tej bitki se preusmeri -
+	# tarča preživi, a se TAKOJ zamrzne in za preostanek TE poteze ne more biti
+	# znova zajeta. is_capture_immune deli isto "traja do naslednjega
+	# start_player_turn()" pravilo kot Knight.Evade/iron_pawns (glej
+	# BattleController._clear_expired_evade) - ker je ta zajetje SREDI
+	# sovražnikove poteze, imuniteta pokrije natanko "preostanek te poteze"
+	# (do konca TE sovražnikove poteze), kot obljublja opis. Freeze vrednost=1,
+	# NE +1 popravek (glej NEW_ITEMS_WAVE2_PLAN.md §1a) - to je EDINI primer, ko
+	# +1 ni potreben: zaveznik, zamrznjen MED sovražnikovo potezo, se preveri
+	# naslednjič ob igralčevi lastni potezi, PREDEN kakšen tik sploh steče.
+	if not target.is_enemy and not target.is_obstacle and is_instance_valid(player_manager) \
+			and player_manager.has_passive("frozen_vanguard") and is_instance_valid(battle_controller) \
+			and not battle_controller.frozen_vanguard_used_this_battle:
+		battle_controller.frozen_vanguard_used_this_battle = true
+		target.effect_frozen_turns = maxi(target.effect_frozen_turns, 1)
+		target.is_capture_immune = true
+		return
+
 	# Item "loyal_pawns": sovražnikovo zajetje zavezniške figure se, 1x na
 	# bitko, preusmeri na sosednjega zavezniškega pešca - napadalec pristane
 	# NA PEŠCU (ne na prvotni tarči), ki torej preživi (isti vzorec kot
@@ -600,6 +681,34 @@ func capture(target: BaseCharacter):
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
 	execute_move(target_pos)
+
+	# Item "queens_gambit": kraljičino PRVO zajetje to bitko (dokler pasiva
+	# ni porabljena) jo zamrzne za njeno naslednjo potezo - potroši se TAKOJ,
+	# ne glede na to, ali je zajetje sploh izkoristilo spodnji "ignore
+	# capture-path" dodatek v calculate_valid_targets(). Freeze vrednost=2 (NE
+	# 1) - to JE zaveznik, zamrznjen MED igralčevo LASTNO potezo (ne
+	# sovražnikovo), torej velja splošno +1 pravilo (glej §1a), za razliko od
+	# frozen_vanguard zgoraj.
+	if not is_enemy and strName == "queen" and is_instance_valid(player_manager) \
+			and player_manager.has_passive("queens_gambit") and is_instance_valid(battle_controller) \
+			and not battle_controller.queens_gambit_used_this_battle:
+		battle_controller.queens_gambit_used_this_battle = true
+		effect_frozen_turns = maxi(effect_frozen_turns, 2)
+
+# Item "iron_resolve": ali stoji "self" sosednje (8 smeri) SVOJEMU
+# (ne-sovražnikovemu) kralju - uporabljeno kot capture() pogoj zgoraj.
+func _is_adjacent_to_own_king() -> bool:
+	if not is_instance_valid(grid_manager):
+		return false
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and neighbor.is_enemy == is_enemy and not neighbor.is_obstacle \
+					and neighbor.strName == "king":
+				return true
+	return false
 
 # Item "loyal_pawns": prvi zavezniški pešec (ne sama "piece", ne ovira) na
 # enem od 4 ortogonalnih sosednjih polj od "piece" - null, če ga ni.

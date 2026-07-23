@@ -145,15 +145,23 @@ var night_watch_targets: Array[BaseCharacter] = []
 # Item "loyal_pawns": enkrat na bitko - glej base_character.capture().
 var loyal_pawns_used_this_battle: bool = false
 
-# Item "nightfall_ward": PRVA zavezniška zamrznitev od snega v tej bitki
-# (glej _update_snow_freeze_states spodaj) je preprečena namesto da se zgodi -
-# za razliko od "warm_cloak" (trajno imunska ENA konkretna figura), to je
-# enkraten "prihrani prvo zamrznitev KOGARKOLI" na celotno bitko. Deviacija od
+# Item "nightfall_ward": PRVI(H) N zavezniških zamrznitev od snega v tej
+# bitki (glej _update_snow_freeze_states spodaj) je preprečenih namesto da se
+# zgodijo - za razliko od "warm_cloak" (trajno imunska ENA konkretna figura),
+# to je "prihrani prve N zamrznitev KOGARKOLI" na celotno bitko. Deviacija od
 # prvotne plan opombe ("prevents first effect_frozen_turns application") -
 # glej NEW_ITEMS_WAVE2_PLAN.md za razlog (effect_frozen_turns trenutno nikoli
 # ne prizadene zaveznika, zato bi bil kavelj mrtva koda; sneg pa je živa,
-# takojšnja pot z natanko istim "prva zamrznitev" pomenom).
-var nightfall_ward_used_this_battle: bool = false
+# takojšnja pot z natanko istim "prva zamrznitev" pomenom). ŠTEVEC, ne bool
+# (Phase 2 ga je gradil kot bool - glej git zgodovino), ker item
+# "frostguard_talisman" (Phase 4) N razširi z 1 na 2 - glej
+# nightfall_ward_max_saves() spodaj.
+var nightfall_ward_saves_used: int = 0
+
+func nightfall_ward_max_saves() -> int:
+	if not is_instance_valid(player_manager) or not player_manager.has_passive("nightfall_ward"):
+		return 0
+	return 2 if player_manager.has_passive("frostguard_talisman") else 1
 
 # Item "knight_errant": enkrat NA POTEZO (isti vzorec/razlog kot
 # vicious_knight_used spodaj - preprečuje neskončno verižno zajemanje) - glej
@@ -180,6 +188,12 @@ var timed_zone_ids: Array[int] = []
 # ene - gejta clear_oracle_targets() klic v start_enemy_turn() spodaj namesto
 # da bi ga vsakič sprožil brezpogojno.
 var storm_horn_turns_remaining: int = 0
+
+# Phase 4 capture-redirect/once-per-battle itemi - glej base_character.capture()
+# za iron_resolve/frozen_vanguard/queens_gambit dejansko logiko.
+var iron_resolve_used_this_battle: bool = false
+var frozen_vanguard_used_this_battle: bool = false
+var queens_gambit_used_this_battle: bool = false
 
 # Item "decoy": vsaka postavljena vaba, ki je PREŽIVELA (ni bila zajeta), se
 # odstrani na začetku NASLEDNJE igralčeve poteze (glej start_player_turn) -
@@ -262,11 +276,14 @@ func initialize_battle():
 	night_watch_targets.clear()
 	loyal_pawns_used_this_battle = false
 	decoys_active.clear()
-	nightfall_ward_used_this_battle = false
+	nightfall_ward_saves_used = 0
 	drillmaster_used_this_battle = false
 	twin_strike_used_this_battle = false
 	timed_zone_ids.clear()
 	storm_horn_turns_remaining = 0
+	iron_resolve_used_this_battle = false
+	frozen_vanguard_used_this_battle = false
+	queens_gambit_used_this_battle = false
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -951,13 +968,13 @@ func _update_snow_freeze_states() -> void:
 			# ne zamrzne (glej is_freeze_immune deklaracijo).
 			if character.snow_trapped_turns >= SNOW_FREEZE_TURNS and not character.snow_frozen \
 					and not character.is_freeze_immune:
-				# Item "nightfall_ward": PRVA zavezniška zamrznitev v tej bitki
-				# (kdorkoli, prvi ki pride na vrsto v tej zanki) se namesto
-				# dejanskega zamrznjenja samo potroši - snow_trapped_turns
-				# (smrtni odštevalnik) je že prištet zgoraj in ostane veljaven.
-				if is_instance_valid(player_manager) and player_manager.has_passive("nightfall_ward") \
-						and not nightfall_ward_used_this_battle:
-					nightfall_ward_used_this_battle = true
+				# Item "nightfall_ward"/"frostguard_talisman": prve N zavezniških
+				# zamrznitev v tej bitki (kdorkoli, po vrsti kot pridejo na vrsto
+				# v tej zanki) se namesto dejanskega zamrznjenja samo potrošijo -
+				# snow_trapped_turns (smrtni odštevalnik) je že prištet zgoraj in
+				# ostane veljaven.
+				if nightfall_ward_saves_used < nightfall_ward_max_saves():
+					nightfall_ward_saves_used += 1
 				else:
 					character.snow_frozen = true
 					piece_frozen.emit(character)

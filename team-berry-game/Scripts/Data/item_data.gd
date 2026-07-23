@@ -54,6 +54,9 @@ const ITEM_SCRIPTS: Dictionary = {
 	"frost_nova": preload("res://Scripts/Items/frost_nova_item.gd"),
 	"hunters_snare": preload("res://Scripts/Items/hunters_snare_item.gd"),
 	"blink_step": preload("res://Scripts/Items/blink_step_item.gd"),
+	"avalanche_horn": preload("res://Scripts/Items/avalanche_horn_item.gd"),
+	"avalanche": preload("res://Scripts/Items/avalanche_item.gd"),
+	"stormcaller": preload("res://Scripts/Items/stormcaller_item.gd"),
 }
 
 var _items: Dictionary = {}

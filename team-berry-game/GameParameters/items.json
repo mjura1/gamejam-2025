@@ -17,6 +17,7 @@
 	"camp_kit":     {"name": "Camp Kit", "description": "One use. Removes the frozen status from every allied piece at once.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
 	"frozen_lure":  {"name": "Frozen Lure", "description": "One use. Place bait on an empty tile - the first enemy to step on it is frozen for a turn.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
 	"mirror_ward":  {"name": "Mirror Ward", "description": "One use. The next capture attempt against a chosen piece is completely cancelled.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"avalanche_horn": {"name": "Avalanche Horn", "description": "One use. Pushes every enemy in a 3x3 area back one tile.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
 
 	"wildfire_flare": {"name": "Wildfire Flare", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice; the tiles just outside that area turn to thin, half-melted fog that finishes clearing on its own next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
 	"permafrost_flare": {"name": "Permafrost Flare", "description": "One use. Freezes a 3x3 area for one turn - enemies cannot enter it.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
@@ -26,6 +27,9 @@
 	"hunters_snare": {"name": "Hunter's Snare", "description": "One use. Place a trap on an empty tile - the first enemy to step on it is frozen and revealed for the rest of the battle.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
 	"frost_nova":   {"name": "Frost Nova", "description": "One use. Freezes every enemy adjacent to a chosen tile for one turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
 	"blink_step":   {"name": "Blink Step", "description": "One use. While an ally is selected, drag onto another ally to instantly swap their positions, ignoring normal movement rules.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
+
+	"avalanche":    {"name": "Avalanche", "description": "One use. Pushes every enemy on the board back 3 tiles; any pushed into a wall or obstacle are frozen instead.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "consumable"},
+	"stormcaller":  {"name": "Stormcaller", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice and freezes any enemy standing in it.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "consumable"},
 
 	"aurora_flare": {"name": "Aurora Flare", "description": "One use. Clears all snow on the current floor.", "buy_cost": 1, "sell_value": 1, "rarity": "legendary", "kind": "consumable"},
 
@@ -54,6 +58,11 @@
 	"foresight_mirror": {"name": "Foresight Mirror", "description": "Threat tiles are shown 2 enemy turns ahead instead of 1.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 	"twin_strike":  {"name": "Twin Strike", "description": "Once per battle, a piece that captures and lands next to another enemy may capture again.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 	"war_council":  {"name": "War Council", "description": "Before your turn, the order enemies will act in is shown on the board.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
+	"iron_resolve": {"name": "Iron Resolve", "description": "Once per battle, a piece that would be captured while adjacent to your king instead survives and is pushed to the nearest empty tile.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
+	"steel_vanguard": {"name": "Steel Vanguard", "description": "Pawns cannot be captured at all while adjacent to another friendly pawn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
+	"frostguard_talisman": {"name": "Frostguard Talisman", "description": "The first two times an ally would be frozen by snow each battle, they aren't.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
+	"queens_gambit": {"name": "Queen's Gambit", "description": "Once per battle, your queen may capture through blocking pieces - after her next capture, she freezes and can't act next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
+	"frozen_vanguard": {"name": "Frozen Vanguard", "description": "The first friendly piece captured each battle is frozen in place instead, and cannot be captured again for the rest of that turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 
 	"lucky_charm":        {"name": "Lucky Charm", "description": "Treasure chests are more likely to hold rarer items, and sometimes hold an extra one.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "luck_bonus": 2},
 	"drillmaster":        {"name": "Drillmaster", "description": "Once per battle, drag onto an ally while another ally is selected to swap their positions.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "stackable": false},

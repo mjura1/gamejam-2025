@@ -428,6 +428,53 @@ func swap_characters(a, b) -> void:
 	a.slide_to(grid_to_world(pos_b))
 	b.slide_to(grid_to_world(pos_a))
 
+# Phase 4 "4.0 Knockback helper" (avalanche_horn/avalanche): sprehodi se od
+# character-jevega TRENUTNEGA polja v "direction" korak za korakom, do
+# max_distance polj - ustavi se na ZADNJEM polju, ki je znotraj meja IN
+# prosto (ista "walk a line, stop before the first blocker" logika kot
+# drseča figura, a brez try_move()-jeve veljavnostne preverbe - klicatelj je
+# odgovoren za to, da je premik smiseln). Če je prvo polje v to smer že
+# zasedeno/izven meja, se figura ne premakne (vrne njeno NESPREMENJENO
+# pozicijo) - klicatelj lahko primerja vrnjeno pozicijo z izvirno, da ugotovi
+# "ali je bil blokiran prezgodaj" (glej avalanche_item.gd "pushed into a
+# wall -> frozen" bonus).
+func push_character(character, direction: Vector2i, max_distance: int) -> Vector2i:
+	if not is_instance_valid(tile_map):
+		return character.grid_pos
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	var origin: Vector2i = character.grid_pos
+	var stop: Vector2i = origin
+	for step in range(1, max_distance + 1):
+		var candidate: Vector2i = origin + direction * step
+		if not is_inside_boundary(candidate, used_rect) or is_occupied(candidate):
+			break
+		stop = candidate
+	if stop == origin:
+		return origin
+	vacate(origin)
+	character.grid_pos = stop
+	occupy(stop, character)
+	character.slide_to(grid_to_world(stop))
+	return stop
+
+# Item "iron_resolve": "najbližje prazno polje" - NI resnično Dijkstra/BFS
+# najbližje (tega v tej igri ni), ampak rastoč kvadratni obroč okoli from_pos
+# (square_radius_tiles na vsakem radiju), prvo prosto polje zmaga - "dovolj
+# blizu" poenostavitev (isti standard kot spyglass/foresight_mirror), ne
+# garancija resnično najkrajše razdalje. Vrne Vector2i(-1,-1), če nič prostega
+# ni najdeno znotraj max_radius.
+func find_nearest_empty_tile(from_pos: Vector2i, max_radius: int = 5) -> Vector2i:
+	if not is_instance_valid(tile_map):
+		return Vector2i(-1, -1)
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	for radius in range(1, max_radius + 1):
+		for pos in square_radius_tiles(from_pos, radius):
+			if pos == from_pos:
+				continue
+			if is_inside_boundary(pos, used_rect) and not is_occupied(pos):
+				return pos
+	return Vector2i(-1, -1)
+
 # Kvadratna oblika s "+" (križ) rokami dolžine radius - center + polja
 # neposredno gor/dol/levo/desno vsak korak do radiusa (BREZ diagonal), za
 # razliko od square_radius_tiles zgoraj. radius=1 => klasičen 5-poljski križ.
