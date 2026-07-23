@@ -35,6 +35,9 @@ signal abilities_changed(remaining: int, max_abilities: int)
 # (battle_ui poveže to na _set_board_badge, glej start_player_turn()).
 signal bounty_marked(character: BaseCharacter)
 
+# Artefakt "prospectors_pick": enako kot bounty_marked, glej spodaj.
+signal prospectors_pick_marked(character: BaseCharacter)
+
 # Item "courier_package": enako kot bounty_marked, a za kurirja (glej
 # start_player_turn()).
 signal courier_marked(character: BaseCharacter)
@@ -91,6 +94,12 @@ var vicious_knight_used: bool = false
 # initialize_battle().
 var bounty_target: BaseCharacter = null
 var first_enemy_death_resolved: bool = false
+
+# Artefakt "prospectors_pick": enak vzorec kot bounty_target/first_enemy_death_resolved
+# zgoraj, ločen boolean/target ker gre za neodvisen item, tudi če sta obenem
+# lastnina (oba mark-anta se lahko izplačata za isto smrt).
+var prospectors_pick_target: BaseCharacter = null
+var prospectors_pick_resolved: bool = false
 
 # Item "courier_package": naključen živ zaveznik je izbran ob začetku prve
 # poteze v bitki (izključuje volka - glej start_player_turn()); če preživi
@@ -164,6 +173,8 @@ func _ready():
 func initialize_battle():
 	bounty_target = null
 	first_enemy_death_resolved = false
+	prospectors_pick_target = null
+	prospectors_pick_resolved = false
 	courier = null
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -266,6 +277,15 @@ func start_player_turn():
 			if not enemies.is_empty():
 				bounty_target = enemies.pick_random()
 				bounty_marked.emit(bounty_target)
+
+		if player_manager.has_passive("prospectors_pick"):
+			var pp_enemies: Array = []
+			for character in grid_manager.get_all_characters():
+				if character is BaseCharacter and character.is_enemy and not character.is_obstacle:
+					pp_enemies.append(character)
+			if not pp_enemies.is_empty():
+				prospectors_pick_target = pp_enemies.pick_random()
+				prospectors_pick_marked.emit(prospectors_pick_target)
 
 		if player_manager.has_passive("bloodhounds"):
 			_spawn_bloodhound_wolf()
@@ -386,15 +406,22 @@ func _move_autonomous_allies() -> void:
 		if check_battle_end():
 			return
 
-# Item "bounty": kliče base_character.die() za VSAKEGA sovražnika, ki umre -
-# samo prva smrt v bitki šteje (poznejše zajetja bounty_targeta ne vplivajo).
+# Itema "bounty"/"prospectors_pick": kliče base_character.die() za VSAKEGA
+# sovražnika, ki umre - samo prva smrt v bitki šteje za vsak item posebej
+# (poznejše zajetja tarče ne vplivajo). Ločena "resolved" zastavica na item,
+# ker sta neodvisna in se lahko obe izplačata za isto (prvo) smrt.
 func on_enemy_died(character: BaseCharacter):
-	if first_enemy_death_resolved:
-		return
-	first_enemy_death_resolved = true
-	if character == bounty_target and is_instance_valid(player_manager):
-		player_manager.add_upgrade_items(ItemData.get_reward("bounty"))
-		print("BOUNTY: tarča je padla prva - nagrada izplačana")
+	if not first_enemy_death_resolved:
+		first_enemy_death_resolved = true
+		if character == bounty_target and is_instance_valid(player_manager):
+			player_manager.add_upgrade_items(ItemData.get_reward("bounty"))
+			print("BOUNTY: tarča je padla prva - nagrada izplačana")
+
+	if not prospectors_pick_resolved:
+		prospectors_pick_resolved = true
+		if character == prospectors_pick_target and is_instance_valid(player_manager):
+			player_manager.add_upgrade_items(ItemData.get_reward("prospectors_pick"))
+			print("PROSPECTORS_PICK: tarča je padla prva - nagrada izplačana")
 
 # Item "courier_package": kurir mora PREŽIVETI do zmage - die() ga
 # queue_free()-a, zaradi česar is_instance_valid() vrne false, torej zajeti
