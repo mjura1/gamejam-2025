@@ -42,6 +42,10 @@ signal prospectors_pick_marked(character: BaseCharacter)
 # start_player_turn()).
 signal courier_marked(character: BaseCharacter)
 
+# Item "old_guard": enako kot courier_marked, a za ločeno stanje (glej
+# old_guard_sentry zgoraj).
+signal old_guard_marked(character: BaseCharacter)
+
 # Prekletstvo "stunning_gaze": character je bil pravkar omamljen (glej
 # stunning_gaze_curse.gd.on_action_taken -> notify_stun spodaj) - battle_ui.gd
 # poveže to na značko/STATUS.
@@ -113,6 +117,20 @@ var prospectors_pick_resolved: bool = false
 # branch). Resetira se v initialize_battle().
 var courier: BaseCharacter = null
 
+# Item "old_guard": enak vzorec kot courier zgoraj, a ločeno stanje - neodvisen
+# item, tudi če sta oba obenem v lasti (isti razlog kot bounty_target/
+# prospectors_pick_target zgoraj). Resetira se v initialize_battle().
+var old_guard_sentry: BaseCharacter = null
+
+# Item "snowshoes": velja SAMO za to potezo - resetira se v start_player_turn().
+# Prebere ga base_character.execute_move() ob vsakem zavezniškem premiku.
+var snowshoes_active_this_turn: bool = false
+
+# Artefakt "frozen_rampart": enkratna postavitev ovire na bitko, ki se NE
+# porabi iz inventarja (glej battle_ui.gd.use_item() poseben primer).
+# Resetira se v initialize_battle().
+var frozen_rampart_used_this_battle: bool = false
+
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
 # {} kadar ni naborožena, sicer {"tiles": Array[Vector2i], "owner": BaseCharacter, "owner_is_enemy": bool}.
@@ -182,6 +200,8 @@ func initialize_battle():
 	prospectors_pick_target = null
 	prospectors_pick_resolved = false
 	courier = null
+	old_guard_sentry = null
+	frozen_rampart_used_this_battle = false
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -268,6 +288,7 @@ func start_player_turn():
 	moves_remaining = player_manager.moves_per_turn
 	abilities_remaining = player_manager.abilities_per_turn
 	vicious_knight_used = false
+	snowshoes_active_this_turn = false
 
 	# Queen.Command: neporabljena brezplačna poteza se ne sme prenesti v
 	# naslednjo potezo.
@@ -307,6 +328,16 @@ func start_player_turn():
 				courier = allies.pick_random()
 				courier_marked.emit(courier)
 
+			if player_manager.has_passive("old_guard"):
+				var og_allies: Array = []
+				for character in grid_manager.get_all_characters():
+					if character is BaseCharacter and not character.is_enemy \
+							and not character.is_obstacle and not character.is_converted_ally:
+						og_allies.append(character)
+				if not og_allies.is_empty():
+					old_guard_sentry = og_allies.pick_random()
+					old_guard_marked.emit(old_guard_sentry)
+
 	# Pasiva "battle_start_reveal" (skill tree): ob začetku bitke razkrij
 	# (2r+1)² kvadrat okoli vsake zavezniške figure s to pasivo. Vezano na
 	# prvo potezo, ker so figure postavljene šele po placement fazi.
@@ -335,6 +366,13 @@ func start_player_turn():
 	# Počasi izbledi poudarke sovražnikovih potez iz prejšnjega kroga
 	if is_instance_valid(move_highlighter):
 		move_highlighter.start_fade_out(ENEMY_MOVE_FADE_DURATION)
+
+	# Artefakt "oracle_glass": vsako igralčevo potezo na novo prikaže
+	# predvideno ciljno polje vsakega sovražnika, ki je igralca že opazil
+	# (glej _compute_enemy_planned_targets - item "warhorn" isto funkcijo
+	# sproži ročno, enkratno).
+	if player_manager.has_passive("oracle_glass") and is_instance_valid(move_highlighter):
+		move_highlighter.show_oracle_targets(_compute_enemy_planned_targets())
 
 # Porabi 1 premik/zajetje iz proračuna te poteze. Poteza se NE konča
 # samodejno, tudi če pade na 0 - igralec mora sam pritisniti END TURN.
@@ -439,6 +477,38 @@ func _maybe_pay_courier_reward():
 		player_manager.add_upgrade_items(ItemData.get_reward("courier_package"))
 		print("COURIER_PACKAGE: kurir je preživel - nagrada izplačana")
 
+# Item "old_guard": enak vzorec kot _maybe_pay_courier_reward zgoraj, a
+# ločeno stanje (glej old_guard_sentry).
+func _maybe_pay_old_guard_reward():
+	if is_instance_valid(old_guard_sentry) and is_instance_valid(player_manager):
+		player_manager.add_upgrade_items(ItemData.get_reward("old_guard"))
+		print("OLD_GUARD: stražar je preživel - nagrada izplačana")
+
+# Artefakt "oracle_glass"/item "warhorn": zbere predvideno ciljno polje
+# vsakega sovražnika, ki je igralca že opazil (has_spotted_player) - dormantne
+# sovražnike NAMERNO izpustimo, ker bi jih sam klic calculate_best_move()
+# "prebudil" prezgodaj (glej tam - "Wake-up turn" veja nastavi
+# has_spotted_player na true že ob prvem klicu). Klic je sicer čisto
+# poizvedovalen (ne premakne nikogar), a NI deterministična garancija - panic
+# randomness (base_character.calculate_best_move) lahko ob dejanski
+# sovražnikovi potezi izbere drugo tarčo kot ta predogled (isti "znana
+# poenostavitev" kompromis kot map_behaviour.gd's spyglass, glej tam).
+func _compute_enemy_planned_targets() -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	if not is_instance_valid(grid_manager):
+		return tiles
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character) or not (character is BaseCharacter):
+			continue
+		if not character.is_enemy or character.is_obstacle:
+			continue
+		if not character.has_spotted_player:
+			continue
+		var action: Dictionary = character.calculate_best_move()
+		if not action.is_empty():
+			tiles.append(action["target_pos"])
+	return tiles
+
 # Prekletstvo "stunning_gaze": kliče ga stunning_gaze_curse.gd.on_action_taken,
 # da battle_ui.gd lahko takoj osveži značko/STATUS omamljene figure.
 func notify_stun(character: BaseCharacter) -> void:
@@ -497,6 +567,9 @@ func start_enemy_turn():
 	# da se ne mešajo s poudarki tega kroga.
 	if is_instance_valid(move_highlighter):
 		move_highlighter.clear_enemy_moves()
+		# Item "warhorn"/artefakt "oracle_glass": predogled velja samo do konca
+		# igralčeve poteze - dejanske sovražnikove poteze se zdaj izvedejo.
+		move_highlighter.clear_oracle_targets()
 
 	if not is_instance_valid(grid_manager):
 		push_error("GridManager ni veljaven za AI potezo.")
@@ -605,8 +678,9 @@ func check_battle_end() -> bool:
 				+ player_manager.bonus_upgrade_items_per_win)
 
 		_maybe_pay_courier_reward()
-		# Delta, ne konstanta - _maybe_pay_courier_reward() lahko doda dodatne
-		# iteme na vrh win/boss-win nagrade (glej njeno definicijo zgoraj).
+		_maybe_pay_old_guard_reward()
+		# Delta, ne konstanta - _maybe_pay_courier_reward()/_maybe_pay_old_guard_reward()
+		# lahko dodata dodatne iteme na vrh win/boss-win nagrade (glej definicijo zgoraj).
 		var upgrade_items_gained: int = player_manager.upgrade_items - upgrade_items_before
 
 		# Trajne "Legacy Points" (glej plans/META_PROGRESSION_PLAN.md §3 M4) -
@@ -629,6 +703,11 @@ func check_battle_end() -> bool:
 		# se s smrtjo v bitki ne spreminja), ne izgubi nadstropja/game_over.
 		if player_manager.remove_item("divine_intervention"):
 			print("DIVINE_INTERVENTION: rešeni pred porazom")
+			# Artefakt "crown_of_the_long_night": dodaten bonus na vrh rešitve
+			# same (glej ItemData "reward" polje) - preverimo ŠELE po uspešni
+			# porabi divine_intervention, saj velja SAMO ob dejanski rešitvi.
+			if player_manager.has_passive("crown_of_the_long_night"):
+				player_manager.add_upgrade_items(ItemData.get_reward("crown_of_the_long_night"))
 			GF.call_deferred("return_to_map_after_escape")
 			return true
 		# current_map_tier/current_map_floor je treba zajeti PRED
@@ -690,6 +769,19 @@ func update_fog_after_turn_start():
 			continue
 
 		reveal_positions.append(character.grid_pos)
+
+	# Item "watchtower": vsak zavezniški top dodatno razkrije prvega
+	# sovražnika v vsaki od svojih ravnih smeri (find_visible_enemies že
+	# "vidi skozi meglo" - fog ni del is_occupied, samo prava figura/ovira
+	# ustavi pogled, glej base_character.gd).
+	if player_manager.has_passive("watchtower"):
+		for character in grid_manager.get_all_characters():
+			if not is_instance_valid(character) or not (character is BaseCharacter):
+				continue
+			if character.is_enemy or character.is_obstacle or character.strName != "rook":
+				continue
+			for enemy in character.find_visible_enemies(character.move_range):
+				reveal_positions.append(enemy.grid_pos)
 
 	grid_manager.reveal_area(reveal_positions)
 

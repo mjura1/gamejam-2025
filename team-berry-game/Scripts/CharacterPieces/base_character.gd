@@ -341,6 +341,10 @@ func slide_to(new_global_pos: Vector2):
 
 # Premesti figuro na novo lokacijo
 func execute_move(target: Vector2i):
+	# Item "snowshoes"/"iron_pawns": zajameta IZVORNO polje PRED premikom
+	# (grid_pos spodaj postane target).
+	var from_pos: Vector2i = grid_pos
+
 	# Bishop.Traps/Rook.Reinforce: premik te figure sprosti njeno cono.
 	if owned_zone_id != -1 and is_instance_valid(grid_manager):
 		grid_manager.remove_zone(owned_zone_id)
@@ -352,17 +356,35 @@ func execute_move(target: Vector2i):
 	grid_manager.occupy(grid_pos, self)
 	slide_to(grid_manager.grid_to_world(grid_pos))
 	if move_sound: move_sound.play()
-	
+
+	# Item "iron_pawns": pešec, ki se premakne ZA NATANKO 1 polje (ne 2+, kar
+	# je pešcu obiajen dvojni korak), za preostanek te poteze ne more biti
+	# zajet - deli is_capture_immune z Knight.Evade, torej se ponastavi po
+	# istem "za eno potezo" pravilu (glej BattleController._clear_expired_evade).
+	# Namerno BREZPOGOJNO nastavljeno (ne samo "or"): če se ista figura v isti
+	# potezi premakne znova (dodaten premik), imuniteta odraža SAMO zadnji premik.
+	if not is_enemy and strName == "pawn" and is_instance_valid(player_manager) \
+			and player_manager.has_passive("iron_pawns"):
+		var step: Vector2i = grid_pos - from_pos
+		is_capture_immune = maxi(absi(step.x), absi(step.y)) == 1
+
 	# ===============================================
 	# FOG OF WAR (NOVO)
 	# ===============================================
-	
+
 	# Snow rework: figura razkrije SAMO polje, na katerega stopi (ne več
 	# 3x3 okolico) - snežno odejo/prekletstveno meglo zdaj razkrivajo samo
 	# namenske sposobnosti/predmeti (rook/pawn/flare/pasive), premikanje pa
 	# je zdaj tvegano-nagradna mehanika (glej SNOW_REWORK_PLAN.md).
 	if not is_enemy and is_instance_valid(grid_manager):
 		grid_manager.reveal_area([grid_pos])
+
+		# Item "snowshoes": za TO potezo se sneg stopi na vsakem polju, ki ga
+		# figura prečka na poti (ne samo na pristajalnem polju) - deli pot
+		# BattleController._compute_path_tiles uporablja tudi za vizualizacijo
+		# sovražnikovih potez.
+		if is_instance_valid(battle_controller) and battle_controller.snowshoes_active_this_turn:
+			grid_manager.reveal_area(battle_controller._compute_path_tiles(from_pos, grid_pos))
 
 		# Pasiva "move_reveal" (skill tree): po zaključenem premiku dodatno
 		# razkrij (2r+1)² kvadrat okoli pristajalnega polja.

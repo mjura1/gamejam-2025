@@ -117,6 +117,7 @@ func _ready():
 	battle_controller.bounty_marked.connect(func(character): _set_board_badge(character, "☠"))
 	battle_controller.prospectors_pick_marked.connect(func(character): _set_board_badge(character, "$"))
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
+	battle_controller.old_guard_marked.connect(func(character): _set_board_badge(character, "OG"))
 	battle_controller.piece_stunned.connect(_on_piece_stunned)
 	battle_controller.piece_rooted.connect(_on_piece_rooted)
 	battle_controller.piece_frozen.connect(_on_piece_frozen)
@@ -1142,7 +1143,11 @@ func _build_item_row(id: String, count: int) -> Control:
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var is_passive: bool = ItemData.get_kind(id) == "passive"
-	if not is_passive:
+	# Artefakt "frozen_rampart": enkratna uporaba na bitko, ki se ne porabi iz
+	# inventarja (glej use_item() poseben primer spodaj) - ko je že
+	# porabljena, vrstica ni več vlečljiva do naslednje bitke.
+	var frozen_rampart_used: bool = id == "frozen_rampart" and battle_controller.frozen_rampart_used_this_battle
+	if not is_passive and not frozen_rampart_used:
 		row.gui_input.connect(_on_item_row_input.bind(id))
 
 	var hbox := HBoxContainer.new()
@@ -1168,6 +1173,12 @@ func _build_item_row(id: String, count: int) -> Control:
 		passive_label.add_theme_font_size_override("font_size", 10)
 		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hbox.add_child(passive_label)
+	elif frozen_rampart_used:
+		var used_label := Label.new()
+		used_label.text = "USED"
+		used_label.add_theme_font_size_override("font_size", 10)
+		used_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(used_label)
 
 	return row
 
@@ -1203,6 +1214,20 @@ func _resolve_item_drop(screen_pos: Vector2):
 # test pokliče neposredno (isti vzorec kot place_piece/move_placed_piece).
 # Vrne true, če je bil item uporabljen in porabljen iz inventarja.
 func use_item(id: String, grid_pos: Vector2i) -> bool:
+	# Artefakt "frozen_rampart": edini artefakt, ki je trenutno vlečljiv na
+	# ploščo - ne porabi se iz inventarja (kot navaden consumable), ampak je
+	# omejen na 1x na bitko prek battle_controller.frozen_rampart_used_this_battle.
+	if id == "frozen_rampart":
+		if not player_manager.has_passive("frozen_rampart") or battle_controller.frozen_rampart_used_this_battle:
+			return false
+		var rampart: BaseItem = ItemData.create_item(id)
+		if rampart == null or not (rampart.can_use(battle_controller, grid_pos) and rampart.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.frozen_rampart_used_this_battle = true
+		_rebuild_item_drawer() # ne sproži items_changed (ni bilo porabljeno iz inventarja)
+		UiAudio.play_click()
+		return true
+
 	if player_manager.get_item_count(id) <= 0:
 		return false
 	if ItemData.get_kind(id) != "consumable":

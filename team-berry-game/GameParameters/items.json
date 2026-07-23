@@ -2,6 +2,14 @@
 	"extra_move":   {"name": "Extra Move", "description": "One use. Gives +1 move this turn in battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"barricade":    {"name": "Barricade", "description": "One use. Drop a wall on an empty tile to block enemy movement and line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"flare":        {"name": "Flare", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"snowshoes":    {"name": "Snowshoes", "description": "One use. This turn, snow melts on every tile you step onto as you move.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+
+	"warhorn":      {"name": "Warhorn", "description": "One use. Reveals every move the enemy could make this turn.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"bastion":      {"name": "Bastion", "description": "One use. Drop two walls on empty tiles to block enemy movement and line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+
+	"wildfire_flare": {"name": "Wildfire Flare", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice; the tiles just outside that area turn to thin, half-melted fog that finishes clearing on its own next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
+
+	"aurora_flare": {"name": "Aurora Flare", "description": "One use. Clears all snow on the current floor.", "buy_cost": 1, "sell_value": 1, "rarity": "legendary", "kind": "consumable"},
 
 	"spyglass":     {"name": "Spyglass", "description": "When selecting a piece, tiles the enemy could capture next turn are marked.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
 	"bloodhounds":  {"name": "Bloodhounds", "description": "A friendly wolf joins each battle and hunts on its own after your turn.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
@@ -11,6 +19,10 @@
 	"castle":       {"name": "Castle", "description": "Your king cannot be captured while a friendly rook has line of sight to him.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
 	"courier_package": {"name": "Courier Package", "description": "Each battle a random ally is the courier. If they survive the battle, gain upgrade items.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "reward": 1, "stackable": false},
 	"divine_intervention": {"name": "Divine Intervention", "description": "Consumed on party wipe: return to the map instead of game over.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive"},
+	"iron_pawns":   {"name": "Iron Pawns", "description": "Pawns cannot be captured on a turn where they move exactly 1 tile.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"watchtower":   {"name": "Watchtower", "description": "Rooks reveal any enemy piece along their rank or file, even through fog.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"farsight_lens": {"name": "Farsight Lens", "description": "When selecting any piece, tiles the enemy could capture next turn are marked for your entire party.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"old_guard":    {"name": "Old Guard", "description": "Each battle a random ally is the sentry. If they are never captured, gain upgrade items.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "reward": 1, "stackable": false},
 
 	"fortress":     {"name": "Fortress", "description": "Enemies cannot cross the line between a friendly rook and a house in its line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 	"mounted_hunters": {"name": "Mounted Hunters", "description": "Your queen and bishops may also move like knights.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
@@ -18,5 +30,9 @@
 	"lucky_charm":        {"name": "Lucky Charm", "description": "Treasure chests are more likely to hold rarer items, and sometimes hold an extra one.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "luck_bonus": 2},
 	"prospectors_pick":   {"name": "Prospector's Pick", "description": "Each battle a random enemy is marked. If it is the first enemy to fall, gain upgrade items.", "buy_cost": 4, "sell_value": 2, "rarity": "rare", "kind": "artifact", "reward": 2, "stackable": false},
 	"frostbite_ward":     {"name": "Frostbite Ward", "description": "A shard of the Winter March, cold to the touch.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
-	"winter_kings_crown": {"name": "Winter King's Crown", "description": "A relic of a forgotten king, said to protect its wearer.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}
+	"ravens_eye":         {"name": "Raven's Eye", "description": "Tiles you've cleared of snow can never be covered by snowfall/blizzard fog again for the rest of the battle.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
+	"frozen_rampart":     {"name": "Frozen Rampart", "description": "Once per battle, drop a wall on an empty tile to block enemy movement and line of sight, without spending an item.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
+	"winter_kings_crown": {"name": "Winter King's Crown", "description": "A relic of a forgotten king, said to protect its wearer.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
+	"crown_of_the_long_night": {"name": "Crown of the Long Night", "description": "Surviving a party wipe with Divine Intervention also grants 3 upgrade items.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "reward": 3, "stackable": false},
+	"oracle_glass":       {"name": "Oracle Glass", "description": "Reveals the enemy's actual planned move for the turn, not just the tiles they threaten.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}
 }

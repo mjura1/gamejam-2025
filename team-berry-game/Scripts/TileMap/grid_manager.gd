@@ -278,6 +278,7 @@ func clear_all_fog():
 	for pos in fog_nodes.keys():
 		_remove_fog_tile(pos)
 	fog_nodes.clear()
+	ravens_eye_cleared.clear()
 	
 # Ustvari vozlišče megle na določeni mreži
 func _spawn_fog_tile(grid_pos: Vector2i):
@@ -304,6 +305,12 @@ func _remove_fog_tile(grid_pos: Vector2i):
 		return true
 	return false
 
+# Artefakt "ravens_eye": polja, ki jih je reveal_area kdaj razkrila, ODKAR jih
+# igralec ima - cover_area/cover_area_curse ju spodaj preskočita za preostanek
+# BITKE (ne runa - počisti se v clear_all_fog(), klican enkrat na bitko iz
+# BattleController.initialize_battle()). Prazen slovar, če item ni v lasti.
+var ravens_eye_cleared: Dictionary = {}
+
 # Klicano s strani BattleControllerja za razkrivanje območja - odstrani OBA
 # sistema megle (ambientno in prekletstveno), da so vsa "clear snow" mesta
 # (figure, predmeti, pasivke) resnično dosledna z opisi, ki jih obljubljajo.
@@ -312,6 +319,8 @@ func reveal_area(positions_to_reveal):
 		# Odstrani vozlišče megle, če obstaja
 		_remove_fog_tile(pos)
 		_remove_curse_fog_tile(pos)
+		if is_instance_valid(player_manager) and player_manager.has_passive("ravens_eye"):
+			ravens_eye_cleared[pos] = true
 
 # Prekletstvo "snowfall": zrcalno reveal_area - PONOVNO pokrije polja z
 # meglo. Klicatelj (snowfall_curse.gd) polja že filtrira na mejo plošče, zato
@@ -321,6 +330,8 @@ func reveal_area(positions_to_reveal):
 # namerno, brez posebne izjeme.
 func cover_area(positions_to_cover) -> void:
 	for pos in positions_to_cover:
+		if ravens_eye_cleared.has(pos):
+			continue
 		_spawn_fog_tile(pos)
 
 # Prekletstvi "changeling"/"abduction": neposredno zamenja mrežni poziciji
@@ -389,23 +400,43 @@ var curse_fog_spread: Dictionary = {}
 # spread_chance > 0: prekletstvo "contagion" - vsako polje, ki ga to
 # pokrivanje NA NOVO ustvari, ima to verjetnost, da se ob vsakem tick-u
 # razpadanja "preseli" tudi na naključno prazno sosednje polje (glej spodaj).
-func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color = CURSE_FOG_COLOR, spread_chance: float = 0.0) -> void:
+# start_stage: index v CURSE_FOG_ALPHAS, kjer naj polje ZAČNE (privzeto 0 =
+# najbolj neprozorno, obstoječe obnašanje nespremenjeno) - item "wildfire_flare"
+# ga postavi na predzadnjo fazo, da polje "razpade" že ob prvem naslednjem
+# tick_curse_fog_decay() (glej cover_area_half_melt spodaj).
+func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color = CURSE_FOG_COLOR, spread_chance: float = 0.0, start_stage: int = 0) -> void:
 	for pos in positions_to_cover:
 		if curse_fog_nodes.has(pos):
+			continue
+		if ravens_eye_cleared.has(pos):
 			continue
 		var fog_node = FOG_TILE_SCENE.instantiate()
 		fog_node.position = grid_to_world(pos)
 		var color_rect = fog_node.get_node_or_null("ColorRect")
 		if is_instance_valid(color_rect):
 			color_rect.color = color
-		fog_node.modulate.a = CURSE_FOG_ALPHAS[0]
+		var stage: int = clampi(start_stage, 0, CURSE_FOG_ALPHAS.size() - 1)
+		fog_node.modulate.a = CURSE_FOG_ALPHAS[stage]
 		get_parent().call_deferred("add_child", fog_node)
 		curse_fog_nodes[pos] = fog_node
-		curse_fog_stage[pos] = 0
+		curse_fog_stage[pos] = stage
 		curse_fog_ticks_per_stage[pos] = maxi(1, ticks_per_stage)
 		curse_fog_tick_progress[pos] = 0
 		if spread_chance > 0.0:
 			curse_fog_spread[pos] = {"chance": spread_chance, "color": color}
+
+# Item "wildfire_flare": pokrije polja s TANKO, že napol stopljeno
+# prekletstveno meglo (predzadnja CURSE_FOG_ALPHAS faza) - ena sama naslednja
+# tick_curse_fog_decay() (začetek naslednje poteze) jih v celoti odstrani.
+# Odstrani tudi morebitno OBSTOJEČO ambientno meglo na teh poljih najprej
+# (sicer bi se ambientna in ta nova prekletstvena megla vizualno prekrivali) -
+# obstoječa MOČNEJŠA prekletstvena megla (curse_fog_nodes že zaseda polje) pa
+# se NAMERNO ne prepiše/oslabi (glej cover_area_curse skip-if-exists zgoraj).
+func cover_area_half_melt(positions_to_cover) -> void:
+	var half_stage: int = maxi(0, CURSE_FOG_ALPHAS.size() - 2)
+	for pos in positions_to_cover:
+		_remove_fog_tile(pos)
+	cover_area_curse(positions_to_cover, 1, CURSE_FOG_COLOR, 0.0, half_stage)
 
 # Pokliče se enkrat na rundo (glej BattleController.update_fog_after_turn_start) -
 # vsako prekletstveno polje napreduje 1 tick proti svoji naslednji fazi

@@ -129,9 +129,15 @@ func _apply_selection(character: BaseCharacter):
 	var valid_moves = selected_character.calculate_valid_targets()
 	move_highlighter.show_moves(valid_moves)
 
+	# Item "farsight_lens": kot spyglass spodaj, a NE presekano z valid_moves
+	# te figure - pokaže VSA polja, ki bi jih sovražnik lahko zajel naslednjo
+	# potezo, za katerokoli zavezniško figuro. Prednost pred spyglass (širši
+	# učinek), če ima igralec oba.
+	if player_manager.has_passive("farsight_lens"):
+		move_highlighter.show_risk_tiles(grid_manager.tiles_reachable_by(true))
 	# Item "spyglass": obarva podmnožico valid_moves, ki bi jo sovražnik
 	# lahko zajel naslednjo potezo.
-	if player_manager.has_passive("spyglass"):
+	elif player_manager.has_passive("spyglass"):
 		move_highlighter.show_risk_tiles(_compute_risk_tiles(valid_moves))
 
 	selection_changed.emit(selected_character)
