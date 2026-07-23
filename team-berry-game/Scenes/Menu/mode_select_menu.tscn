@@ -79,8 +79,13 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 30
 
-[node name="ClassicButton" type="Button" parent="VBoxContainer" groups=["buttons"]]
+[node name="ModeRow" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="ClassicButton" type="Button" parent="VBoxContainer/ModeRow" groups=["buttons"]]
+layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_focus_color = Color(0, 0, 0, 1)
@@ -91,6 +96,21 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_rhts7")
 theme_override_styles/hover = SubResource("StyleBoxFlat_7vrkn")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_7vrkn")
 text = "CLASSIC"
+
+[node name="LegacyButton" type="Button" parent="VBoxContainer/ModeRow" groups=["buttons"]]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(0, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("StyleBoxFlat_rhts7")
+theme_override_styles/hover = SubResource("StyleBoxFlat_7vrkn")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_7vrkn")
+text = "LEGACY"
 
 [node name="InfiniteButton" type="Button" parent="VBoxContainer" groups=["buttons"]]
 layout_mode = 2
@@ -170,20 +190,6 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_7vrkn")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_7vrkn")
 text = "TUTORIAL"
 
-[node name="LegacyButton" type="Button" parent="VBoxContainer" groups=["buttons"]]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 4
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_colors/font_focus_color = Color(0, 0, 0, 1)
-theme_override_colors/font_pressed_color = Color(0, 0, 0, 1)
-theme_override_colors/font_hover_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 30
-theme_override_styles/normal = SubResource("StyleBoxFlat_rhts7")
-theme_override_styles/hover = SubResource("StyleBoxFlat_7vrkn")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_7vrkn")
-text = "LEGACY"
-
 [node name="BackButton" type="Button" parent="VBoxContainer" groups=["buttons"]]
 layout_mode = 2
 size_flags_vertical = 4
@@ -197,8 +203,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_7vrkn")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_7vrkn")
 text = "BACK"
 
-[connection signal="pressed" from="VBoxContainer/ClassicButton" to="." method="_on_classic_pressed"]
+[connection signal="pressed" from="VBoxContainer/ModeRow/ClassicButton" to="." method="_on_classic_pressed"]
+[connection signal="pressed" from="VBoxContainer/ModeRow/LegacyButton" to="." method="_on_legacy_pressed"]
 [connection signal="pressed" from="VBoxContainer/InfiniteButton" to="." method="_on_infinite_pressed"]
 [connection signal="pressed" from="VBoxContainer/TutorialButton" to="." method="_on_tutorial_pressed"]
-[connection signal="pressed" from="VBoxContainer/LegacyButton" to="." method="_on_legacy_pressed"]
 [connection signal="pressed" from="VBoxContainer/BackButton" to="." method="_on_back_pressed"]

@@ -1,12 +1,43 @@
 {
-	"base_item_count": 1,
+	"_comment": "This file is loaded with Godot's JSON.parse_string (see item_data.gd), which is STRICT JSON - it has no // or /* */ comments. Adding real comments will fail to parse and silently empty out treasure config. Use '_comment_<field>' sibling keys like the ones below instead - the loader only reads specific named keys, so extra '_'-prefixed keys are safely ignored.",
+
+	"items_per_tier": [5, 10, 15],
+	"_comment_items_per_tier": "Guaranteed regular-kind (consumable/passive) items in every chest, indexed by CURRENT MAP TIER (index 0/1/2 = Tier 0/1/2). Rolled from the consumable+passive pool only - never artifacts. Tiers past index 2 use index 2 as their base, then infinite_mode.items_per_tier_increment below adds further growth.",
+
+	"artifacts_per_tier": [0, 1, 2],
+	"_comment_artifacts_per_tier": "Guaranteed artifact-kind items in every chest, same tier indexing as items_per_tier above. Rolled from the artifact pool only, so the player is never left with an all-regular-items chest once past Tier 0. Tiers past index 2 use index 2 as their base, then infinite_mode.artifacts_per_tier_increment below adds further growth.",
+
 	"luck_per_bonus_item": 3,
 	"max_bonus_items": 2,
+	"_comment_luck_per_bonus_item_and_max": "On top of items_per_tier above: every luck_per_bonus_item points of PlayerManager.get_luck() adds 1 extra regular item to the chest, capped at max_bonus_items.",
+
+	"luck_per_bonus_artifact": 6,
+	"max_bonus_artifacts": 1,
+	"_comment_luck_per_bonus_artifact_and_max": "Same idea as luck_per_bonus_item/max_bonus_items above, but for artifact count - a separate (higher) luck cost per bonus artifact since artifacts are the more powerful reward. On top of artifacts_per_tier above.",
+
 	"luck_per_reroll": 2,
 	"max_rerolls": 3,
+	"_comment_luck_per_reroll_and_max": "Every luck_per_reroll points of luck grants 1 extra independent rarity roll per loot slot (best of N kept), capped at max_rerolls - see ItemData._roll_best_rarity.",
+
+	"infinite_mode": {
+		"base_tier": 2,
+		"_comment_base_tier": "Last map tier items_per_tier/artifacts_per_tier actually define (same convention as curses.json config.infinite_mode.base_tier). Infinite mode keeps incrementing the tier number forever past this point, so the increments/caps below keep chests scaling where the per-tier arrays above no longer do.",
+
+		"items_per_tier_increment": 1,
+		"max_items": 25,
+		"_comment_items_per_tier_increment_and_max": "Extra guaranteed regular items added per map tier ABOVE base_tier, clamped at max_items total (set max_items to -1 to remove the clamp) - this is the 'up to a point' cap so infinite runs don't hand out unlimited chest items.",
+
+		"artifacts_per_tier_increment": 1,
+		"max_artifacts": 10,
+		"_comment_artifacts_per_tier_increment_and_max": "Same idea as items_per_tier_increment/max_items above, but for artifact count."
+	},
+
+	"_example_infinite_mode_tier_4": "Worked example at map tier 4 (2 tiers past base_tier=2): items = items_per_tier[index 2, since tier 4 is past the array's last index 2] = 15, plus (4-2)*items_per_tier_increment = extra guaranteed items, clamped at max_items. artifacts = artifacts_per_tier[index 2] = 2, plus (4-2)*artifacts_per_tier_increment = extra guaranteed artifacts, clamped at max_artifacts. Luck-based bonus regular items (luck_per_bonus_item/max_bonus_items) and bonus artifacts (luck_per_bonus_artifact/max_bonus_artifacts) both still apply ON TOP of these guaranteed counts.",
+
 	"rarity_weights_by_tier": [
 		{"common": 70, "uncommon": 25, "rare": 5},
 		{"common": 40, "uncommon": 35, "rare": 20, "epic": 5},
 		{"common": 20, "uncommon": 30, "rare": 30, "epic": 15, "legendary": 5}
-	]
+	],
+	"_comment_rarity_weights_by_tier": "Same CURRENT MAP TIER indexing as items_per_tier/artifacts_per_tier above (tiers past index 2 clamp to index 2 - see MapGenerator._configure_tier / ItemData.get_treasure_rarity_weights)."
 }

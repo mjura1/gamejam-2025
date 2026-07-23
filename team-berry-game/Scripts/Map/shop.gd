@@ -17,7 +17,7 @@ var stock: Array = []
 
 func _ready():
 	stock = []
-	for id in ItemData.roll_shop_stock():
+	for id in ItemData.roll_shop_stock(null, PlayerManager.get_unstackable_owned_ids()):
 		stock.append({"id": id, "sold": false})
 
 

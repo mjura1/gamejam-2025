@@ -1,8 +1,8 @@
 [
-	{"id": "extra_move_1", "name": "Steady Hand", "desc": "+1 move per turn, every run, forever.", "cost": 800, "requires": [], "excludes": [], "effect": {"type": "moves_per_turn", "amount": 1}},
-	{"id": "starting_pawn", "name": "Old Friend", "desc": "Start every run with one extra Pawn.", "cost": 300, "requires": [], "excludes": [], "effect": {"type": "starting_piece", "roster_name": "friendly_pawn"}},
-	{"id": "starting_rook", "name": "Loyal Guard", "desc": "Start every run with one extra Rook.", "cost": 600, "requires": ["starting_pawn"], "excludes": [], "effect": {"type": "starting_piece", "roster_name": "friendly_rook"}},
-	{"id": "extra_coin_1", "name": "Deep Pockets", "desc": "Start every run with +3 upgrade items.", "cost": 250, "requires": [], "excludes": [], "effect": {"type": "starting_upgrade_items", "amount": 3}},
-	{"id": "earn_rate_1", "name": "Seasoned Raiders", "desc": "+1 upgrade item every battle won, every run, forever.", "cost": 500, "requires": [], "excludes": [], "effect": {"type": "upgrade_items_per_win_bonus", "amount": 1}},
-	{"id": "lucky_start_1", "name": "Four-Leaf Clover", "desc": "+1 luck, every run, forever.", "cost": 400, "requires": [], "excludes": [], "effect": {"type": "base_luck", "amount": 1}}
+	{"id": "extra_move_1", "name": "Steady Hand", "desc": "+1 move per turn per level, every run, forever.", "requires": [], "excludes": [], "effect": {"type": "moves_per_turn", "amount": 1}},
+	{"id": "starting_pawn", "name": "Old Friend", "desc": "Start every run with one extra Pawn per level.", "requires": [], "excludes": [], "effect": {"type": "starting_piece", "roster_name": "friendly_pawn"}},
+	{"id": "starting_rook", "name": "Loyal Guard", "desc": "Start every run with one extra Rook per level.", "requires": ["starting_pawn"], "excludes": [], "effect": {"type": "starting_piece", "roster_name": "friendly_rook"}},
+	{"id": "extra_coin_1", "name": "Deep Pockets", "desc": "Start every run with +3 upgrade items per level.", "requires": [], "excludes": [], "effect": {"type": "starting_upgrade_items", "amount": 3}},
+	{"id": "earn_rate_1", "name": "Seasoned Raiders", "desc": "+1 upgrade item every battle won per level, every run, forever.", "requires": [], "excludes": [], "effect": {"type": "upgrade_items_per_win_bonus", "amount": 1}},
+	{"id": "lucky_start_1", "name": "Four-Leaf Clover", "desc": "+1 luck per level, every run, forever.", "requires": [], "excludes": [], "effect": {"type": "base_luck", "amount": 1}}
 ]

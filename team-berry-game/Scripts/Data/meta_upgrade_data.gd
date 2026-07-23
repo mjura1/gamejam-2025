@@ -1,18 +1,23 @@
 # res://Scripts/Data/meta_upgrade_data.gd
 # Autoload. Prebere GameParameters/meta_upgrades.json (flat seznam trajnih
-# nadgradenj - shema zrcali skill_trees.json, glej Scripts/Data/skill_tree_data.gd)
-# in GameParameters/meta_progression.json (konfiguracija formule za točke na bitko).
+# nadgradenj - shema zrcali skill_trees.json, glej Scripts/Data/skill_tree_data.gd),
+# GameParameters/meta_upgrade_levels.json (cena/max_level na nadgradnjo - ločeno
+# od zgornje datoteke, ker se lahko balansira neodvisno od efekta/require) in
+# GameParameters/meta_progression.json (konfiguracija formule za točke na bitko).
 # Glej plans/META_PROGRESSION_PLAN.md §2c/§3 M1.
 extends Node
 
 const UPGRADES_PATH := "res://GameParameters/meta_upgrades.json"
+const LEVELS_PATH := "res://GameParameters/meta_upgrade_levels.json"
 const SCORING_PATH := "res://GameParameters/meta_progression.json"
 
 var _upgrades: Array = []
+var _levels: Dictionary = {}
 var _scoring_config: Dictionary = {}
 
 func _ready():
 	_upgrades = _load_json(UPGRADES_PATH)
+	_levels = _load_json(LEVELS_PATH)
 	_scoring_config = _load_json(SCORING_PATH)
 
 func _load_json(path: String):
@@ -30,6 +35,25 @@ func get_upgrade_def(id: String) -> Dictionary:
 		if def.get("id", "") == id:
 			return def
 	return {}
+
+func get_level_def(id: String) -> Dictionary:
+	return _levels.get(id, {})
+
+# -1 pomeni "infinite" (brez zgornje meje - glej meta_upgrade_levels.json).
+func get_max_level(id: String) -> int:
+	return int(get_level_def(id).get("max_level", 1))
+
+func is_infinite_upgrade(id: String) -> bool:
+	return get_max_level(id) < 0
+
+# Cena za NASLEDNJI nakup, glede na trenutni level (0 = še ni kupljeno).
+# Linearna rast (base_cost + cost_growth * current_level) - namerno preprosta,
+# izogne se float zaokroževanju multiplikativne rasti za gamejam obseg.
+func get_cost_for_level(id: String, current_level: int) -> int:
+	var def := get_level_def(id)
+	var base_cost: int = int(def.get("base_cost", 0))
+	var cost_growth: int = int(def.get("cost_growth", 0))
+	return base_cost + cost_growth * current_level
 
 # Čista funkcija (vsi vhodi kot parametri, nič se ne bere iz PlayerManager/
 # MetaProgress neposredno) - namerno, da je trivialno enotno testirana s

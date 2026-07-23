@@ -22,9 +22,11 @@ var final_boss_beaten: bool = false
 # Trajna valuta ("Legacy Points"), nabira se čez VSE rune, tudi pred prvim
 # final_boss_beaten (samo počasneje - glej MetaUpgradeData.calculate_battle_points).
 var legacy_points: int = 0
-# id (iz GameParameters/meta_upgrades.json) -> true. Ločeno od piece_upgrades/
-# owned_items v PlayerManager - to je TRAJNO stanje, ne resetira se v setStarting().
-var unlocked_upgrades: Dictionary = {}
+# id (iz GameParameters/meta_upgrades.json) -> trenutni level (>=1 pomeni vsaj
+# enkrat kupljeno; cena/max_level na level glej MetaUpgradeData/
+# meta_upgrade_levels.json). Ločeno od piece_upgrades/owned_items v
+# PlayerManager - to je TRAJNO stanje, ne resetira se v setStarting().
+var upgrade_levels: Dictionary = {}
 
 
 func _ready():
@@ -56,18 +58,31 @@ func add_legacy_points(amount: int) -> void:
 	save_progress()
 
 
+func get_upgrade_level(id: String) -> int:
+	return int(upgrade_levels.get(id, 0))
+
+
 func has_upgrade(id: String) -> bool:
-	return unlocked_upgrades.has(id)
+	return get_upgrade_level(id) > 0
+
+
+func is_upgrade_maxed(id: String) -> bool:
+	var max_level: int = MetaUpgradeData.get_max_level(id)
+	return max_level >= 0 and get_upgrade_level(id) >= max_level
 
 
 # Zrcali PlayerManager.can_buy_node/try_buy_node proti SkillTreeData (glej
 # plans/META_PROGRESSION_PLAN.md §2c) natanko - tu porabimo legacy_points
-# namesto upgrade_items, pišemo v unlocked_upgrades namesto piece_upgrades.
+# namesto upgrade_items, pišemo v upgrade_levels namesto piece_upgrades.
+# require/exclude preverjata SAMO "je vsaj level 1" (has_upgrade) - namerno,
+# leveli požresta niso del require/exclude modela.
 func can_buy_upgrade(id: String) -> bool:
-	if id == "" or has_upgrade(id):
+	if id == "":
 		return false
 	var def: Dictionary = MetaUpgradeData.get_upgrade_def(id)
 	if def.is_empty():
+		return false
+	if is_upgrade_maxed(id):
 		return false
 	for req in def.get("requires", []):
 		if not has_upgrade(req):
@@ -75,15 +90,15 @@ func can_buy_upgrade(id: String) -> bool:
 	for excl in def.get("excludes", []):
 		if has_upgrade(excl):
 			return false
-	return legacy_points >= int(def.get("cost", 0))
+	return legacy_points >= MetaUpgradeData.get_cost_for_level(id, get_upgrade_level(id))
 
 
 func try_buy_upgrade(id: String) -> bool:
 	if not can_buy_upgrade(id):
 		return false
-	var def: Dictionary = MetaUpgradeData.get_upgrade_def(id)
-	legacy_points -= int(def.get("cost", 0))
-	unlocked_upgrades[id] = true
+	var current_level := get_upgrade_level(id)
+	legacy_points -= MetaUpgradeData.get_cost_for_level(id, current_level)
+	upgrade_levels[id] = current_level + 1
 	save_progress()
 	return true
 
@@ -97,7 +112,15 @@ func load_progress():
 	tutorial_reward_granted = cfg.get_value(SECTION, "tutorial_reward_granted", false)
 	final_boss_beaten = cfg.get_value(SECTION, "final_boss_beaten", false)
 	legacy_points = cfg.get_value(SECTION, "legacy_points", 0)
-	unlocked_upgrades = cfg.get_value(SECTION, "unlocked_upgrades", {})
+	if cfg.has_section_key(SECTION, "upgrade_levels"):
+		upgrade_levels = cfg.get_value(SECTION, "upgrade_levels", {})
+	else:
+		# Migracija stare bool-only sheme (unlocked_upgrades: id -> true, pred
+		# leveled nakupi) - vsak star unlock postane level 1.
+		var legacy_unlocked: Dictionary = cfg.get_value(SECTION, "unlocked_upgrades", {})
+		upgrade_levels = {}
+		for id in legacy_unlocked.keys():
+			upgrade_levels[id] = 1
 
 
 func save_progress():
@@ -106,5 +129,5 @@ func save_progress():
 	cfg.set_value(SECTION, "tutorial_reward_granted", tutorial_reward_granted)
 	cfg.set_value(SECTION, "final_boss_beaten", final_boss_beaten)
 	cfg.set_value(SECTION, "legacy_points", legacy_points)
-	cfg.set_value(SECTION, "unlocked_upgrades", unlocked_upgrades)
+	cfg.set_value(SECTION, "upgrade_levels", upgrade_levels)
 	cfg.save(SAVE_PATH)

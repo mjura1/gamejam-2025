@@ -1,0 +1,8 @@
+{
+	"extra_move_1": {"max_level": 3, "base_cost": 800, "cost_growth": 600},
+	"starting_pawn": {"max_level": 3, "base_cost": 300, "cost_growth": 200},
+	"starting_rook": {"max_level": 2, "base_cost": 600, "cost_growth": 400},
+	"extra_coin_1": {"max_level": -1, "base_cost": 250, "cost_growth": 150},
+	"earn_rate_1": {"max_level": -1, "base_cost": 500, "cost_growth": 350},
+	"lucky_start_1": {"max_level": 5, "base_cost": 400, "cost_growth": 250}
+}

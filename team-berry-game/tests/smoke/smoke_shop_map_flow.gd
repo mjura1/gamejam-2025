@@ -9,6 +9,7 @@ extends SceneTree
 # the overlay, CLASSIC on it starts the game (see smoke_start_new_game.gd).
 # Run with: godot4 --headless --path . --script res://tests/smoke/smoke_shop_map_flow.gd --quit-after 8
 
+var forced_tutorial_seen := false
 var opened := false
 var started := false
 var clicked_shop := false
@@ -24,6 +25,19 @@ func _initialize():
 	current_scene = instance
 
 func _process(_delta: float) -> bool:
+	if not forced_tutorial_seen:
+		# On a genuinely fresh MetaProgress (tutorial_seen == false, e.g. a
+		# clean user:// dir) CLASSIC auto-triggers the fixed tutorial map
+		# instead of a real tier map (see GameFlow._initialize_game()),
+		# ignoring the forced current_map_tier above entirely. Force it past
+		# that gate the same way smoke_legacy_shop_flow.gd forces
+		# final_boss_beaten - must run here (frame 1), not _initialize(),
+		# since MetaProgress.load_progress() in _ready() runs after
+		# _initialize() and would clobber it.
+		root.get_node("MetaProgress").tutorial_seen = true
+		forced_tutorial_seen = true
+		return false
+
 	if not opened:
 		if current_scene != null and current_scene.has_method("_on_play_pressed"):
 			current_scene._on_play_pressed()

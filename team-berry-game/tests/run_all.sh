@@ -7,6 +7,19 @@ cd "$(dirname "$0")/.." || exit 1
 GODOT="${GODOT_BIN:-godot4}"
 OVERALL_FAIL=0
 
+# Isolate every test run from the real player's user:// save data
+# (progress.cfg, settings.cfg, ...) - smoke tests like smoke_battle_end.gd
+# drive a real battle to a real win through BattleController, which legitimately
+# calls MetaProgress.add_legacy_points()/save_progress(). Without this, those
+# writes land in the same on-disk file the actual game reads, silently
+# inflating the real player's Legacy points on every test run.
+# Godot has no --user-data-dir CLI flag (checked `godot4 --help`, 4.5.2) - on
+# Linux its user:// path resolves under $XDG_DATA_HOME/godot/app_userdata/<project>,
+# so redirecting that env var for this script's godot4 calls is the actual lever.
+TEST_USER_DIR="$(mktemp -d)"
+trap 'rm -rf "$TEST_USER_DIR"' EXIT
+export XDG_DATA_HOME="$TEST_USER_DIR"
+
 if [ ! -d ".godot" ]; then
 	echo "== Importing assets (first run) =="
 	"$GODOT" --headless --import --path . >/dev/null 2>&1

@@ -25,7 +25,8 @@ func _on_chest_pressed():
 	chest_button.disabled = true
 
 	var luck := PlayerManager.get_luck()
-	var loot := ItemData.roll_treasure_loot(PlayerManager.current_map_tier, luck)
+	var loot := ItemData.roll_treasure_loot(PlayerManager.current_map_tier, luck,
+		null, PlayerManager.get_unstackable_owned_ids())
 	for id in loot:
 		PlayerManager.add_item(id, 1)
 

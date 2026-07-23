@@ -42,16 +42,19 @@ func test_pre_clear_scale_applied_when_final_boss_not_beaten():
 # state, no scene-tree dependency - same reasoning as calling SkillTreeData
 # directly in test_skill_tree.gd). Each test resets the fields it touches so
 # tests don't leak state into each other via the shared autoload instance.
+# Upgrades are leveled/repeatable (glej MetaUpgradeData.get_cost_for_level/
+# get_max_level in GameParameters/meta_upgrade_levels.json) - -1 max_level
+# pomeni "infinite" (nikoli maxed).
 
 func _reset_meta_progress():
 	MetaProgress.legacy_points = 0
-	MetaProgress.unlocked_upgrades = {}
+	MetaProgress.upgrade_levels = {}
 	MetaProgress.final_boss_beaten = false
 
 func test_cannot_buy_upgrade_without_enough_points():
 	_reset_meta_progress()
 	MetaProgress.legacy_points = 100
-	assert_false(MetaProgress.try_buy_upgrade("starting_pawn"), "starting_pawn costs 300, should fail with 100 points")
+	assert_false(MetaProgress.try_buy_upgrade("starting_pawn"), "starting_pawn level 1 costs 300, should fail with 100 points")
 	assert_eq(MetaProgress.legacy_points, 100, "a failed buy should not spend points")
 
 func test_cannot_buy_upgrade_without_requirements():
@@ -65,14 +68,38 @@ func test_buy_upgrade_spends_cost_and_marks_unlocked():
 	assert_true(MetaProgress.try_buy_upgrade("starting_pawn"), "buy should succeed with exactly enough points")
 	assert_eq(MetaProgress.legacy_points, 0, "buy should spend exactly the upgrade cost")
 	assert_true(MetaProgress.has_upgrade("starting_pawn"), "bought upgrade should be marked unlocked")
+	assert_eq(MetaProgress.get_upgrade_level("starting_pawn"), 1, "first buy should set level to 1")
 
-func test_cannot_buy_same_upgrade_twice():
+func test_repeat_buy_raises_level_and_cost():
 	_reset_meta_progress()
-	MetaProgress.legacy_points = 10000
+	MetaProgress.legacy_points = 100000
+	var cost_at_level_0 := MetaUpgradeData.get_cost_for_level("extra_coin_1", 0)
 	assert_true(MetaProgress.try_buy_upgrade("extra_coin_1"), "first buy should succeed")
-	var points_after_first := MetaProgress.legacy_points
-	assert_false(MetaProgress.try_buy_upgrade("extra_coin_1"), "second buy of the same upgrade should fail")
-	assert_eq(MetaProgress.legacy_points, points_after_first, "the failed re-buy should not spend points")
+	assert_eq(MetaProgress.get_upgrade_level("extra_coin_1"), 1, "level should be 1 after first buy")
+	var cost_at_level_1 := MetaUpgradeData.get_cost_for_level("extra_coin_1", 1)
+	assert_true(cost_at_level_1 > cost_at_level_0, "cost for the next level should be higher than the previous one")
+	assert_true(MetaProgress.try_buy_upgrade("extra_coin_1"), "second buy should also succeed (not one-time)")
+	assert_eq(MetaProgress.get_upgrade_level("extra_coin_1"), 2, "level should be 2 after second buy")
+
+func test_upgrade_maxes_out_at_max_level():
+	_reset_meta_progress()
+	MetaProgress.legacy_points = 100000
+	assert_true(MetaProgress.try_buy_upgrade("starting_pawn"), "prerequisite buy should succeed")
+	assert_true(MetaProgress.try_buy_upgrade("starting_rook"), "first starting_rook buy should succeed")
+	assert_true(MetaProgress.try_buy_upgrade("starting_rook"), "second starting_rook buy should reach its max_level (2)")
+	assert_true(MetaProgress.is_upgrade_maxed("starting_rook"), "starting_rook should report maxed at level 2")
+	var points_at_max := MetaProgress.legacy_points
+	assert_false(MetaProgress.try_buy_upgrade("starting_rook"), "buying past max_level should fail")
+	assert_eq(MetaProgress.legacy_points, points_at_max, "a failed buy at max_level should not spend points")
+	assert_eq(MetaProgress.get_upgrade_level("starting_rook"), 2, "level should stay at max_level after the failed buy")
+
+func test_infinite_upgrade_never_maxes():
+	_reset_meta_progress()
+	MetaProgress.legacy_points = 1000000
+	for i in range(5):
+		assert_true(MetaProgress.try_buy_upgrade("extra_coin_1"), "infinite upgrade (max_level -1) should stay purchasable")
+	assert_eq(MetaProgress.get_upgrade_level("extra_coin_1"), 5, "level should equal the number of successful buys")
+	assert_false(MetaProgress.is_upgrade_maxed("extra_coin_1"), "an infinite upgrade should never report maxed")
 
 func test_requirement_unlocks_after_prerequisite_bought():
 	_reset_meta_progress()
@@ -89,15 +116,23 @@ func test_unknown_upgrade_id_fails():
 
 func test_setStarting_applies_unlocked_moves_per_turn_bonus():
 	_reset_meta_progress()
-	MetaProgress.unlocked_upgrades = {"extra_move_1": true}
+	MetaProgress.upgrade_levels = {"extra_move_1": 1}
 	var pm = PlayerManagerScript.new()
 	pm.setStarting("classic")
-	assert_eq(pm.moves_per_turn, 2, "unlocking extra_move_1 should grant +1 moves_per_turn on the next run")
+	assert_eq(pm.moves_per_turn, 2, "extra_move_1 at level 1 should grant +1 moves_per_turn on the next run")
+	_reset_meta_progress()
+
+func test_setStarting_scales_bonus_with_upgrade_level():
+	_reset_meta_progress()
+	MetaProgress.upgrade_levels = {"extra_move_1": 3}
+	var pm = PlayerManagerScript.new()
+	pm.setStarting("classic")
+	assert_eq(pm.moves_per_turn, 4, "extra_move_1 at level 3 should grant +3 moves_per_turn (amount * level)")
 	_reset_meta_progress()
 
 func test_setStarting_does_not_compound_bonus_across_calls():
 	_reset_meta_progress()
-	MetaProgress.unlocked_upgrades = {"extra_move_1": true}
+	MetaProgress.upgrade_levels = {"extra_move_1": 1}
 	var pm = PlayerManagerScript.new()
 	pm.setStarting("classic")
 	pm.setStarting("classic")

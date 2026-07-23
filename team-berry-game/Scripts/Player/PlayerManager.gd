@@ -336,22 +336,28 @@ func setStarting(mode: String = "classic") -> void:
 # CampfireUpgradePanel-jev vzorec branja effect.type, a proti
 # MetaUpgradeData/MetaProgress namesto SkillTreeData/piece_upgrades.
 func _apply_meta_upgrades() -> void:
-	for id in MetaProgress.unlocked_upgrades.keys():
+	for id in MetaProgress.upgrade_levels.keys():
+		var level: int = int(MetaProgress.upgrade_levels[id])
+		if level <= 0:
+			continue
 		var def: Dictionary = MetaUpgradeData.get_upgrade_def(id)
 		var effect: Dictionary = def.get("effect", {})
+		var amount: int = int(effect.get("amount", 0))
 		match effect.get("type", ""):
 			"moves_per_turn":
-				moves_per_turn += int(effect.get("amount", 0))
+				moves_per_turn += amount * level
 			"abilities_per_turn":
-				abilities_per_turn += int(effect.get("amount", 0))
+				abilities_per_turn += amount * level
 			"starting_piece":
-				friendly_party.append(str(effect.get("roster_name", "")))
+				var roster_name := str(effect.get("roster_name", ""))
+				for i in range(level):
+					friendly_party.append(roster_name)
 			"starting_upgrade_items":
-				upgrade_items += int(effect.get("amount", 0))
+				upgrade_items += amount * level
 			"upgrade_items_per_win_bonus":
-				bonus_upgrade_items_per_win += int(effect.get("amount", 0))
+				bonus_upgrade_items_per_win += amount * level
 			"base_luck":
-				base_luck += int(effect.get("amount", 0))
+				base_luck += amount * level
 
 func addSnow():
 	snowCount += 2
@@ -378,6 +384,17 @@ func get_item_count(id: String) -> int:
 # Pasivni itemi: aktivni, dokler je v inventarju vsaj 1 kos.
 func has_passive(id: String) -> bool:
 	return owned_items.get(id, 0) > 0 and ItemData.get_kind(id) in ["passive", "artifact"]
+
+# Id-ji itemov, ki jih igralec že ima IN niso stackable (glej ItemData.
+# get_stackable) - podano shop.gd/treasure.gd rollom kot excluded_ids, da
+# trgovina/zaklad ne ponudita ničvrednega duplikata (2. kos ne bi imel
+# nobenega dodatnega učinka, glej GameParameters/items.json "stackable").
+func get_unstackable_owned_ids() -> Array:
+	var ids := []
+	for id in owned_items.keys():
+		if owned_items.get(id, 0) > 0 and not ItemData.get_stackable(id):
+			ids.append(id)
+	return ids
 
 # Luck: trajni base_luck (meta-progression unlocks, glej
 # plans/META_PROGRESSION_PLAN.md §2f/§3 M3) plus run-scoped vsota luck_bonus

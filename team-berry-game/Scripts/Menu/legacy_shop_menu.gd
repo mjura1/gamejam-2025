@@ -24,17 +24,21 @@ func _refresh():
 # MetaProgress namesto PlayerManager/SkillTreeData. Tu strnjeno v eno
 # "disabled" stanje namesto treh ločenih besedil (excluded/locked/predrag) -
 # implementatorjeva odločitev, ni load-bearing.
+# Leveled/infinite nakupi (glej MetaUpgradeData/meta_upgrade_levels.json) -
+# ostane kupljivo dokler ni na max_level (ali neomejeno, če je -1/"infinite").
 func _build_upgrade_row(def: Dictionary) -> Control:
 	var id: String = def.get("id", "")
 	var upgrade_name: String = def.get("name", "-")
-	var cost: int = int(def.get("cost", 0))
+	var level: int = MetaProgress.get_upgrade_level(id)
+	var max_level: int = MetaUpgradeData.get_max_level(id)
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
 	var info := VBoxContainer.new()
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name_label := Label.new()
-	name_label.text = upgrade_name
+	var max_level_text: String = "∞" if max_level < 0 else str(max_level)
+	name_label.text = "%s (Lv %d/%s)" % [upgrade_name, level, max_level_text] if level > 0 else upgrade_name
 	info.add_child(name_label)
 	var desc_label := Label.new()
 	desc_label.text = def.get("desc", "")
@@ -43,14 +47,15 @@ func _build_upgrade_row(def: Dictionary) -> Control:
 	row.add_child(info)
 
 	var button := Button.new()
-	if MetaProgress.has_upgrade(id):
-		button.text = "✔ Unlocked"
+	var cost: int = MetaUpgradeData.get_cost_for_level(id, level)
+	if MetaProgress.is_upgrade_maxed(id):
+		button.text = "MAX (Lv %d)" % level
 		button.disabled = true
 	elif not MetaProgress.can_buy_upgrade(id):
 		button.text = "%s (%d)" % [upgrade_name, cost]
 		button.disabled = true
 	else:
-		button.text = "BUY (%d)" % cost
+		button.text = "BUY Lv %d (%d)" % [level + 1, cost]
 		button.disabled = false
 		button.pressed.connect(func():
 			if MetaProgress.try_buy_upgrade(id):
