@@ -1157,11 +1157,13 @@ func _build_item_row(id: String, count: int) -> Control:
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var is_passive: bool = ItemData.get_kind(id) == "passive"
-	# Artefakt "frozen_rampart": enkratna uporaba na bitko, ki se ne porabi iz
-	# inventarja (glej use_item() poseben primer spodaj) - ko je že
-	# porabljena, vrstica ni več vlečljiva do naslednje bitke.
+	# Artefakt "frozen_rampart"/"drillmaster": enkratna uporaba na bitko, ki se
+	# ne porabi iz inventarja (glej use_item() poseben primer spodaj) - ko je
+	# že porabljena, vrstica ni več vlečljiva do naslednje bitke.
 	var frozen_rampart_used: bool = id == "frozen_rampart" and battle_controller.frozen_rampart_used_this_battle
-	if not is_passive and not frozen_rampart_used:
+	var drillmaster_used: bool = id == "drillmaster" and battle_controller.drillmaster_used_this_battle
+	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used
+	if not is_passive and not once_per_battle_used:
 		row.gui_input.connect(_on_item_row_input.bind(id))
 
 	var hbox := HBoxContainer.new()
@@ -1187,7 +1189,7 @@ func _build_item_row(id: String, count: int) -> Control:
 		passive_label.add_theme_font_size_override("font_size", 10)
 		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hbox.add_child(passive_label)
-	elif frozen_rampart_used:
+	elif once_per_battle_used:
 		var used_label := Label.new()
 		used_label.text = "USED"
 		used_label.add_theme_font_size_override("font_size", 10)
@@ -1258,6 +1260,28 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 			return false
 		battle_controller.frozen_rampart_used_this_battle = true
 		_rebuild_item_drawer() # ne sproži items_changed (ni bilo porabljeno iz inventarja)
+		UiAudio.play_click()
+		return true
+
+	# Artefakt "drillmaster": enak "1x na bitko, ne porabi se iz inventarja"
+	# vzorec kot frozen_rampart zgoraj. Swap potrebuje DVE tarči: figura A je
+	# trenutno IZBRANA zavezniška figura (map_behaviour.selected_character -
+	# normalna izbira na plošči, ista pot kot premik/zajetje), figura B je
+	# tista, na katero je bil item spuščen (grid_pos). Logika je NAMERNO tu
+	# inline (ne v drillmaster_item.gd.apply()) - BaseItem.apply() ne dobi
+	# map_behaviour reference, glej drillmaster_item.gd opombo.
+	if id == "drillmaster":
+		if not player_manager.has_passive("drillmaster") or battle_controller.drillmaster_used_this_battle:
+			return false
+		var ally_a: BaseCharacter = map_behaviour.selected_character
+		if not (is_instance_valid(ally_a) and not ally_a.is_enemy and not ally_a.is_obstacle):
+			return false
+		var ally_b = grid_manager.get_character_at(grid_pos)
+		if not (ally_b is BaseCharacter and not ally_b.is_enemy and not ally_b.is_obstacle and ally_b != ally_a):
+			return false
+		grid_manager.swap_characters(ally_a, ally_b)
+		battle_controller.drillmaster_used_this_battle = true
+		_rebuild_item_drawer()
 		UiAudio.play_click()
 		return true
 

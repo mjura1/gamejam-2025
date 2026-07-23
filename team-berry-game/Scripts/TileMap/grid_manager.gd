@@ -280,6 +280,7 @@ func clear_all_fog():
 	fog_nodes.clear()
 	ravens_eye_cleared.clear()
 	protected_tiles.clear()
+	trap_tiles.clear()
 	
 # Ustvari vozlišče megle na določeni mreži
 func _spawn_fog_tile(grid_pos: Vector2i):
@@ -325,6 +326,32 @@ var ravens_eye_cleared: Dictionary = {}
 var protected_tiles: Dictionary = {}
 const PROTECT_FOOTPRINTS := 1
 const PROTECT_SALT := 2
+
+# Wave 2 items "frozen_lure"/"hunters_snare": enkratna past na polje - grid_pos
+# -> {"owner_is_enemy": bool, "freeze_turns": int, "reveal": bool}. Sproži in
+# potroši JO trigger_trap() spodaj, klican iz base_character.execute_move()
+# ob VSAKEM premiku/zajetju (obeh strani) - polje same lastnice pasti ne
+# sproži (past je namenjena NASPROTNIKU, glej primerjavo spodaj).
+var trap_tiles: Dictionary = {}
+
+func place_trap(pos: Vector2i, owner_is_enemy: bool, freeze_turns: int, reveal: bool = false) -> void:
+	trap_tiles[pos] = {"owner_is_enemy": owner_is_enemy, "freeze_turns": freeze_turns, "reveal": reveal}
+
+# Kliče se ob vsakem premiku/zajetju (glej base_character.execute_move) -
+# sproži past NASPROTNIKOVE strani na "character"-jevem trenutnem polju, če
+# obstaja, in jo takoj potroši (erase - enkratna past). Vrne true, če je past
+# sprožila.
+func trigger_trap(character) -> bool:
+	if not trap_tiles.has(character.grid_pos):
+		return false
+	var trap: Dictionary = trap_tiles[character.grid_pos]
+	if trap.owner_is_enemy == character.is_enemy:
+		return false
+	trap_tiles.erase(character.grid_pos)
+	character.effect_frozen_turns = maxi(character.effect_frozen_turns, int(trap.freeze_turns))
+	if trap.reveal:
+		reveal_area([character.grid_pos])
+	return true
 
 # Item "salt_the_earth": trajno (za preostanek bitke) zaščiti eno polje pred
 # cover_area_curse in ga takoj razkrije (če je bilo ravno pod meglo).

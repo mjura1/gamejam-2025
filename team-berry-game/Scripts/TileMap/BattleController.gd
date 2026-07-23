@@ -66,6 +66,10 @@ signal piece_frozen(character: BaseCharacter)
 const SNOW_FREEZE_TURNS := 1
 const SNOW_DEATH_TURNS := 3
 
+# Item "salvage": glej on_enemy_died() spodaj - placeholder odstotek, čaka na
+# balance pass.
+const SALVAGE_DROP_CHANCE := 0.25
+
 # ENUM za stanja bitke
 enum BattleState {
 	INITIALIZING,
@@ -140,6 +144,26 @@ var night_watch_targets: Array[BaseCharacter] = []
 
 # Item "loyal_pawns": enkrat na bitko - glej base_character.capture().
 var loyal_pawns_used_this_battle: bool = false
+
+# Item "nightfall_ward": PRVA zavezniška zamrznitev od snega v tej bitki
+# (glej _update_snow_freeze_states spodaj) je preprečena namesto da se zgodi -
+# za razliko od "warm_cloak" (trajno imunska ENA konkretna figura), to je
+# enkraten "prihrani prvo zamrznitev KOGARKOLI" na celotno bitko. Deviacija od
+# prvotne plan opombe ("prevents first effect_frozen_turns application") -
+# glej NEW_ITEMS_WAVE2_PLAN.md za razlog (effect_frozen_turns trenutno nikoli
+# ne prizadene zaveznika, zato bi bil kavelj mrtva koda; sneg pa je živa,
+# takojšnja pot z natanko istim "prva zamrznitev" pomenom).
+var nightfall_ward_used_this_battle: bool = false
+
+# Item "knight_errant": enkrat NA POTEZO (isti vzorec/razlog kot
+# vicious_knight_used spodaj - preprečuje neskončno verižno zajemanje) - glej
+# map_behaviour.gd, ki po vsakem viteškem zajetju preveri obe pasivi.
+var knight_errant_used_this_turn: bool = false
+
+# Item "drillmaster": enkrat NA BITKO, drag-in-poraba brez porabe iz
+# inventarja (isti vzorec kot frozen_rampart_used_this_battle - glej
+# battle_ui.gd.use_item() poseben primer).
+var drillmaster_used_this_battle: bool = false
 
 # Item "decoy": vsaka postavljena vaba, ki je PREŽIVELA (ni bila zajeta), se
 # odstrani na začetku NASLEDNJE igralčeve poteze (glej start_player_turn) -
@@ -222,6 +246,8 @@ func initialize_battle():
 	night_watch_targets.clear()
 	loyal_pawns_used_this_battle = false
 	decoys_active.clear()
+	nightfall_ward_used_this_battle = false
+	drillmaster_used_this_battle = false
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -308,6 +334,7 @@ func start_player_turn():
 	moves_remaining = player_manager.moves_per_turn
 	abilities_remaining = player_manager.abilities_per_turn
 	vicious_knight_used = false
+	knight_errant_used_this_turn = false
 	snowshoes_active_this_turn = false
 
 	# Item "decoy": vsaka vaba, ki je preživela do zdaj (ni bila zajeta med
@@ -498,6 +525,15 @@ func on_enemy_died(character: BaseCharacter):
 		if character == prospectors_pick_target and is_instance_valid(player_manager):
 			player_manager.add_upgrade_items(ItemData.get_reward("prospectors_pick"))
 			print("PROSPECTORS_PICK: tarča je padla prva - nagrada izplačana")
+
+	# Item "salvage": VSAKO sovražnikovo smrt (ne samo prva) ima možnost
+	# dodatnega upgrade itema. SALVAGE_DROP_CHANCE je placeholder vrednost -
+	# brainstorm ni podal številke, Miha naj jo uravnoteži v kasnejšem balance
+	# pass-u (isti "placeholder, potrebuje balance pass" vzorec kot drugod
+	# v projektu).
+	if is_instance_valid(player_manager) and player_manager.has_passive("salvage") and randf() < SALVAGE_DROP_CHANCE:
+		player_manager.add_upgrade_items(1)
+		print("SALVAGE: dodaten upgrade item izplačan")
 
 # Item "courier_package": kurir mora PREŽIVETI do zmage - die() ga
 # queue_free()-a, zaradi česar is_instance_valid() vrne false, torej zajeti
@@ -863,8 +899,16 @@ func _update_snow_freeze_states() -> void:
 			# ne zamrzne (glej is_freeze_immune deklaracijo).
 			if character.snow_trapped_turns >= SNOW_FREEZE_TURNS and not character.snow_frozen \
 					and not character.is_freeze_immune:
-				character.snow_frozen = true
-				piece_frozen.emit(character)
+				# Item "nightfall_ward": PRVA zavezniška zamrznitev v tej bitki
+				# (kdorkoli, prvi ki pride na vrsto v tej zanki) se namesto
+				# dejanskega zamrznjenja samo potroši - snow_trapped_turns
+				# (smrtni odštevalnik) je že prištet zgoraj in ostane veljaven.
+				if is_instance_valid(player_manager) and player_manager.has_passive("nightfall_ward") \
+						and not nightfall_ward_used_this_battle:
+					nightfall_ward_used_this_battle = true
+				else:
+					character.snow_frozen = true
+					piece_frozen.emit(character)
 		else:
 			character.snow_trapped_turns = 0
 			character.snow_frozen = false

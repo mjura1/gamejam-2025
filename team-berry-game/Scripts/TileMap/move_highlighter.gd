@@ -58,6 +58,18 @@ var oracle_targets: Array[Vector2i] = []
 # Wave 2 items: glej AIM_COLOR zgoraj.
 var aim_tiles: Array[Vector2i] = []
 
+# Item "signal_fire": vsako polje, kjer je stala figura (obeh strani) v
+# trenutku uporabe - LASTEN, neodvisen fade-timer (NE deli is_fading/
+# fade_elapsed z enemy_move_flashes zgoraj, saj se lahko uporabi kadarkoli
+# med igralčevo potezo, ne samo ob začetku, in ne sme prekiniti/podaljšati
+# morebitnega že tekočega sovražnikovega-poteze pojemanja). Toplo zlato-
+# oranžna, da se vizualno loči od vseh obstoječih barv zgoraj.
+const SIGNAL_PULSE_COLOR := Color(1.0, 0.75, 0.15, 0.75)
+const SIGNAL_PULSE_DURATION := 5.0
+var signal_pulse_tiles: Array[Vector2i] = []
+var is_signal_pulsing: bool = false
+var signal_pulse_elapsed: float = 0.0
+
 # ===============================================
 # VIZUALIZACIJA SOVRAŽNIKOVIH POTEZ (NOVO)
 # ===============================================
@@ -86,14 +98,21 @@ func _ready():
 	add_child(_flash_layer)
 
 func _process(delta: float) -> void:
-	if not is_fading:
-		return
+	if is_fading:
+		fade_elapsed += delta
+		_flash_layer.queue_redraw()
 
-	fade_elapsed += delta
-	_flash_layer.queue_redraw()
+		if fade_elapsed >= fade_duration:
+			clear_enemy_moves()
 
-	if fade_elapsed >= fade_duration:
-		clear_enemy_moves()
+	if is_signal_pulsing:
+		signal_pulse_elapsed += delta
+		queue_redraw()
+
+		if signal_pulse_elapsed >= SIGNAL_PULSE_DURATION:
+			is_signal_pulsing = false
+			signal_pulse_tiles.clear()
+			queue_redraw()
 
 # Trenutna prosojnost poudarkov glede na potek pojemanja - izračunano
 # sproti namesto shranjeno kot ločeno stanje, da se ne more razsinhronizirati
@@ -148,6 +167,13 @@ func show_aim(tiles: Array[Vector2i]):
 
 func clear_aim():
 	aim_tiles.clear()
+	queue_redraw()
+
+# Item "signal_fire": glej signal_pulse_tiles/SIGNAL_PULSE_COLOR zgoraj.
+func show_signal_pulse(tiles: Array[Vector2i]) -> void:
+	signal_pulse_tiles = tiles
+	is_signal_pulsing = true
+	signal_pulse_elapsed = 0.0
 	queue_redraw()
 
 # Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih - VEČ
@@ -223,3 +249,10 @@ func _draw():
 
 	for grid_pos in aim_tiles:
 		_draw_cell(grid_pos, AIM_COLOR)
+
+	if is_signal_pulsing:
+		var pulse_alpha := clampf(1.0 - (signal_pulse_elapsed / SIGNAL_PULSE_DURATION), 0.0, 1.0)
+		var pulse_color := SIGNAL_PULSE_COLOR
+		pulse_color.a *= pulse_alpha
+		for grid_pos in signal_pulse_tiles:
+			_draw_cell(grid_pos, pulse_color)

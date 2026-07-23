@@ -39,6 +39,14 @@ const ITEM_SCRIPTS: Dictionary = {
 	"salt_the_earth": preload("res://Scripts/Items/salt_the_earth_item.gd"),
 	"night_watch": preload("res://Scripts/Items/night_watch_item.gd"),
 	"decoy": preload("res://Scripts/Items/decoy_item.gd"),
+	"camp_kit": preload("res://Scripts/Items/camp_kit_item.gd"),
+	"mirror_ward": preload("res://Scripts/Items/mirror_ward_item.gd"),
+	"bonfire_flare": preload("res://Scripts/Items/bonfire_flare_item.gd"),
+	"signal_fire": preload("res://Scripts/Items/signal_fire_item.gd"),
+	"frozen_lure": preload("res://Scripts/Items/frozen_lure_item.gd"),
+	# Artefakt, ne pravi consumable - glej drillmaster_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot frozen_rampart).
+	"drillmaster": preload("res://Scripts/Items/drillmaster_item.gd"),
 }
 
 var _items: Dictionary = {}

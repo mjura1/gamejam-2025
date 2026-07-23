@@ -158,6 +158,22 @@ func _compute_risk_tiles(valid_moves: Array[Vector2i]) -> Array[Vector2i]:
 			risky.append(target)
 	return risky
 
+# Item "knight_errant": ali ima "character" na SVOJEM trenutnem polju
+# (pokliči ŠELE PO premiku/zajetju) kakšnega nasprotnika na eni od 8 sosednjih
+# polj (vključno z diagonalami - "adjacent" v brainstorm smislu, ne
+# get_move_directions() te figure).
+func _has_adjacent_enemy(character: BaseCharacter) -> bool:
+	if not is_instance_valid(grid_manager):
+		return false
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(character.grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and neighbor.is_enemy != character.is_enemy and not neighbor.is_obstacle:
+				return true
+	return false
+
 # Odstrani izbiro in počisti poudarke.
 func _clear_selection():
 	if selected_character:
@@ -335,6 +351,17 @@ func _unhandled_input(event):
 						if mover.strName == "knight" and player_manager.has_passive("vicious_knights") \
 								and not battle_controller.vicious_knight_used:
 							battle_controller.vicious_knight_used = true
+							battle_controller.add_bonus_move()
+
+						# Item "knight_errant": zajetje s skakačem, ki po njem
+						# pristane sosednje (8 smeri) drugemu sovražniku, podeli
+						# +1 premik - neodvisno od vicious_knights (oba lahko
+						# obenem podelita bonus), omejeno na 1x na potezo (isti
+						# "prepreči neskončno verigo" razlog kot zgoraj).
+						if mover.strName == "knight" and player_manager.has_passive("knight_errant") \
+								and not battle_controller.knight_errant_used_this_turn \
+								and _has_adjacent_enemy(mover):
+							battle_controller.knight_errant_used_this_turn = true
 							battle_controller.add_bonus_move()
 
 						battle_controller.check_battle_end()

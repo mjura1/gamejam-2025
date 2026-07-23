@@ -159,6 +159,13 @@ var is_hidden: bool = false
 # nastavitev, snow_trapped_turns pa še vedno šteje).
 var is_freeze_immune: bool = false
 
+# Item "mirror_ward": naslednji poskus zajetja te figure je NEUSPEŠEN (glej
+# capture() spodaj - preveri/porabi ta flag PREDEN sploh doseže loyal_pawns
+# substitucijo, saj naj mirror_ward popolnoma prepreči zajetje, ne samo
+# preusmeri ga na drugo figuro). Enkratno - potroši se ob prvem poskusu, ne
+# glede na to, ali bi bilo zajetje sicer uspešno.
+var is_capture_warded: bool = false
+
 # Item "decoy": ta figura je vaba, ne prava zavezniška figura - resnično
 # zajemljiva (za razliko od is_obstacle, ki calculate_valid_targets izključi
 # iz zajetja, glej tam), a die() jo NE prijavi v dead_party/battle-points
@@ -434,6 +441,22 @@ func execute_move(target: Vector2i):
 			var reveal_radius: int = int(get_passive("move_reveal").get("radius", 1))
 			grid_manager.reveal_area(GridManager.square_radius_tiles(grid_pos, reveal_radius))
 
+		# Item "keen_eye": lovec razkrije meglo vzdolž CELE prevožene diagonalne
+		# poti (ne samo pristajalnega polja) - deli _compute_path_tiles z
+		# "snowshoes"/tracker vizualizacijo zgoraj (ravna črta med from_pos in
+		# grid_pos, kar za lovca vedno pomeni diagonalo).
+		if strName == "bishop" and is_instance_valid(player_manager) \
+				and player_manager.has_passive("keen_eye") and is_instance_valid(battle_controller):
+			grid_manager.reveal_area(battle_controller._compute_path_tiles(from_pos, grid_pos))
+
+	# Wave 2 items "frozen_lure"/"hunters_snare": ta figura je pravkar
+	# pristala (premik ALI zajetje) na polju z nasprotnikovo pastjo - sproži
+	# jo in jo potroši (glej GridManager.trigger_trap). Namerno ZUNAJ zgornjega
+	# "not is_enemy" bloka - past prijateljev na SOVRAŽNIKE, torej mora
+	# preveriti mover iz OBEH strani.
+	if is_instance_valid(grid_manager):
+		grid_manager.trigger_trap(self)
+
 	# Queen.Lure: ta figura je s premikom "ubogala" vabo - status se sprosti.
 	if is_instance_valid(battle_controller) and self in battle_controller.lured_enemies:
 		battle_controller.lured_enemies.erase(self)
@@ -518,6 +541,15 @@ func die():
 # Logika zajetja tarče in premika napadalca na tarčino polje
 func capture(target: BaseCharacter):
 	print("Izvajam zajetje tarče...")
+
+	# Item "mirror_ward": ta poskus zajetja je popolnoma prekli­can - tarča
+	# porabi svoj enkraten ward in PREŽIVI na svojem polju, napadalec pa se NE
+	# premakne (za razliko od loyal_pawns spodaj, ki zajetje samo preusmeri na
+	# drugo figuro - mirror_ward ga v celoti izniči). Preverimo PRED loyal_pawns,
+	# ker mora popolnoma prevladati, tudi če bi substitucija sicer veljala.
+	if target.is_capture_warded:
+		target.is_capture_warded = false
+		return
 
 	# Item "loyal_pawns": sovražnikovo zajetje zavezniške figure se, 1x na
 	# bitko, preusmeri na sosednjega zavezniškega pešca - napadalec pristane

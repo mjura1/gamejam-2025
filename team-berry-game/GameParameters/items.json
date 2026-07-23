@@ -12,6 +12,11 @@
 
 	"warhorn":      {"name": "Warhorn", "description": "One use. Reveals every move the enemy could make this turn.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
 	"bastion":      {"name": "Bastion", "description": "One use. Drop two walls on empty tiles to block enemy movement and line of sight.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"signal_fire":  {"name": "Signal Fire", "description": "One use. Briefly pulses the location of every piece on the board, yours and the enemy's, even through fog.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"bonfire_flare": {"name": "Bonfire Flare", "description": "One use. Clears the snow in a 5x5 area around a tile of your choice.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"camp_kit":     {"name": "Camp Kit", "description": "One use. Removes the frozen status from every allied piece at once.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"frozen_lure":  {"name": "Frozen Lure", "description": "One use. Place bait on an empty tile - the first enemy to step on it is frozen for a turn.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
+	"mirror_ward":  {"name": "Mirror Ward", "description": "One use. The next capture attempt against a chosen piece is completely cancelled.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "consumable"},
 
 	"wildfire_flare": {"name": "Wildfire Flare", "description": "One use. Clears the snow in a 3x3 area around a tile of your choice; the tiles just outside that area turn to thin, half-melted fog that finishes clearing on its own next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "consumable"},
 
@@ -26,6 +31,10 @@
 	"loyal_pawns":  {"name": "Loyal Pawns", "description": "Once per battle, a capture aimed at a piece next to a friendly pawn lands on the pawn instead.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
 
 	"castle":       {"name": "Castle", "description": "Your king cannot be captured while a friendly rook has line of sight to him.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"keen_eye":     {"name": "Keen Eye", "description": "Bishops reveal fog along their diagonal path as they move.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"knight_errant": {"name": "Knight Errant", "description": "Once per turn, a knight that captures and lands next to another enemy may move again.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"nightfall_ward": {"name": "Nightfall Ward", "description": "The first time an ally would be frozen by snow each battle, it isn't.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
+	"salvage":      {"name": "Salvage", "description": "Captured enemy pieces have a chance to drop an extra upgrade item.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
 	"courier_package": {"name": "Courier Package", "description": "Each battle a random ally is the courier. If they survive the battle, gain upgrade items.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "reward": 1, "stackable": false},
 	"divine_intervention": {"name": "Divine Intervention", "description": "Consumed on party wipe: return to the map instead of game over.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive"},
 	"iron_pawns":   {"name": "Iron Pawns", "description": "Pawns cannot be captured on a turn where they move exactly 1 tile.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
@@ -37,6 +46,7 @@
 	"mounted_hunters": {"name": "Mounted Hunters", "description": "Your queen and bishops may also move like knights.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 
 	"lucky_charm":        {"name": "Lucky Charm", "description": "Treasure chests are more likely to hold rarer items, and sometimes hold an extra one.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "luck_bonus": 2},
+	"drillmaster":        {"name": "Drillmaster", "description": "Once per battle, drag onto an ally while another ally is selected to swap their positions.", "buy_cost": 3, "sell_value": 2, "rarity": "uncommon", "kind": "artifact", "stackable": false},
 	"prospectors_pick":   {"name": "Prospector's Pick", "description": "Each battle a random enemy is marked. If it is the first enemy to fall, gain upgrade items.", "buy_cost": 4, "sell_value": 2, "rarity": "rare", "kind": "artifact", "reward": 2, "stackable": false},
 	"frostbite_ward":     {"name": "Frostbite Ward", "description": "A shard of the Winter March, cold to the touch.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
 	"ravens_eye":         {"name": "Raven's Eye", "description": "Tiles you've cleared of snow can never be covered by snowfall/blizzard fog again for the rest of the battle.", "buy_cost": 5, "sell_value": 3, "rarity": "epic", "kind": "artifact", "stackable": false},
