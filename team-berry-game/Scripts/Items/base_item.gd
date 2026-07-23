@@ -22,3 +22,10 @@ func can_use(battle_controller, _grid_pos: Vector2i) -> bool:
 # Izvede učinek. Vrne true ob uspehu (klicatelj nato porabi 1x iz inventarja).
 func apply(_battle_controller, _grid_pos: Vector2i) -> bool:
 	return false
+
+# Wave 2 items: polja, ki naj se med vlečenjem (pred spustom) obarvana
+# predogledajo pod kazalcem (glej battle_ui._input/MoveHighlighter.show_aim) -
+# npr. 3x3 okoli grid_pos za flare, cela vrstica za howling_gale. Privzeto
+# prazno (brez predogleda) - itemi, ki ga želijo, prepišejo to metodo.
+func get_aim_cells(_grid_pos: Vector2i) -> Array[Vector2i]:
+	return []

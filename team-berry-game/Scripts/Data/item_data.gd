@@ -33,6 +33,43 @@ const ITEM_SCRIPTS: Dictionary = {
 	# Artefakt, ne consumable - glej frozen_rampart_item.gd/battle_ui.use_item()
 	# poseben primer (ne porabi se iz inventarja).
 	"frozen_rampart": preload("res://Scripts/Items/frozen_rampart_item.gd"),
+	"smoke_screen": preload("res://Scripts/Items/smoke_screen_item.gd"),
+	"quick_step": preload("res://Scripts/Items/quick_step_item.gd"),
+	"warm_cloak": preload("res://Scripts/Items/warm_cloak_item.gd"),
+	"salt_the_earth": preload("res://Scripts/Items/salt_the_earth_item.gd"),
+	"trail_rations": preload("res://Scripts/Items/trail_rations_item.gd"),
+	"night_watch": preload("res://Scripts/Items/night_watch_item.gd"),
+	"decoy": preload("res://Scripts/Items/decoy_item.gd"),
+	"camp_kit": preload("res://Scripts/Items/camp_kit_item.gd"),
+	"mirror_ward": preload("res://Scripts/Items/mirror_ward_item.gd"),
+	"bonfire_flare": preload("res://Scripts/Items/bonfire_flare_item.gd"),
+	"signal_fire": preload("res://Scripts/Items/signal_fire_item.gd"),
+	"frozen_lure": preload("res://Scripts/Items/frozen_lure_item.gd"),
+	# Artefakt, ne pravi consumable - glej drillmaster_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot frozen_rampart).
+	"drillmaster": preload("res://Scripts/Items/drillmaster_item.gd"),
+	"permafrost_flare": preload("res://Scripts/Items/permafrost_flare_item.gd"),
+	"rampart": preload("res://Scripts/Items/rampart_item.gd"),
+	"howling_gale": preload("res://Scripts/Items/howling_gale_item.gd"),
+	"storm_horn": preload("res://Scripts/Items/storm_horn_item.gd"),
+	"frost_nova": preload("res://Scripts/Items/frost_nova_item.gd"),
+	"hunters_snare": preload("res://Scripts/Items/hunters_snare_item.gd"),
+	"blink_step": preload("res://Scripts/Items/blink_step_item.gd"),
+	"avalanche_horn": preload("res://Scripts/Items/avalanche_horn_item.gd"),
+	"avalanche": preload("res://Scripts/Items/avalanche_item.gd"),
+	"stormcaller": preload("res://Scripts/Items/stormcaller_item.gd"),
+	"seers_horn": preload("res://Scripts/Items/seers_horn_item.gd"),
+	"blizzard_ender": preload("res://Scripts/Items/blizzard_ender_item.gd"),
+	# Artefakt, ne pravi consumable - glej winter_general_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot drillmaster).
+	"winter_general": preload("res://Scripts/Items/winter_general_item.gd"),
+	"time_dilation": preload("res://Scripts/Items/time_dilation_item.gd"),
+	# Artefakt, ne pravi consumable - glej winters_bargain_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot drillmaster).
+	"winters_bargain": preload("res://Scripts/Items/winters_bargain_item.gd"),
+	# Artefakt, ne pravi consumable - glej throne_of_frost_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot winter_general).
+	"throne_of_frost": preload("res://Scripts/Items/throne_of_frost_item.gd"),
 }
 
 var _items: Dictionary = {}
@@ -260,8 +297,11 @@ func _roll_loot_batch(count: int, kinds: Array, weights: Dictionary, rerolls: in
 # max_bonus_items, bonus_artifacts prek luck_per_bonus_artifact/
 # max_bonus_artifacts - slednji namerno dražji, saj so artefakti močnejša
 # nagrada). excluded_ids: glej roll_shop_stock zgoraj (isti namen).
+# min_artifact_count: item "fate_weaver" (Phase 5) - "vedno vsaj en artefakt"
+# garancija, klicatelj (treasure.gd) poda 1, če ima igralec ta passive,
+# sicer 0 (privzeto, obstoječe obnašanje nespremenjeno).
 func roll_treasure_loot(tier: int, luck: int, rng: RandomNumberGenerator = null,
-		excluded_ids: Array = []) -> Array:
+		excluded_ids: Array = [], min_artifact_count: int = 0) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
@@ -275,7 +315,7 @@ func roll_treasure_loot(tier: int, luck: int, rng: RandomNumberGenerator = null,
 	var bonus_artifacts: int = clampi(luck / int(_treasure_config.get("luck_per_bonus_artifact", 6)),
 		0, int(_treasure_config.get("max_bonus_artifacts", 1)))
 	var item_count: int = get_treasure_item_count(tier) + bonus_items
-	var artifact_count: int = get_treasure_artifact_count(tier) + bonus_artifacts
+	var artifact_count: int = maxi(get_treasure_artifact_count(tier) + bonus_artifacts, min_artifact_count)
 
 	var picked: Array = excluded_ids.duplicate()
 	var loot: Array = []

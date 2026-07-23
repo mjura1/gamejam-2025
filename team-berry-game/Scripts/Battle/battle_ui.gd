@@ -17,6 +17,7 @@ const MAX_PLACED := 5
 @onready var map_behaviour = get_node("../Map")
 @onready var battle_controller = get_node("../BattleController")
 @onready var placement_highlighter = get_node("../PlacementHighlighter")
+@onready var move_highlighter = get_node("../MoveHighlighter")
 # Koren battle scene - battle.gd nosi friendly_pieces slovar (ime -> scena).
 @onready var battle_root = get_node("..")
 
@@ -67,6 +68,7 @@ const STATUS_BENCHED_COLOR := Color(0.75, 0.75, 0.75)
 const STATUS_STUNNED_COLOR := Color(0.8, 0.5, 1.0)
 const STATUS_ROOTED_COLOR := Color(0.45, 0.65, 0.25)
 const STATUS_FROZEN_COLOR := Color(0.55, 0.8, 1.0)
+const STATUS_MARKED_COLOR := Color(0.95, 0.55, 0.85)
 
 const ABILITY_ICON_PLACEHOLDER := preload("res://Assets/Sprites/ability_placeholder.png")
 # Isti "sivi" ton kot PieceIcon.COLOR_DEAD, da je "nedosegljivo" vizualno
@@ -118,6 +120,7 @@ func _ready():
 	battle_controller.prospectors_pick_marked.connect(func(character): _set_board_badge(character, "$"))
 	battle_controller.courier_marked.connect(func(character): _set_board_badge(character, "C"))
 	battle_controller.old_guard_marked.connect(func(character): _set_board_badge(character, "OG"))
+	battle_controller.golden_quarry_marked.connect(func(character): _set_board_badge(character, "GQ"))
 	battle_controller.piece_stunned.connect(_on_piece_stunned)
 	battle_controller.piece_rooted.connect(_on_piece_rooted)
 	battle_controller.piece_frozen.connect(_on_piece_frozen)
@@ -241,6 +244,8 @@ func _on_battle_state_changed(new_state):
 			_refresh_stun_badges()
 			_refresh_root_badges()
 			_refresh_frozen_badges()
+			_refresh_marked_badges()
+			_refresh_war_council_badges()
 		battle_controller.BattleState.ENEMY_TURN:
 			turn_label.text = "ENEMY TURN"
 			action_button.disabled = true
@@ -472,6 +477,7 @@ func _input(event):
 	if dragging_item:
 		if event is InputEventMouseMotion:
 			drag_ghost.position = event.position - drag_ghost.size / 2
+			_update_item_aim(event.position)
 		elif event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_resolve_item_drop(event.position)
 			get_viewport().set_input_as_handled()
@@ -704,9 +710,67 @@ func _refresh_frozen_badges():
 	for character in grid_manager.get_all_characters():
 		if not is_instance_valid(character):
 			continue
-		if not (character is BaseCharacter) or character.is_enemy or character.is_obstacle:
+		if not (character is BaseCharacter) or character.is_obstacle:
 			continue
-		_set_frozen_badge(character, character.is_snow_frozen_now())
+		# Wave 2 items: effect_frozen_turns velja tudi za sovražnike (snow_frozen
+		# ne - glej is_snow_frozen_now/_update_snow_freeze_states, ki ga
+		# omejujeta na zaveznike), zato se je_enemy veja tu prvič pojavi.
+		if character.is_enemy:
+			_set_frozen_badge(character, character.effect_frozen_turns > 0)
+		else:
+			_set_frozen_badge(character, character.is_snow_frozen_now() or character.effect_frozen_turns > 0)
+
+
+# Item "marked_man" (Phase 5b, Phase 0 §0.3's deferred marked-vision slot):
+# separate icon offset (Vector2(2, 33), below FrozenBadge) so a marked enemy
+# that's ALSO frozen/rooted/stunned doesn't lose any badge - same stacking
+# pattern as Stun/Root/Frozen above. ENEMY-only (marked_by_vision_item is
+# never set on an ally).
+func _set_marked_badge(character: BaseCharacter, marked: bool):
+	_set_status_icon(character, "MarkedBadge", marked, STATUS_MARKED_COLOR, Vector2(2, 33))
+
+
+# Called on entering PLAYER_TURN (like the other _refresh_* badges) AND right
+# after any consumable use (night_watch/seers_horn set the flag immediately
+# on use, not on a turn boundary - see use_item()'s generic consumable path).
+func _refresh_marked_badges():
+	if not is_instance_valid(grid_manager):
+		return
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
+			continue
+		_set_marked_badge(character, character.marked_by_vision_item)
+
+
+const STATUS_WAR_COUNCIL_COLOR := Color(1.0, 0.9, 0.4, 0.85)
+
+# Item "war_council": prikaže vrstni red (1, 2, 3, ...), v katerem bo
+# BattleController.start_enemy_turn() dejansko obravnaval sovražnike TA
+# prihajajoča poteza - deli battle_controller.enemy_turn_order() z dejansko
+# izvedbo (eno mesto resnice, glej tam), zato predogled ne more zaiti iz
+# koraka. Osveži se samo ob vstopu v igralčevo potezo (glej
+# _on_battle_state_changed) - znotraj poteze se vrstni red ne spreminja razen
+# če igralec zajame sovražnika, kar samo izbriše njegovo značko (queue_free
+# jo pobere skupaj s figuro), preostale številke ostanejo kot so bile
+# izračunane (manjša kozmetična "luknja" v zaporedju, sprejemljivo - relativni
+# vrstni red preostalih ostane pravilen).
+func _refresh_war_council_badges():
+	if not is_instance_valid(grid_manager) or not is_instance_valid(battle_controller):
+		return
+	var order: Array = battle_controller.enemy_turn_order() if player_manager.has_passive("war_council") else []
+	var order_index: Dictionary = {}
+	for i in range(order.size()):
+		order_index[order[i]] = i + 1
+	for character in grid_manager.get_all_characters():
+		if not is_instance_valid(character):
+			continue
+		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
+			continue
+		var n: int = order_index.get(character, 0)
+		_set_named_badge(character, "OrderBadge", str(n) if n > 0 else "",
+			STATUS_WAR_COUNCIL_COLOR, Vector2(2, 33))
 
 
 # ===============================================
@@ -853,7 +917,7 @@ func _show_character(character: BaseCharacter):
 	if character.stunned_turns > 0:
 		status_value.text = "STUNNED"
 		status_value.add_theme_color_override("font_color", STATUS_STUNNED_COLOR)
-	elif character.is_snow_frozen_now():
+	elif character.is_snow_frozen_now() or character.effect_frozen_turns > 0:
 		status_value.text = "FROZEN"
 		status_value.add_theme_color_override("font_color", STATUS_FROZEN_COLOR)
 	elif character.rooted_turns > 0:
@@ -878,7 +942,13 @@ func _show_enemy(character: BaseCharacter):
 	portrait.texture = load("res://Assets/Sprites/enemy_%s.png" % character.strName)
 	_shown_character = character
 	_clear_ability_rows()
-	if character.curse:
+	# Wave 2 items (frost_nova, stormcaller, ...): effect_frozen_turns lahko
+	# zamrzne sovražnika - prednost pred prekletstvom, saj onemogoča gibanje
+	# ne glede na to.
+	if character.effect_frozen_turns > 0:
+		status_value.text = "FROZEN"
+		status_value.add_theme_color_override("font_color", STATUS_FROZEN_COLOR)
+	elif character.curse:
 		status_value.text = character.curse.status_text()
 		status_value.add_theme_color_override("font_color", character.curse.color())
 		ability1_name.text = character.curse.display_name()
@@ -1131,6 +1201,13 @@ func _rebuild_item_drawer():
 		item_rows.add_child(_build_item_row(id, count))
 		any_shown = true
 
+	# Item "trail_rations": consumable-i porabljeni do 0 TO bitko ostanejo
+	# vidni kot "0x" duh-vrstica (ne vlečljivi) dokler bitka ne konča (glej
+	# PlayerManager.used_up_this_battle).
+	for id in player_manager.used_up_this_battle:
+		item_rows.add_child(_build_item_row(id, 0))
+		any_shown = true
+
 	if not any_shown:
 		var empty := Label.new()
 		empty.text = "NO ITEMS"
@@ -1143,11 +1220,20 @@ func _build_item_row(id: String, count: int) -> Control:
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
 
 	var is_passive: bool = ItemData.get_kind(id) == "passive"
-	# Artefakt "frozen_rampart": enkratna uporaba na bitko, ki se ne porabi iz
-	# inventarja (glej use_item() poseben primer spodaj) - ko je že
-	# porabljena, vrstica ni več vlečljiva do naslednje bitke.
+	# Artefakt "frozen_rampart"/"drillmaster": enkratna uporaba na bitko, ki se
+	# ne porabi iz inventarja (glej use_item() poseben primer spodaj) - ko je
+	# že porabljena, vrstica ni več vlečljiva do naslednje bitke.
 	var frozen_rampart_used: bool = id == "frozen_rampart" and battle_controller.frozen_rampart_used_this_battle
-	if not is_passive and not frozen_rampart_used:
+	var drillmaster_used: bool = id == "drillmaster" and battle_controller.drillmaster_used_this_battle
+	var winter_general_used: bool = id == "winter_general" and battle_controller.winter_general_used_this_battle
+	var winters_bargain_used: bool = id == "winters_bargain" and battle_controller.winters_bargain_used_this_battle
+	var throne_of_frost_used: bool = id == "throne_of_frost" and battle_controller.throne_of_frost_used_this_battle
+	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used or winter_general_used or winters_bargain_used or throne_of_frost_used
+	# Item "trail_rations": "0x" duh-vrstica za consumable-e porabljene do 0 to
+	# bitko (glej _rebuild_item_drawer) - ni vlečljiva dokler je ne povrne
+	# trail_rations ali se bitka konča.
+	var is_used_up: bool = count <= 0 and ItemData.get_kind(id) == "consumable"
+	if not is_passive and not once_per_battle_used and not is_used_up:
 		row.gui_input.connect(_on_item_row_input.bind(id))
 
 	var hbox := HBoxContainer.new()
@@ -1173,7 +1259,7 @@ func _build_item_row(id: String, count: int) -> Control:
 		passive_label.add_theme_font_size_override("font_size", 10)
 		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hbox.add_child(passive_label)
-	elif frozen_rampart_used:
+	elif once_per_battle_used or is_used_up:
 		var used_label := Label.new()
 		used_label.text = "USED"
 		used_label.add_theme_font_size_override("font_size", 10)
@@ -1198,10 +1284,29 @@ func _on_item_row_input(event: InputEvent, id: String):
 		drag_ghost.visible = true
 
 
+# Wave 2 items: dokler vlečemo item nad ploščo, predogledamo njegova ciljna
+# polja (glej BaseItem.get_aim_cells) pod kazalcem - izven plošče/brez veljavnega
+# itema se predogled počisti.
+func _update_item_aim(screen_pos: Vector2) -> void:
+	if not is_instance_valid(move_highlighter):
+		return
+	if not board_area.get_global_rect().has_point(screen_pos):
+		move_highlighter.clear_aim()
+		return
+	var item: BaseItem = ItemData.create_item(drag_item_id)
+	if item == null:
+		move_highlighter.clear_aim()
+		return
+	var grid_pos := _screen_to_grid(screen_pos)
+	move_highlighter.show_aim(item.get_aim_cells(grid_pos))
+
+
 # Spuščeno izven plošče (BoardArea) = no-op, item ostane v inventarju.
 func _resolve_item_drop(screen_pos: Vector2):
 	dragging_item = false
 	drag_ghost.visible = false
+	if is_instance_valid(move_highlighter):
+		move_highlighter.clear_aim()
 
 	if board_area.get_global_rect().has_point(screen_pos):
 		var grid_pos := _screen_to_grid(screen_pos)
@@ -1228,6 +1333,88 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		UiAudio.play_click()
 		return true
 
+	# Artefakt "drillmaster": enak "1x na bitko, ne porabi se iz inventarja"
+	# vzorec kot frozen_rampart zgoraj. Swap potrebuje DVE tarči: figura A je
+	# trenutno IZBRANA zavezniška figura (map_behaviour.selected_character -
+	# normalna izbira na plošči, ista pot kot premik/zajetje), figura B je
+	# tista, na katero je bil item spuščen (grid_pos). Logika je NAMERNO tu
+	# inline (ne v drillmaster_item.gd.apply()) - BaseItem.apply() ne dobi
+	# map_behaviour reference, glej drillmaster_item.gd opombo.
+	if id == "drillmaster":
+		if not player_manager.has_passive("drillmaster") or battle_controller.drillmaster_used_this_battle:
+			return false
+		var ally_a: BaseCharacter = map_behaviour.selected_character
+		if not (is_instance_valid(ally_a) and not ally_a.is_enemy and not ally_a.is_obstacle):
+			return false
+		var ally_b = grid_manager.get_character_at(grid_pos)
+		if not (ally_b is BaseCharacter and not ally_b.is_enemy and not ally_b.is_obstacle and ally_b != ally_a):
+			return false
+		grid_manager.swap_characters(ally_a, ally_b)
+		battle_controller.drillmaster_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Artefakt "winter_general": isti "1x na bitko, ne porabi se iz
+	# inventarja" vzorec kot frozen_rampart/drillmaster zgoraj - a brez
+	# ciljne figure/polja (učinek je vedno centriran na igralčevega kralja,
+	# glej winter_general_item.gd), zato ni potrebe po inline logiki tu -
+	# item skripta sama opravi vse (can_use/apply).
+	if id == "winter_general":
+		if not player_manager.has_passive("winter_general") or battle_controller.winter_general_used_this_battle:
+			return false
+		var winter_general: BaseItem = ItemData.create_item(id)
+		if winter_general == null or not (winter_general.can_use(battle_controller, grid_pos) and winter_general.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.winter_general_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Artefakt "winters_bargain": enak vzorec kot winter_general zgoraj - item
+	# skripta sama opravi vse (can_use/apply, glej winters_bargain_item.gd).
+	if id == "winters_bargain":
+		if not player_manager.has_passive("winters_bargain") or battle_controller.winters_bargain_used_this_battle:
+			return false
+		var winters_bargain: BaseItem = ItemData.create_item(id)
+		if winters_bargain == null or not (winters_bargain.can_use(battle_controller, grid_pos) and winters_bargain.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.winters_bargain_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Artefakt "throne_of_frost": isti "1x na bitko, ne porabi se iz
+	# inventarja" vzorec kot winter_general/winters_bargain zgoraj.
+	if id == "throne_of_frost":
+		if not player_manager.has_passive("throne_of_frost") or battle_controller.throne_of_frost_used_this_battle:
+			return false
+		var throne_of_frost: BaseItem = ItemData.create_item(id)
+		if throne_of_frost == null or not (throne_of_frost.can_use(battle_controller, grid_pos) and throne_of_frost.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.throne_of_frost_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Item "blink_step": consumable verzija drillmaster-jevega swapa (glej
+	# drillmaster opombo zgoraj za razlog, zakaj je logika tu inline) - a
+	# porabi se iz inventarja normalno (isti spodnji `remove_item()`), ne
+	# "1x na bitko" poseben primer.
+	if id == "blink_step":
+		if player_manager.get_item_count(id) <= 0:
+			return false
+		var ally_a: BaseCharacter = map_behaviour.selected_character
+		if not (is_instance_valid(ally_a) and not ally_a.is_enemy and not ally_a.is_obstacle):
+			return false
+		var ally_b = grid_manager.get_character_at(grid_pos)
+		if not (ally_b is BaseCharacter and not ally_b.is_enemy and not ally_b.is_obstacle and ally_b != ally_a):
+			return false
+		grid_manager.swap_characters(ally_a, ally_b)
+		player_manager.remove_item(id)
+		UiAudio.play_click()
+		return true
+
 	if player_manager.get_item_count(id) <= 0:
 		return false
 	if ItemData.get_kind(id) != "consumable":
@@ -1240,6 +1427,10 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 
 	player_manager.remove_item(id) # emits items_changed -> _rebuild_item_drawer
 	UiAudio.play_click()
+	# Items "night_watch"/"seers_horn": mark an enemy immediately on use (not
+	# on a turn boundary like the other _refresh_* badges) - harmless no-op
+	# call for every other consumable.
+	_refresh_marked_badges()
 	return true
 
 

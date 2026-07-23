@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" uid="uid://bbanbdmqj5fw8" path="res://Scenes/CharacterPiecesNodes/base_character.tscn" id="1_base"]
+[ext_resource type="Texture2D" uid="uid://dnvnja0ychq8k" path="res://Assets/Sprites/friendly_pawn.png" id="2_tex"]
+
+[node name="Decoy" instance=ExtResource("1_base")]
+scale = Vector2(0.08, 0.08)
+strName = "decoy"
+is_decoy = true
+modulate = Color(1, 1, 1, 0.55)
+
+[node name="Sprite2D" parent="." index="0"]
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("2_tex")

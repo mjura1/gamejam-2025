@@ -141,6 +141,59 @@ var snow_trapped_turns: int = 0
 # "leno" (lazy) odmrzovanje, ki dovoljuje reševanje SREDI poteze.
 var snow_frozen: bool = false
 
+# Wave 2 items (frost_nova, camp_kit, stormcaller, ...): NEODVISEN fiksno-
+# trajajoč "zamrznjen" status, ločen od snow_frozen zgoraj - snow_frozen se
+# leno odmrzne takoj, ko se snežni obroč prekine (is_snow_frozen_now), kar ni
+# uporabno za "zamrzni za natanko N potez" učinke. Za razliko od snega velja
+# za OBE strani (igralec lahko zamrzne sovražnika). Tik-tok v
+# BattleController.end_player_turn (glej tam).
+var effect_frozen_turns: int = 0
+
+# Item "cold_case" (Phase 5b reward family): "was this ENEMY ever frozen by a
+# player-caused effect" - unlike effect_frozen_turns itself (which thaws),
+# this never clears once set, so a capture long after the freeze wore off
+# still counts. Set by every item/passive that sets effect_frozen_turns on an
+# ENEMY due to player action (frost_nova/stormcaller/avalanche/winter_general
+# item scripts, GridManager.trigger_trap for frozen_lure/hunters_snare) - NOT
+# the ally-side self-freezes (frozen_vanguard/queens_gambit in capture()
+# below), those aren't "an enemy status I caused." Read by
+# BattleController.on_enemy_died().
+var was_frozen_by_player: bool = false
+
+# Item "marked_man" (Phase 5b reward family): "was this ENEMY ever marked by
+# one of the player's vision items" - set by night_watch/seers_horn's apply()
+# (the two items that target ONE specific enemy for a permanent reveal/
+# preview, as opposed to AOE fog-clear items like flare/keen_eye). Read by
+# BattleController.on_enemy_died() and battle_ui._refresh_marked_badges()
+# (Phase 0 §0.3's deferred marked-vision StatusIconBadge slot).
+var marked_by_vision_item: bool = false
+
+# Item "smoke_screen": ta figura je skrita sovražnikovemu ciljanju (AI je ne
+# izbere za zajetje/gonjo - glej calculate_best_move spodaj), dokler se ne
+# premakne ali zajame (glej execute_move, ki to počisti).
+var is_hidden: bool = false
+
+# Item "warm_cloak": ta figura za PRESTANEK BITKE ne more biti zamrznjena od
+# snega (glej BattleController._update_snow_freeze_states - preskoči snow_frozen
+# nastavitev, snow_trapped_turns pa še vedno šteje).
+var is_freeze_immune: bool = false
+
+# Item "mirror_ward": naslednji poskus zajetja te figure je NEUSPEŠEN (glej
+# capture() spodaj - preveri/porabi ta flag PREDEN sploh doseže loyal_pawns
+# substitucijo, saj naj mirror_ward popolnoma prepreči zajetje, ne samo
+# preusmeri ga na drugo figuro). Enkratno - potroši se ob prvem poskusu, ne
+# glede na to, ali bi bilo zajetje sicer uspešno.
+var is_capture_warded: bool = false
+
+# Item "decoy": ta figura je vaba, ne prava zavezniška figura - resnično
+# zajemljiva (za razliko od is_obstacle, ki calculate_valid_targets izključi
+# iz zajetja, glej tam), a die() jo NE prijavi v dead_party/battle-points
+# (glej die() spodaj), map_behaviour.gd je ne pusti izbrati/premakniti kot
+# pravo figuro, calculate_best_move() jo AI-ju vedno ponudi PRVO za zajetje
+# (glej tam), in BattleController jo ob naslednjem start_player_turn()
+# odstrani, če je preživela (glej decoys_active).
+@export var is_decoy: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -243,6 +296,24 @@ func is_castle_protected() -> bool:
 			step += dir
 	return false
 
+# Item "steel_vanguard": pešec je nezajemljiv, DOKLER stoji sosednje (8 smeri)
+# drugemu zavezniškemu pešcu - za razliko od "iron_pawns" (shranjena
+# is_capture_immune zastavica, nastavljena samo po premiku natanko 1 polja),
+# to je ŽIVO preverjeno ob vsakem capture-checku, isti vzorec kot
+# is_castle_protected() zgoraj (ni stanja, samo trenutno geometrijsko dejstvo).
+func is_steel_vanguard_protected() -> bool:
+	if is_enemy or strName != "pawn": return false
+	if not is_instance_valid(player_manager) or not player_manager.has_passive("steel_vanguard"): return false
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and not neighbor.is_enemy and not neighbor.is_obstacle \
+					and neighbor.strName == "pawn" and neighbor != self:
+				return true
+	return false
+
 # Snow rework: PRAVI vir resnice za "ali je figura trenutno zamrznjena" -
 # leno (lazy) preveri, ali se je obroč snega že prekinil, in če DA, takoj
 # odmrzne (thaw je torej TAKOJŠNJI, znotraj iste poteze - npr. ko druga
@@ -268,6 +339,11 @@ func calculate_valid_targets() -> Array[Vector2i]:
 	# se ne more premakniti - samo zavezniki zamrznejo (glej
 	# BattleController._update_snow_freeze_states).
 	if not is_enemy and is_snow_frozen_now():
+		return targets
+
+	# Wave 2 items: effect_frozen_turns (glej deklaracijo zgoraj) - za razliko
+	# od snega velja za OBE strani.
+	if effect_frozen_turns > 0:
 		return targets
 
 	# Bishop.Traps: dokler je ta figura ujeta v sovražnikovo cono, se ne more
@@ -300,8 +376,10 @@ func calculate_valid_targets() -> Array[Vector2i]:
 				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
 					# Knight.Evade: imunska figura ne more biti zajeta z
 					# navadnim premikom/zajetjem. Item "castle": enako za
-					# kralja, dokler ga vidi prijateljska trdnjava.
-					if target_char.is_capture_immune or target_char.is_castle_protected():
+					# kralja, dokler ga vidi prijateljska trdnjava. Item
+					# "steel_vanguard": enako za pešca zraven drugega pešca.
+					if target_char.is_capture_immune or target_char.is_castle_protected() \
+							or target_char.is_steel_vanguard_protected():
 						break
 					# Rook.Reinforce: polje je znotraj sovražnikove cone - ni
 					# dovoljeno niti zajetje na to polje.
@@ -323,6 +401,59 @@ func calculate_valid_targets() -> Array[Vector2i]:
 			var t = grid_manager.get_character_at(pos)
 			return t != null and t.is_enemy != is_enemy)
 
+	# Item "queens_gambit": dokler pasiva ni porabljena to bitko, kraljica
+	# "ignore capture-path limits" - lahko zajame KATEREGAKOLI sovražnika v
+	# svojih premikalnih smereh, tudi ČEZ vmesne figure (prijateljske ali
+	# sovražnikove, a NE čez ovire/zidove - tisti še vedno blokirajo v celoti).
+	# NAMERNO ADDITIVNO (nova ločena zanka, ne sprememba zgornje glavne zanke) -
+	# ne dotika se obnašanja NOBENE druge figure/pasive, samo doda dodatne
+	# zajetja kraljici, ko je aktivna. Dejanska "zamrzne se po zajetju"
+	# posledica se sproži v capture() (glej tam), ne tu (tu samo RAZŠIRIMO
+	# nabor veljavnih ciljev).
+	if not is_enemy and strName == "queen" and is_instance_valid(player_manager) \
+			and player_manager.has_passive("queens_gambit") and is_instance_valid(battle_controller) \
+			and not battle_controller.queens_gambit_used_this_battle:
+		for dir in get_move_directions():
+			for step in range(1, move_range + 1):
+				var target_pos: Vector2i = grid_pos + dir * step
+				if not grid_manager.is_inside_boundary(target_pos, tile_map.get_used_rect()):
+					break
+				var target_char = grid_manager.get_character_at(target_pos)
+				if target_char == null:
+					continue
+				if target_char.is_obstacle:
+					break
+				if target_char.is_enemy != is_enemy and not target_char.is_capture_immune \
+						and not target_char.is_castle_protected() and not target_char.is_steel_vanguard_protected() \
+						and not grid_manager.is_entry_denied(target_pos, is_enemy) and target_pos not in targets:
+					targets.append(target_pos)
+
+	return targets
+
+# Item "foresight_mirror": kot calculate_valid_targets() zgoraj, a od
+# POLJUBNEGA izhodišča namesto trenutnega grid_pos - uporablja se za
+# hipotetično "če bi ta figura stala TU po svoji naslednji potezi, kaj bi
+# lahko dosegla" napoved (glej GridManager.tiles_reachable_by_two_turns).
+# ZNANA POENOSTAVITEV (isti standard kot map_behaviour._compute_risk_tiles'
+# "opozorilni marker, ne garancija"): bere RESNIČNO trenutno zasedenost
+# plošče, torej tudi figurino LASTNO trenutno polje, čeprav bi se v tem
+# hipotetičnem scenariju že premaknila stran od njega - sprejemljivo za
+# napoved, ne za dejansko gibanje. Ne preverja freeze/stun/rooted/zone
+# statusov iz istega razloga (hipoteza, ne resnična poteza).
+func get_reachable_tiles_from(from_pos: Vector2i) -> Array[Vector2i]:
+	var targets: Array[Vector2i] = []
+	for dir in get_move_directions():
+		for step in range(1, move_range + 1):
+			var target_pos := from_pos + dir * step
+			if not grid_manager.is_inside_boundary(target_pos, tile_map.get_used_rect()):
+				break
+			if grid_manager.is_occupied(target_pos):
+				var target_char = grid_manager.get_character_at(target_pos)
+				if target_char and target_char.is_enemy != is_enemy and target_char.is_obstacle != true:
+					if not (target_char.is_capture_immune or target_char.is_castle_protected()):
+						targets.append(target_pos)
+				break
+			targets.append(target_pos)
 	return targets
 
 const MOVE_SLIDE_DURATION := 0.18
@@ -344,6 +475,17 @@ func execute_move(target: Vector2i):
 	# Item "snowshoes"/"iron_pawns": zajameta IZVORNO polje PRED premikom
 	# (grid_pos spodaj postane target).
 	var from_pos: Vector2i = grid_pos
+
+	# Item "smoke_screen": premik ALI zajetje (capture() spodaj samo pokliče
+	# execute_move za dejanski premik napadalca) prekine skritost.
+	is_hidden = false
+
+	# Item "time_dilation": zabeleži TO figuro kot "premaknjena to potezo" -
+	# edini bralec je try_move()'s time_dilation_active_this_turn preverba
+	# spodaj (glej tam). Enako kot is_hidden zgoraj velja tudi za zajetja
+	# (capture() kliče execute_move() interno, glej §1a gotcha).
+	if not is_enemy and is_instance_valid(battle_controller) and self not in battle_controller.moved_this_turn:
+		battle_controller.moved_this_turn.append(self)
 
 	# Bishop.Traps/Rook.Reinforce: premik te figure sprosti njeno cono.
 	if owned_zone_id != -1 and is_instance_valid(grid_manager):
@@ -379,6 +521,12 @@ func execute_move(target: Vector2i):
 	if not is_enemy and is_instance_valid(grid_manager):
 		grid_manager.reveal_area([grid_pos])
 
+		# Pasiva "footprints": pristajalno polje ostane trajno zaščiteno pred
+		# prekletstveno meglo za preostanek bitke (glej GridManager.footprint_tile -
+		# nižja prioriteta od item "salt_the_earth", glej tam).
+		if is_instance_valid(player_manager) and player_manager.has_passive("footprints"):
+			grid_manager.footprint_tile(grid_pos)
+
 		# Item "snowshoes": za TO potezo se sneg stopi na vsakem polju, ki ga
 		# figura prečka na poti (ne samo na pristajalnem polju) - deli pot
 		# BattleController._compute_path_tiles uporablja tudi za vizualizacijo
@@ -391,6 +539,22 @@ func execute_move(target: Vector2i):
 		if has_passive("move_reveal"):
 			var reveal_radius: int = int(get_passive("move_reveal").get("radius", 1))
 			grid_manager.reveal_area(GridManager.square_radius_tiles(grid_pos, reveal_radius))
+
+		# Item "keen_eye": lovec razkrije meglo vzdolž CELE prevožene diagonalne
+		# poti (ne samo pristajalnega polja) - deli _compute_path_tiles z
+		# "snowshoes"/tracker vizualizacijo zgoraj (ravna črta med from_pos in
+		# grid_pos, kar za lovca vedno pomeni diagonalo).
+		if strName == "bishop" and is_instance_valid(player_manager) \
+				and player_manager.has_passive("keen_eye") and is_instance_valid(battle_controller):
+			grid_manager.reveal_area(battle_controller._compute_path_tiles(from_pos, grid_pos))
+
+	# Wave 2 items "frozen_lure"/"hunters_snare": ta figura je pravkar
+	# pristala (premik ALI zajetje) na polju z nasprotnikovo pastjo - sproži
+	# jo in jo potroši (glej GridManager.trigger_trap). Namerno ZUNAJ zgornjega
+	# "not is_enemy" bloka - past prijateljev na SOVRAŽNIKE, torej mora
+	# preveriti mover iz OBEH strani.
+	if is_instance_valid(grid_manager):
+		grid_manager.trigger_trap(self)
 
 	# Queen.Lure: ta figura je s premikom "ubogala" vabo - status se sprosti.
 	if is_instance_valid(battle_controller) and self in battle_controller.lured_enemies:
@@ -408,7 +572,15 @@ func try_move(target: Vector2i) -> bool:
 	# igralčeve poteze.
 	if not is_enemy and not is_autonomous and not battle_controller.can_move():
 		return false
-	
+
+	# Item "time_dilation": dokler je aktiven TO potezo, mora biti DRUGA
+	# figura kot katerakoli, ki se je to potezo že premaknila - brez tega bi
+	# igralec lahko premaknil ISTO figuro dvakrat (glej moved_this_turn
+	# opombo v BattleController.gd).
+	if not is_enemy and not is_autonomous and is_instance_valid(battle_controller) \
+			and battle_controller.time_dilation_active_this_turn and self in battle_controller.moved_this_turn:
+		return false
+
 	# 1. Ali je tarča veljavna tarča za premik/zajetje?
 	if target not in calculate_valid_targets():
 		return false
@@ -432,7 +604,23 @@ func try_move(target: Vector2i) -> bool:
 			return false
 	
 	# 3. Polje je PRAZNO (Navaden premik)
+	var _momentum_origin: Vector2i = grid_pos
 	execute_move(target)
+
+	# Item "momentum": 1x na bitko - zavezniška figura, ki v enem koraku
+	# premakne svoj POLNI doseg (move_range) BREZ zajetja, je "oborožena" za
+	# brezplačno dodatno potezo na NASLEDNJI potezi (restricted-target vzorec,
+	# isti kot vanguards_oath - glej BattleController.momentum_armed_character/
+	# momentum_bonus_character/consume_move_for). Chebyshev razdalja
+	# (maxi(abs dx, abs dy)), ista formula kot iron_pawns-ova "premik za
+	# natanko 1 polje" preverba zgoraj v execute_move().
+	if not is_enemy and is_instance_valid(player_manager) and player_manager.has_passive("momentum") \
+			and is_instance_valid(battle_controller) and not battle_controller.momentum_used_this_battle:
+		var distance: int = maxi(absi(target.x - _momentum_origin.x), absi(target.y - _momentum_origin.y))
+		if distance >= move_range:
+			battle_controller.momentum_used_this_battle = true
+			battle_controller.momentum_armed_character = self
+
 	return true
 
 # ----------------- SMRT IN ZAJETJE (KLJUČNO ZA REVIVE) -----------------
@@ -462,6 +650,8 @@ func die():
 		player_manager.remove_converted_ally("friendly_" + strName)
 	elif is_enemy:
 		player_manager.register_dead_character("enemy_" + strName)
+	elif is_decoy:
+		pass # Item "decoy": ni prava figura - NE prijavi v dead_party/scoring.
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
 
@@ -469,12 +659,88 @@ func die():
 	if is_enemy and not is_obstacle and is_instance_valid(battle_controller):
 		battle_controller.on_enemy_died(self)
 
+	# Item "undying_rank": vsaka zavezniška smrt (prava figura, obrnjena
+	# figura ALI vaba - glej maybe_trigger_undying_rank, ki vabe itak izloči
+	# iz preštevanja) je priložnost, da ostane natanko ena živa zavezniška
+	# figura.
+	if not is_enemy and is_instance_valid(battle_controller):
+		battle_controller.maybe_trigger_undying_rank()
+
 	queue_free() # Uniči vozlišče
 
 # Logika zajetja tarče in premika napadalca na tarčino polje
 func capture(target: BaseCharacter):
 	print("Izvajam zajetje tarče...")
-	
+
+	# Item "mirror_ward": ta poskus zajetja je popolnoma prekli­can - tarča
+	# porabi svoj enkraten ward in PREŽIVI na svojem polju, napadalec pa se NE
+	# premakne (za razliko od loyal_pawns spodaj, ki zajetje samo preusmeri na
+	# drugo figuro - mirror_ward ga v celoti izniči). Preverimo PRED loyal_pawns,
+	# ker mora popolnoma prevladati, tudi če bi substitucija sicer veljala.
+	if target.is_capture_warded:
+		target.is_capture_warded = false
+		return
+
+	# Item "iron_resolve": tarča, ki stoji sosednje (8 smeri) SVOJEMU kralju,
+	# 1x na bitko preživi in se preseli na najbližje prosto polje (glej
+	# GridManager.find_nearest_empty_tile) namesto da umre - napadalec se NE
+	# premakne (isto polno-preklicano obnašanje kot mirror_ward zgoraj).
+	if not target.is_enemy and not target.is_obstacle and is_instance_valid(player_manager) \
+			and player_manager.has_passive("iron_resolve") and is_instance_valid(battle_controller) \
+			and not battle_controller.iron_resolve_used_this_battle and target._is_adjacent_to_own_king():
+		var escape: Vector2i = grid_manager.find_nearest_empty_tile(target.grid_pos)
+		if escape != Vector2i(-1, -1):
+			battle_controller.iron_resolve_used_this_battle = true
+			grid_manager.vacate(target.grid_pos)
+			target.grid_pos = escape
+			grid_manager.occupy(escape, target)
+			target.slide_to(grid_manager.grid_to_world(escape))
+			return
+
+	# Item "frozen_vanguard": PRVO zavezniško zajetje v tej bitki se preusmeri -
+	# tarča preživi, a se TAKOJ zamrzne in za preostanek TE poteze ne more biti
+	# znova zajeta. is_capture_immune deli isto "traja do naslednjega
+	# start_player_turn()" pravilo kot Knight.Evade/iron_pawns (glej
+	# BattleController._clear_expired_evade) - ker je ta zajetje SREDI
+	# sovražnikove poteze, imuniteta pokrije natanko "preostanek te poteze"
+	# (do konca TE sovražnikove poteze), kot obljublja opis. Freeze vrednost=1,
+	# NE +1 popravek (glej NEW_ITEMS_WAVE2_PLAN.md §1a) - to je EDINI primer, ko
+	# +1 ni potreben: zaveznik, zamrznjen MED sovražnikovo potezo, se preveri
+	# naslednjič ob igralčevi lastni potezi, PREDEN kakšen tik sploh steče.
+	if not target.is_enemy and not target.is_obstacle and is_instance_valid(player_manager) \
+			and player_manager.has_passive("frozen_vanguard") and is_instance_valid(battle_controller) \
+			and not battle_controller.frozen_vanguard_used_this_battle:
+		battle_controller.frozen_vanguard_used_this_battle = true
+		target.effect_frozen_turns = maxi(target.effect_frozen_turns, 1)
+		target.is_capture_immune = true
+		return
+
+	# Item "royal_guard": kralj, ki bi bil zajet, 1x na bitko namesto tega
+	# preusmeri zajetje na SOSEDNJO (8 smeri, katerakoli figura, ne samo
+	# pešec - za razliko od loyal_pawns spodaj) zavezniško figuro. Substitucija
+	# PRED "shranimo pozicijo tarče" spodaj, isti vzorec kot loyal_pawns -
+	# ostanek funkcije potem deluje na substitutu brez sprememb.
+	if not target.is_enemy and not target.is_obstacle and target.strName == "king" \
+			and is_instance_valid(player_manager) and player_manager.has_passive("royal_guard") \
+			and is_instance_valid(battle_controller) and not battle_controller.royal_guard_used_this_battle:
+		var guard: BaseCharacter = target._find_adjacent_ally()
+		if guard:
+			battle_controller.royal_guard_used_this_battle = true
+			target = guard
+
+	# Item "loyal_pawns": sovražnikovo zajetje zavezniške figure se, 1x na
+	# bitko, preusmeri na sosednjega zavezniškega pešca - napadalec pristane
+	# NA PEŠCU (ne na prvotni tarči), ki torej preživi (isti vzorec kot
+	# royal_guard/iron_resolve - substitucija PRED "shranimo pozicijo tarče"
+	# spodaj, ostanek funkcije potem deluje na substitutu brez sprememb).
+	if is_enemy and not target.is_enemy and not target.is_obstacle \
+			and is_instance_valid(player_manager) and player_manager.has_passive("loyal_pawns") \
+			and is_instance_valid(battle_controller) and not battle_controller.loyal_pawns_used_this_battle:
+		var substitute := _find_adjacent_pawn(target)
+		if substitute:
+			battle_controller.loyal_pawns_used_this_battle = true
+			target = substitute
+
 	# KRITIČNO: Shranimo pozicijo tarče, preden jo uničimo
 	var target_pos = target.grid_pos
 	
@@ -485,6 +751,61 @@ func capture(target: BaseCharacter):
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
 	execute_move(target_pos)
+
+	# Item "queens_gambit": kraljičino PRVO zajetje to bitko (dokler pasiva
+	# ni porabljena) jo zamrzne za njeno naslednjo potezo - potroši se TAKOJ,
+	# ne glede na to, ali je zajetje sploh izkoristilo spodnji "ignore
+	# capture-path" dodatek v calculate_valid_targets(). Freeze vrednost=2 (NE
+	# 1) - to JE zaveznik, zamrznjen MED igralčevo LASTNO potezo (ne
+	# sovražnikovo), torej velja splošno +1 pravilo (glej §1a), za razliko od
+	# frozen_vanguard zgoraj.
+	if not is_enemy and strName == "queen" and is_instance_valid(player_manager) \
+			and player_manager.has_passive("queens_gambit") and is_instance_valid(battle_controller) \
+			and not battle_controller.queens_gambit_used_this_battle:
+		battle_controller.queens_gambit_used_this_battle = true
+		effect_frozen_turns = maxi(effect_frozen_turns, 2)
+
+# Item "iron_resolve": ali stoji "self" sosednje (8 smeri) SVOJEMU
+# (ne-sovražnikovemu) kralju - uporabljeno kot capture() pogoj zgoraj.
+func _is_adjacent_to_own_king() -> bool:
+	if not is_instance_valid(grid_manager):
+		return false
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and neighbor.is_enemy == is_enemy and not neighbor.is_obstacle \
+					and neighbor.strName == "king":
+				return true
+	return false
+
+# Item "loyal_pawns": prvi zavezniški pešec (ne sama "piece", ne ovira) na
+# enem od 4 ortogonalnih sosednjih polj od "piece" - null, če ga ni.
+func _find_adjacent_pawn(piece: BaseCharacter) -> BaseCharacter:
+	if not is_instance_valid(grid_manager):
+		return null
+	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var neighbor = grid_manager.get_character_at(piece.grid_pos + offset)
+		if neighbor and neighbor is BaseCharacter and not neighbor.is_enemy \
+				and not neighbor.is_obstacle and neighbor.strName == "pawn" and neighbor != piece:
+			return neighbor
+	return null
+
+# Item "royal_guard": prva sosednja (8 smeri) zavezniška figura KATEREGAKOLI
+# tipa (ne samo pešec, za razliko od _find_adjacent_pawn zgoraj) - null, če
+# je ni.
+func _find_adjacent_ally() -> BaseCharacter:
+	if not is_instance_valid(grid_manager):
+		return null
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and not neighbor.is_enemy and not neighbor.is_obstacle and neighbor != self:
+				return neighbor
+	return null
 
 
 # ----------------- AI LOGIKA (POPRAVLJENA) -----------------
@@ -848,7 +1169,10 @@ func calculate_best_move() -> Dictionary:
 		if not nearby_char is BaseCharacter:
 			continue
 
-		if nearby_char.is_enemy == is_enemy or nearby_char.is_obstacle:
+		# Item "smoke_screen": skrita figura se ne šteje kot "closest_player" za
+		# gonjo (heuristika HARD/NORMAL) - minimax (IMPOSSIBLE) tega ne pozna,
+		# glej opombo pri is_hidden deklaraciji.
+		if nearby_char.is_enemy == is_enemy or nearby_char.is_obstacle or nearby_char.is_hidden:
 			continue
 
 		var dist = grid_pos.distance_to(nearby_char.grid_pos)
@@ -880,8 +1204,18 @@ func calculate_best_move() -> Dictionary:
 		var target_char = grid_manager.get_character_at(pos)
 		if target_char and target_char.is_obstacle:
 			continue # skip any obstacle entirely
-		if target_char and target_char.is_enemy != is_enemy:
+		if target_char and target_char.is_enemy != is_enemy and not target_char.is_hidden:
 			capture_candidates.append(pos)
+
+	# Item "decoy": če je vaba med kandidati za zajetje, jo AI izbere PRVO -
+	# to je bistvo itema ("target it over a real piece") - enako za VSAKO
+	# težavnostno stopnjo, saj ta veja povozi strategy.choose_action() spodaj,
+	# ne glede na katero strategijo (heuristika ali minimax) izbere
+	# settings_manager.ai_difficulty.
+	for pos in capture_candidates:
+		var candidate_char = grid_manager.get_character_at(pos)
+		if candidate_char and candidate_char.is_decoy:
+			return {"move_type": "CAPTURE", "target_pos": pos}
 
 	var strategy = ai_strategy_data.get_strategy(settings_manager.ai_difficulty)
 	var action: Dictionary = strategy.choose_action(self, {

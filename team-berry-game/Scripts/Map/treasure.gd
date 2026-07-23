@@ -25,8 +25,11 @@ func _on_chest_pressed():
 	chest_button.disabled = true
 
 	var luck := PlayerManager.get_luck()
+	# Item "fate_weaver": vsak zaklad vsebuje vsaj 1 artefakt, ne glede na
+	# tier/luck (glej ItemData.roll_treasure_loot min_artifact_count).
+	var min_artifacts: int = 1 if PlayerManager.has_passive("fate_weaver") else 0
 	var loot := ItemData.roll_treasure_loot(PlayerManager.current_map_tier, luck,
-		null, PlayerManager.get_unstackable_owned_ids())
+		null, PlayerManager.get_unstackable_owned_ids(), min_artifacts)
 	for id in loot:
 		PlayerManager.add_item(id, 1)
 

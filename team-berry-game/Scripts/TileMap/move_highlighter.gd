@@ -4,6 +4,8 @@ class_name MoveHighlighter
 
 # Referenci na GridManager in velikost celice
 @onready var grid_manager = get_node("../GridManager")
+# Item "tracker": glej flash_enemy_move/clear_enemy_moves spodaj.
+@onready var player_manager = get_node("/root/PlayerManager")
 var cell_size: Vector2 = Vector2.ZERO
 
 # Array veljavnih mrežnih pozicij (Vector2i), ki jih moramo narisati
@@ -29,6 +31,12 @@ const ENEMY_PREVIEW_COLOR = Color(0.8, 0.15, 0.15, 0.5)
 # RISK_COLOR (spyglass/farsight_lens).
 const ORACLE_COLOR = Color(1.0, 0.85, 0.2, 0.55)
 
+# Wave 2 items: predogled ciljnega polja/območja med vlečenjem itema (pred
+# spustom) - npr. 3x3 za frost_nova, cela vrstica za howling_gale (glej
+# BaseItem.get_aim_cells / battle_ui._input). Ledeno modra, da se vizualno
+# loči od vseh zgornjih (zelena/rdeča/siva/zlata/oranžna/temno rdeča).
+const AIM_COLOR = Color(0.25, 0.75, 0.95, 0.5)
+
 # Veljavne tarče za trenutno "pending" sposobnost (glej map_behaviour.gd).
 # Ločeno od valid_moves, da se barvno (in pomensko) razlikuje od navadnega
 # premika/zajetja - npr. Bishop.Longshot ne premakne figure.
@@ -46,6 +54,21 @@ var enemy_preview: Array[Vector2i] = []
 
 # Item "warhorn"/artefakt "oracle_glass": glej ORACLE_COLOR zgoraj.
 var oracle_targets: Array[Vector2i] = []
+
+# Wave 2 items: glej AIM_COLOR zgoraj.
+var aim_tiles: Array[Vector2i] = []
+
+# Item "signal_fire": vsako polje, kjer je stala figura (obeh strani) v
+# trenutku uporabe - LASTEN, neodvisen fade-timer (NE deli is_fading/
+# fade_elapsed z enemy_move_flashes zgoraj, saj se lahko uporabi kadarkoli
+# med igralčevo potezo, ne samo ob začetku, in ne sme prekiniti/podaljšati
+# morebitnega že tekočega sovražnikovega-poteze pojemanja). Toplo zlato-
+# oranžna, da se vizualno loči od vseh obstoječih barv zgoraj.
+const SIGNAL_PULSE_COLOR := Color(1.0, 0.75, 0.15, 0.75)
+const SIGNAL_PULSE_DURATION := 5.0
+var signal_pulse_tiles: Array[Vector2i] = []
+var is_signal_pulsing: bool = false
+var signal_pulse_elapsed: float = 0.0
 
 # ===============================================
 # VIZUALIZACIJA SOVRAŽNIKOVIH POTEZ (NOVO)
@@ -75,14 +98,21 @@ func _ready():
 	add_child(_flash_layer)
 
 func _process(delta: float) -> void:
-	if not is_fading:
-		return
+	if is_fading:
+		fade_elapsed += delta
+		_flash_layer.queue_redraw()
 
-	fade_elapsed += delta
-	_flash_layer.queue_redraw()
+		if fade_elapsed >= fade_duration:
+			clear_enemy_moves()
 
-	if fade_elapsed >= fade_duration:
-		clear_enemy_moves()
+	if is_signal_pulsing:
+		signal_pulse_elapsed += delta
+		queue_redraw()
+
+		if signal_pulse_elapsed >= SIGNAL_PULSE_DURATION:
+			is_signal_pulsing = false
+			signal_pulse_tiles.clear()
+			queue_redraw()
 
 # Trenutna prosojnost poudarkov glede na potek pojemanja - izračunano
 # sproti namesto shranjeno kot ločeno stanje, da se ne more razsinhronizirati
@@ -131,13 +161,39 @@ func clear_oracle_targets():
 	oracle_targets.clear()
 	queue_redraw()
 
-# Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih).
-func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_capture: bool) -> void:
+func show_aim(tiles: Array[Vector2i]):
+	aim_tiles = tiles
+	queue_redraw()
+
+func clear_aim():
+	aim_tiles.clear()
+	queue_redraw()
+
+# Item "signal_fire": glej signal_pulse_tiles/SIGNAL_PULSE_COLOR zgoraj.
+func show_signal_pulse(tiles: Array[Vector2i]) -> void:
+	signal_pulse_tiles = tiles
+	is_signal_pulsing = true
+	signal_pulse_elapsed = 0.0
+	queue_redraw()
+
+# Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih - VEČ
+# potez ISTE figure v isti sovražnikovi potezi, npr. prekletstvi "frenzy"/
+# "bloodlust", morata ostati LOČENO vidni, glej smoke_curses.gd).
+# "character": item "tracker" - glej clear_enemy_moves/EnemyMoveFlashLayer._draw
+# spodaj. SAMO če je tracker v lasti, najprej odstranimo morebiten OBSTOJEČ
+# pripet flash te iste figure (iz PREJŠNJE poteze) - "drži se do NASLEDNJEGA
+# premika te figure", ne kopiči se v neskončnost. Brez tracker-ja se to
+# nikoli ne sproži, torej obstoječe obnašanje (vse kopičene poteze ostanejo)
+# ostane nespremenjeno.
+func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_capture: bool, character: BaseCharacter = null) -> void:
+	if character != null and is_instance_valid(player_manager) and player_manager.has_passive("tracker"):
+		enemy_move_flashes = enemy_move_flashes.filter(func(f): return f.get("character") != character)
 	enemy_move_flashes.append({
 		"from": from,
 		"to": to,
 		"path": path,
 		"is_capture": is_capture,
+		"character": character,
 	})
 	_flash_layer.queue_redraw()
 
@@ -150,8 +206,20 @@ func start_fade_out(duration: float = 5.0) -> void:
 	fade_duration = duration
 	fade_elapsed = 0.0
 
+# Item "tracker": pasiva - "opažena" (has_spotted_player) sovražnikova zadnja
+# poteza se NE počisti tu kot vse ostale, ampak ostane vidna (glej
+# EnemyMoveFlashLayer._draw za "brez pojemanja" del), dokler je ne nadomesti
+# nov flash_enemy_move() klic za ISTO figuro (glej zgoraj) - preverjeno LIVE
+# (ne shranjeno kot zastavica ob nastanku), da se ne more razsinhronizirati,
+# če igralec pasivo kupi/izgubi sredi bitke.
 func clear_enemy_moves() -> void:
-	enemy_move_flashes.clear()
+	var keep_pinned: bool = is_instance_valid(player_manager) and player_manager.has_passive("tracker")
+	if keep_pinned:
+		enemy_move_flashes = enemy_move_flashes.filter(func(f):
+			var character = f.get("character")
+			return is_instance_valid(character) and character.has_spotted_player)
+	else:
+		enemy_move_flashes.clear()
 	is_fading = false
 	_flash_layer.queue_redraw()
 
@@ -178,3 +246,13 @@ func _draw():
 
 	for grid_pos in oracle_targets:
 		_draw_cell(grid_pos, ORACLE_COLOR)
+
+	for grid_pos in aim_tiles:
+		_draw_cell(grid_pos, AIM_COLOR)
+
+	if is_signal_pulsing:
+		var pulse_alpha := clampf(1.0 - (signal_pulse_elapsed / SIGNAL_PULSE_DURATION), 0.0, 1.0)
+		var pulse_color := SIGNAL_PULSE_COLOR
+		pulse_color.a *= pulse_alpha
+		for grid_pos in signal_pulse_tiles:
+			_draw_cell(grid_pos, pulse_color)

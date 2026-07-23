@@ -22,3 +22,6 @@ func can_use(battle_controller, grid_pos: Vector2i) -> bool:
 func apply(battle_controller, grid_pos: Vector2i) -> bool:
 	battle_controller.grid_manager.spawn_character(OBSTACLE_SCENE, battle_controller.grid_manager.grid_to_world(grid_pos))
 	return true
+
+func get_aim_cells(grid_pos: Vector2i) -> Array[Vector2i]:
+	return [grid_pos]

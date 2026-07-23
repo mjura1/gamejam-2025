@@ -11,3 +11,6 @@ func _init():
 func apply(battle_controller, grid_pos: Vector2i) -> bool:
 	battle_controller.grid_manager.reveal_area(GridManager.square_radius_tiles(grid_pos, 1))
 	return true
+
+func get_aim_cells(grid_pos: Vector2i) -> Array[Vector2i]:
+	return GridManager.square_radius_tiles(grid_pos, 1)

@@ -234,6 +234,26 @@ func tiles_reachable_by(is_enemy_side: bool) -> Array[Vector2i]:
 				reachable.append(t)
 	return reachable
 
+# Item "foresight_mirror": kot tiles_reachable_by() zgoraj, a 2 poteze naprej
+# namesto ene - za vsako figuro dane frakcije doda tudi vse, kar bi lahko
+# dosegla iz VSAKEGA svojega hipotetičnega naslednjega polja (glej
+# BaseCharacter.get_reachable_tiles_from - ista "opozorilni marker, ne
+# garancija" poenostavitev kot spodaj/spyglass).
+func tiles_reachable_by_two_turns(is_enemy_side: bool) -> Array[Vector2i]:
+	var reachable := tiles_reachable_by(is_enemy_side)
+	for character in get_all_characters():
+		if not is_instance_valid(character) or not (character is BaseCharacter):
+			continue
+		if character.is_enemy != is_enemy_side or character.is_obstacle:
+			continue
+		for hyp_pos in character.calculate_valid_targets():
+			var hp: Vector2i = hyp_pos
+			for target in character.get_reachable_tiles_from(hp):
+				var t: Vector2i = target
+				if t not in reachable:
+					reachable.append(t)
+	return reachable
+
 # ===============================================
 # FOG OF WAR LOGIKA (DINAMIČNA SNEŽNA ODEJA - POPRAVEK)
 # ===============================================
@@ -279,6 +299,8 @@ func clear_all_fog():
 		_remove_fog_tile(pos)
 	fog_nodes.clear()
 	ravens_eye_cleared.clear()
+	protected_tiles.clear()
+	trap_tiles.clear()
 	
 # Ustvari vozlišče megle na določeni mreži
 func _spawn_fog_tile(grid_pos: Vector2i):
@@ -311,6 +333,70 @@ func _remove_fog_tile(grid_pos: Vector2i):
 # BattleController.initialize_battle()). Prazen slovar, če item ni v lasti.
 var ravens_eye_cleared: Dictionary = {}
 
+# Wave 2 items "salt_the_earth"/"footprints": polja, ki jih cover_area_curse
+# spodaj (EDINA dejansko poklicana re-fog pot - prekletstva, "cover_area" brez
+# "_curse" nima trenutno nobenega klicatelja) ne sme nikoli znova pokriti.
+# pos -> priority int: salt_the_earth (enkraten item) doda PROTECT_SALT,
+# footprints (pasiva, vsak zavezniški premik) doda nižji PROTECT_FOOTPRINTS.
+# Trenutno oba nivoja dejansko enako blokirata cover_area_curse (nič v tej
+# igri (še) ne loči "šibkega" od "močnega" prekletstva) - shranjena številka
+# pusti prostor za prihodnjo diferenciacijo namesto golega bool-a. Ločeno od
+# ravens_eye_cleared zgoraj (tisto je vezano na artefakt in umetno omejeno na
+# "kar je bilo kdaj razkrito" - to je namensko, per-tile postavljeno).
+var protected_tiles: Dictionary = {}
+const PROTECT_FOOTPRINTS := 1
+const PROTECT_SALT := 2
+
+# Wave 2 items "frozen_lure"/"hunters_snare": enkratna past na polje - grid_pos
+# -> {"owner_is_enemy": bool, "freeze_turns": int, "reveal": bool}. Sproži in
+# potroši JO trigger_trap() spodaj, klican iz base_character.execute_move()
+# ob VSAKEM premiku/zajetju (obeh strani) - polje same lastnice pasti ne
+# sproži (past je namenjena NASPROTNIKU, glej primerjavo spodaj).
+var trap_tiles: Dictionary = {}
+
+func place_trap(pos: Vector2i, owner_is_enemy: bool, freeze_turns: int, reveal: bool = false) -> void:
+	trap_tiles[pos] = {"owner_is_enemy": owner_is_enemy, "freeze_turns": freeze_turns, "reveal": reveal}
+
+# Kliče se ob vsakem premiku/zajetju (glej base_character.execute_move) -
+# sproži past NASPROTNIKOVE strani na "character"-jevem trenutnem polju, če
+# obstaja, in jo takoj potroši (erase - enkratna past). Vrne true, če je past
+# sprožila.
+func trigger_trap(character) -> bool:
+	if not trap_tiles.has(character.grid_pos):
+		return false
+	var trap: Dictionary = trap_tiles[character.grid_pos]
+	if trap.owner_is_enemy == character.is_enemy:
+		return false
+	trap_tiles.erase(character.grid_pos)
+	# Item "cold_resistance": +1 samo, če je past IGRALČEVA in je ujela
+	# sovražnika (owner_is_enemy != character.is_enemy preverjeno zgoraj že
+	# zagotavlja to smer, ko je owner_is_enemy false) - obratna smer (sovražnikova
+	# past ujame zaveznika) NE dobi bonusa.
+	var cold_resistance_bonus: int = player_manager.cold_resistance_bonus() if not trap.owner_is_enemy else 0
+	character.effect_frozen_turns = maxi(character.effect_frozen_turns, int(trap.freeze_turns) + cold_resistance_bonus)
+	# Item "cold_case": a player-owned trap catching an enemy (owner_is_enemy
+	# check above already guarantees this branch is player-vs-enemy) counts
+	# as "frozen by the player," even if freeze_turns is 0 for a reveal-only
+	# variant - guard on the actual freeze value to avoid a false tag.
+	if not trap.owner_is_enemy and character.is_enemy and int(trap.freeze_turns) > 0:
+		character.was_frozen_by_player = true
+	if trap.reveal:
+		reveal_area([character.grid_pos])
+	return true
+
+# Item "salt_the_earth": trajno (za preostanek bitke) zaščiti eno polje pred
+# cover_area_curse in ga takoj razkrije (če je bilo ravno pod meglo).
+func salt_tile(pos: Vector2i) -> void:
+	protected_tiles[pos] = PROTECT_SALT
+	reveal_area([pos])
+
+# Pasiva "footprints": zaščiti polje z NIŽJO prioriteto od salt_the_earth -
+# ne prepiše obstoječe (višje) salt-zaščite na istem polju. Ne razkriva samo
+# (kliče ga execute_move(), ki polje itak razkrije v istem koraku).
+func footprint_tile(pos: Vector2i) -> void:
+	if protected_tiles.get(pos, 0) < PROTECT_FOOTPRINTS:
+		protected_tiles[pos] = PROTECT_FOOTPRINTS
+
 # Klicano s strani BattleControllerja za razkrivanje območja - odstrani OBA
 # sistema megle (ambientno in prekletstveno), da so vsa "clear snow" mesta
 # (figure, predmeti, pasivke) resnično dosledna z opisi, ki jih obljubljajo.
@@ -330,7 +416,7 @@ func reveal_area(positions_to_reveal):
 # namerno, brez posebne izjeme.
 func cover_area(positions_to_cover) -> void:
 	for pos in positions_to_cover:
-		if ravens_eye_cleared.has(pos):
+		if ravens_eye_cleared.has(pos) or protected_tiles.has(pos):
 			continue
 		_spawn_fog_tile(pos)
 
@@ -352,6 +438,53 @@ func swap_characters(a, b) -> void:
 	occupy(pos_a, b)
 	a.slide_to(grid_to_world(pos_b))
 	b.slide_to(grid_to_world(pos_a))
+
+# Phase 4 "4.0 Knockback helper" (avalanche_horn/avalanche): sprehodi se od
+# character-jevega TRENUTNEGA polja v "direction" korak za korakom, do
+# max_distance polj - ustavi se na ZADNJEM polju, ki je znotraj meja IN
+# prosto (ista "walk a line, stop before the first blocker" logika kot
+# drseča figura, a brez try_move()-jeve veljavnostne preverbe - klicatelj je
+# odgovoren za to, da je premik smiseln). Če je prvo polje v to smer že
+# zasedeno/izven meja, se figura ne premakne (vrne njeno NESPREMENJENO
+# pozicijo) - klicatelj lahko primerja vrnjeno pozicijo z izvirno, da ugotovi
+# "ali je bil blokiran prezgodaj" (glej avalanche_item.gd "pushed into a
+# wall -> frozen" bonus).
+func push_character(character, direction: Vector2i, max_distance: int) -> Vector2i:
+	if not is_instance_valid(tile_map):
+		return character.grid_pos
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	var origin: Vector2i = character.grid_pos
+	var stop: Vector2i = origin
+	for step in range(1, max_distance + 1):
+		var candidate: Vector2i = origin + direction * step
+		if not is_inside_boundary(candidate, used_rect) or is_occupied(candidate):
+			break
+		stop = candidate
+	if stop == origin:
+		return origin
+	vacate(origin)
+	character.grid_pos = stop
+	occupy(stop, character)
+	character.slide_to(grid_to_world(stop))
+	return stop
+
+# Item "iron_resolve": "najbližje prazno polje" - NI resnično Dijkstra/BFS
+# najbližje (tega v tej igri ni), ampak rastoč kvadratni obroč okoli from_pos
+# (square_radius_tiles na vsakem radiju), prvo prosto polje zmaga - "dovolj
+# blizu" poenostavitev (isti standard kot spyglass/foresight_mirror), ne
+# garancija resnično najkrajše razdalje. Vrne Vector2i(-1,-1), če nič prostega
+# ni najdeno znotraj max_radius.
+func find_nearest_empty_tile(from_pos: Vector2i, max_radius: int = 5) -> Vector2i:
+	if not is_instance_valid(tile_map):
+		return Vector2i(-1, -1)
+	var used_rect: Rect2i = tile_map.get_used_rect()
+	for radius in range(1, max_radius + 1):
+		for pos in square_radius_tiles(from_pos, radius):
+			if pos == from_pos:
+				continue
+			if is_inside_boundary(pos, used_rect) and not is_occupied(pos):
+				return pos
+	return Vector2i(-1, -1)
 
 # Kvadratna oblika s "+" (križ) rokami dolžine radius - center + polja
 # neposredno gor/dol/levo/desno vsak korak do radiusa (BREZ diagonal), za
@@ -408,7 +541,7 @@ func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color
 	for pos in positions_to_cover:
 		if curse_fog_nodes.has(pos):
 			continue
-		if ravens_eye_cleared.has(pos):
+		if ravens_eye_cleared.has(pos) or protected_tiles.has(pos):
 			continue
 		var fog_node = FOG_TILE_SCENE.instantiate()
 		fog_node.position = grid_to_world(pos)

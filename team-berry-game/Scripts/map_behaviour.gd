@@ -129,11 +129,16 @@ func _apply_selection(character: BaseCharacter):
 	var valid_moves = selected_character.calculate_valid_targets()
 	move_highlighter.show_moves(valid_moves)
 
+	# Item "foresight_mirror": kot farsight_lens spodaj, a 2 sovražnikovi
+	# potezi naprej namesto ene - prednost pred obema (najširši učinek), če
+	# ima igralec več teh hkrati.
+	if player_manager.has_passive("foresight_mirror"):
+		move_highlighter.show_risk_tiles(grid_manager.tiles_reachable_by_two_turns(true))
 	# Item "farsight_lens": kot spyglass spodaj, a NE presekano z valid_moves
 	# te figure - pokaže VSA polja, ki bi jih sovražnik lahko zajel naslednjo
 	# potezo, za katerokoli zavezniško figuro. Prednost pred spyglass (širši
 	# učinek), če ima igralec oba.
-	if player_manager.has_passive("farsight_lens"):
+	elif player_manager.has_passive("farsight_lens"):
 		move_highlighter.show_risk_tiles(grid_manager.tiles_reachable_by(true))
 	# Item "spyglass": obarva podmnožico valid_moves, ki bi jo sovražnik
 	# lahko zajel naslednjo potezo.
@@ -157,6 +162,22 @@ func _compute_risk_tiles(valid_moves: Array[Vector2i]) -> Array[Vector2i]:
 		if target in valid_moves and target not in risky:
 			risky.append(target)
 	return risky
+
+# Item "knight_errant": ali ima "character" na SVOJEM trenutnem polju
+# (pokliči ŠELE PO premiku/zajetju) kakšnega nasprotnika na eni od 8 sosednjih
+# polj (vključno z diagonalami - "adjacent" v brainstorm smislu, ne
+# get_move_directions() te figure).
+func _has_adjacent_enemy(character: BaseCharacter) -> bool:
+	if not is_instance_valid(grid_manager):
+		return false
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var neighbor = grid_manager.get_character_at(character.grid_pos + Vector2i(dx, dy))
+			if neighbor is BaseCharacter and neighbor.is_enemy != character.is_enemy and not neighbor.is_obstacle:
+				return true
+	return false
 
 # Odstrani izbiro in počisti poudarke.
 func _clear_selection():
@@ -337,6 +358,29 @@ func _unhandled_input(event):
 							battle_controller.vicious_knight_used = true
 							battle_controller.add_bonus_move()
 
+						# Item "knight_errant": zajetje s skakačem, ki po njem
+						# pristane sosednje (8 smeri) drugemu sovražniku, podeli
+						# +1 premik - neodvisno od vicious_knights (oba lahko
+						# obenem podelita bonus), omejeno na 1x na potezo (isti
+						# "prepreči neskončno verigo" razlog kot zgoraj).
+						if mover.strName == "knight" and player_manager.has_passive("knight_errant") \
+								and not battle_controller.knight_errant_used_this_turn \
+								and _has_adjacent_enemy(mover):
+							battle_controller.knight_errant_used_this_turn = true
+							battle_controller.add_bonus_move()
+
+						# Item "twin_strike": ista "zajetje pristane sosednje
+						# drugemu sovražniku" ideja kot knight_errant, a za
+						# KATEROKOLI figuro (ne samo skakača) in enkrat NA
+						# BITKO namesto na potezo - lahko sproži OBENEM s
+						# knight_errant/vicious_knights na istem skakačevem
+						# zajetju (trije neodvisni itemi, additivno).
+						if player_manager.has_passive("twin_strike") \
+								and not battle_controller.twin_strike_used_this_battle \
+								and _has_adjacent_enemy(mover):
+							battle_controller.twin_strike_used_this_battle = true
+							battle_controller.add_bonus_move()
+
 						battle_controller.check_battle_end()
 
 					return
@@ -350,13 +394,20 @@ func _unhandled_input(event):
 
 			# C) KLIK NA ZAVEZNIKA (SWITCH SELECTION)
 			else:
+				# Item "decoy": ni prava izbirna figura (glej is_decoy deklaracijo
+				# na base_character.gd) - klik nanjo ne zamenja izbire.
+				if clicked_character.is_decoy:
+					return
 				# Deselektiraj staro figuro in izberi novo
 				_apply_selection(clicked_character)
 				return
 
 		# D) KLIK NA FIGURO, KO NI BILA IZBRANA NOBENA DRUGA
 		else:
-			# Dovolimo izbiro samo IGRALČEVIH figur
+			# Dovolimo izbiro samo IGRALČEVIH, NE-decoy figur - igralec ne sme
+			# povleči/premakniti vabe kot da bi bila prava figura.
+			if clicked_character.is_decoy:
+				return
 			if not clicked_character.is_enemy:
 				_apply_selection(clicked_character)
 				return
