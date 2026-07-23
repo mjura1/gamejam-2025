@@ -604,7 +604,23 @@ func try_move(target: Vector2i) -> bool:
 			return false
 	
 	# 3. Polje je PRAZNO (Navaden premik)
+	var _momentum_origin: Vector2i = grid_pos
 	execute_move(target)
+
+	# Item "momentum": 1x na bitko - zavezniška figura, ki v enem koraku
+	# premakne svoj POLNI doseg (move_range) BREZ zajetja, je "oborožena" za
+	# brezplačno dodatno potezo na NASLEDNJI potezi (restricted-target vzorec,
+	# isti kot vanguards_oath - glej BattleController.momentum_armed_character/
+	# momentum_bonus_character/consume_move_for). Chebyshev razdalja
+	# (maxi(abs dx, abs dy)), ista formula kot iron_pawns-ova "premik za
+	# natanko 1 polje" preverba zgoraj v execute_move().
+	if not is_enemy and is_instance_valid(player_manager) and player_manager.has_passive("momentum") \
+			and is_instance_valid(battle_controller) and not battle_controller.momentum_used_this_battle:
+		var distance: int = maxi(absi(target.x - _momentum_origin.x), absi(target.y - _momentum_origin.y))
+		if distance >= move_range:
+			battle_controller.momentum_used_this_battle = true
+			battle_controller.momentum_armed_character = self
+
 	return true
 
 # ----------------- SMRT IN ZAJETJE (KLJUČNO ZA REVIVE) -----------------

@@ -227,6 +227,13 @@ var vanguards_oath_used_this_battle: bool = false
 var vanguards_oath_armed_character: BaseCharacter = null
 var vanguards_oath_bonus_character: BaseCharacter = null
 
+# Item "momentum": enak "armed this turn -> bonus next turn" restricted-target
+# vzorec kot vanguards_oath zgoraj, a sprožen iz base_character.try_move()
+# (dejanski premik na poln doseg), ne iz start_player_turn() detekcijske zanke.
+var momentum_used_this_battle: bool = false
+var momentum_armed_character: BaseCharacter = null
+var momentum_bonus_character: BaseCharacter = null
+
 # Artefakt "winter_general" (Phase 5b): 1x na bitko, drag-in-poraba brez
 # porabe iz inventarja - isti vzorec kot drillmaster_used_this_battle/
 # frozen_rampart_used_this_battle (glej battle_ui.gd.use_item() poseben primer).
@@ -235,6 +242,15 @@ var winter_general_used_this_battle: bool = false
 # Artefakt "winters_bargain" (Phase 5b): enak "1x na bitko, drag-in-poraba
 # brez porabe iz inventarja" vzorec kot winter_general zgoraj.
 var winters_bargain_used_this_battle: bool = false
+
+# Artefakt "throne_of_frost": enak "1x na bitko, drag-in-poraba brez porabe iz
+# inventarja" vzorec kot winter_general zgoraj - a učinek (king.move_range
+# začasno na kraljičin 8, glej throne_of_frost_item.gd) traja "SAMO to
+# potezo", zato mora nekdo povrniti - ista "traja do naslednjega
+# start_player_turn()" konvencija kot Knight.Evade/spectral_queen, glej
+# uporabo spodaj.
+var throne_of_frost_used_this_battle: bool = false
+var throne_of_frost_active_king: BaseCharacter = null
 
 # Item "time_dilation" (Phase 5b): AKTIVEN samo TO potezo (resetira se v
 # start_player_turn) - dokler je true, base_character.try_move() zavrne
@@ -372,8 +388,13 @@ func initialize_battle():
 	vanguards_oath_used_this_battle = false
 	vanguards_oath_armed_character = null
 	vanguards_oath_bonus_character = null
+	momentum_used_this_battle = false
+	momentum_armed_character = null
+	momentum_bonus_character = null
 	winter_general_used_this_battle = false
 	winters_bargain_used_this_battle = false
+	throne_of_frost_used_this_battle = false
+	throne_of_frost_active_king = null
 	time_dilation_active_this_turn = false
 	moved_this_turn.clear()
 	undying_rank_triggered_this_battle = false
@@ -473,6 +494,11 @@ func start_player_turn():
 	# vzorec kot free_move_character zgoraj, glej consume_move_for spodaj.
 	vanguards_oath_bonus_character = vanguards_oath_armed_character
 	vanguards_oath_armed_character = null
+
+	# Item "momentum": bonus armiran na PREJŠNJI potezi (glej base_character.
+	# try_move()) postane aktiven TO potezo - glej consume_move_for spodaj.
+	momentum_bonus_character = momentum_armed_character
+	momentum_armed_character = null
 
 	# Item "time_dilation": velja SAMO to potezo - obe spodaj se ponastavita
 	# ob vsakem novem začetku igralčeve poteze.
@@ -629,6 +655,13 @@ func start_player_turn():
 	# sovražnikovo potezo, ki se je pravkar iztekla.
 	_clear_expired_evade()
 
+	# Artefakt "throne_of_frost": king.move_range povrnjen na pravi 1 - učinek
+	# je veljal natanko "to potezo" (glej throne_of_frost_item.gd/deklaracijo
+	# zgoraj).
+	if is_instance_valid(throne_of_frost_active_king):
+		throne_of_frost_active_king.move_range = 1
+		throne_of_frost_active_king = null
+
 	# Item "spectral_queen": kraljica je nezajemljiva PRVI 2 potezi bitke -
 	# PONOVNO nastavljeno vsako potezo, dokler turn_count <= 2 (mora priti
 	# TAKOJ PO _clear_expired_evade() zgoraj, ki bi sicer to prepisala nazaj
@@ -679,6 +712,11 @@ func consume_move_for(character: BaseCharacter) -> void:
 	# free_move_character zgoraj, glej vanguards_oath_bonus_character deklaracijo.
 	if character == vanguards_oath_bonus_character:
 		vanguards_oath_bonus_character = null
+		return
+	# Item "momentum": ista "restricted-target free skip" logika kot
+	# vanguards_oath_bonus_character zgoraj, glej deklaracijo.
+	if character == momentum_bonus_character:
+		momentum_bonus_character = null
 		return
 	consume_move()
 

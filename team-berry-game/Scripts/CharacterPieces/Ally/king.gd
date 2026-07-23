@@ -4,8 +4,18 @@ extends BaseCharacter
 # potreben za ponovni spawn ob Heal.
 @onready var battle_root = get_node("..")
 
+# move_range=1 je PRAVI šahovski kralj (glej commit 051d57b "Improved king",
+# ki ga je začasno dvignil na 12 - to je bila strogo boljša premikalna moč od
+# kraljičinega 8, brez ekvivalenta na nobeni drugi figuri, in je throne_of_frost
+# (item "kralj se lahko premakne kot kraljica za TO potezo") naredila
+# neuporabno, glej NEW_ITEMS_WAVE2_PLAN.md/pogovor z Miho - vrnjeno nazaj).
+# ABILITY_RANGE ločeno spodaj: cleanse/heal sta uporabljala move_range tudi
+# kot doseg vida (find_visible_enemies/get_empty_tiles_in_los) - brez ločitve
+# bi se ta doseg skrčil na 1 skupaj s premikom, kar NI bil namen tega popravka.
+const ABILITY_RANGE := 8
+
 func _ready():
-	move_range = 12
+	move_range = 1
 	strName = "king"
 	super._ready()
 
@@ -61,7 +71,7 @@ func _execute_ability(id: String, _target) -> bool:
 # to bitko (glej is_converted_ally in PlayerManager.convert_enemy_to_ally).
 # enemy_count < 0 pomeni "vse" (glej ABILITY_DEFS).
 func _do_cleanse(enemy_count: int) -> bool:
-	var enemies := find_visible_enemies(move_range)
+	var enemies := find_visible_enemies(ABILITY_RANGE)
 	if enemies.is_empty():
 		return false
 
@@ -89,7 +99,7 @@ func _do_heal(revive_count: int) -> bool:
 	var dead: Array = player_manager.dead_party
 	var names: Array = dead.duplicate() if revive_count < 0 else dead.slice(maxi(0, dead.size() - revive_count), dead.size())
 
-	var empty_tiles := get_empty_tiles_in_los(move_range)
+	var empty_tiles := get_empty_tiles_in_los(ABILITY_RANGE)
 	empty_tiles.sort_custom(func(a, b): return grid_pos.distance_to(a) < grid_pos.distance_to(b))
 
 	var revived_any := false

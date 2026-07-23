@@ -7,6 +7,7 @@
 	"quick_step":   {"name": "Quick Step", "description": "One use. Removes the frozen status from one piece and lets it move normally this turn.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"warm_cloak":   {"name": "Warm Cloak", "description": "One use. Protects one piece from ever being frozen by snow for the rest of the battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"salt_the_earth": {"name": "Salt the Earth", "description": "One use. Salt a tile - it can never be covered by fog again for the rest of the battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
+	"trail_rations": {"name": "Trail Rations", "description": "One use. Restores your most recently used-up consumable this battle, so you can use it again.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"night_watch":  {"name": "Night Watch", "description": "One use. Reveals one chosen enemy piece through fog for the rest of the battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 	"decoy":        {"name": "Decoy", "description": "One use. Place a fake piece on an empty tile - the enemy AI always targets it first, but losing it doesn't count as a real casualty.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "consumable"},
 
@@ -43,6 +44,7 @@
 	"footprints":   {"name": "Footprints", "description": "Tiles your pieces have walked on can never be covered by fog again for the rest of the battle.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
 	"tracker":      {"name": "Tracker", "description": "A spotted enemy's last move stays marked on the board until it moves again.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
 	"loyal_pawns":  {"name": "Loyal Pawns", "description": "Once per battle, a capture aimed at a piece next to a friendly pawn lands on the pawn instead.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
+	"cold_resistance": {"name": "Cold Resistance", "description": "Any enemy you freeze stays frozen one turn longer.", "buy_cost": 1, "sell_value": 1, "rarity": "common", "kind": "passive", "stackable": false},
 
 	"castle":       {"name": "Castle", "description": "Your king cannot be captured while a friendly rook has line of sight to him.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
 	"keen_eye":     {"name": "Keen Eye", "description": "Bishops reveal fog along their diagonal path as they move.", "buy_cost": 1, "sell_value": 1, "rarity": "uncommon", "kind": "passive", "stackable": false},
@@ -66,6 +68,7 @@
 	"frostguard_talisman": {"name": "Frostguard Talisman", "description": "The first two times an ally would be frozen by snow each battle, they aren't.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 	"queens_gambit": {"name": "Queen's Gambit", "description": "Once per battle, your queen may capture through blocking pieces - after her next capture, she freezes and can't act next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 	"frozen_vanguard": {"name": "Frozen Vanguard", "description": "The first friendly piece captured each battle is frozen in place instead, and cannot be captured again for the rest of that turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
+	"momentum":     {"name": "Momentum", "description": "Once per battle, a piece that moves its full range without capturing gains a free extra move on your next turn.", "buy_cost": 1, "sell_value": 1, "rarity": "rare", "kind": "passive", "stackable": false},
 
 	"spectral_queen": {"name": "Spectral Queen", "description": "Your queen cannot be captured during the first 2 turns of each battle.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "passive", "stackable": false},
 	"royal_guard":  {"name": "Royal Guard", "description": "Once per battle, if your king would be captured, an adjacent friendly piece is captured in its place instead.", "buy_cost": 1, "sell_value": 1, "rarity": "epic", "kind": "passive", "stackable": false},
@@ -90,5 +93,6 @@
 	"winter_kings_crown": {"name": "Winter King's Crown", "description": "A relic of a forgotten king, said to protect its wearer.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
 	"crown_of_the_long_night": {"name": "Crown of the Long Night", "description": "Surviving a party wipe with Divine Intervention also grants 3 upgrade items.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "reward": 3, "stackable": false},
 	"oracle_glass":       {"name": "Oracle Glass", "description": "Reveals the enemy's actual planned move for the turn, not just the tiles they threaten.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
-	"starlit_vanguard":   {"name": "Starlit Vanguard", "description": "All allies grant an extra move on the first turn of every battle.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}
+	"starlit_vanguard":   {"name": "Starlit Vanguard", "description": "All allies grant an extra move on the first turn of every battle.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false},
+	"throne_of_frost":    {"name": "Throne of Frost", "description": "Once per battle, your king may move like a queen for this turn only.", "buy_cost": 6, "sell_value": 3, "rarity": "legendary", "kind": "artifact", "stackable": false}
 }

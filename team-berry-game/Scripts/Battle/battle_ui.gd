@@ -1201,6 +1201,13 @@ func _rebuild_item_drawer():
 		item_rows.add_child(_build_item_row(id, count))
 		any_shown = true
 
+	# Item "trail_rations": consumable-i porabljeni do 0 TO bitko ostanejo
+	# vidni kot "0x" duh-vrstica (ne vlečljivi) dokler bitka ne konča (glej
+	# PlayerManager.used_up_this_battle).
+	for id in player_manager.used_up_this_battle:
+		item_rows.add_child(_build_item_row(id, 0))
+		any_shown = true
+
 	if not any_shown:
 		var empty := Label.new()
 		empty.text = "NO ITEMS"
@@ -1220,8 +1227,13 @@ func _build_item_row(id: String, count: int) -> Control:
 	var drillmaster_used: bool = id == "drillmaster" and battle_controller.drillmaster_used_this_battle
 	var winter_general_used: bool = id == "winter_general" and battle_controller.winter_general_used_this_battle
 	var winters_bargain_used: bool = id == "winters_bargain" and battle_controller.winters_bargain_used_this_battle
-	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used or winter_general_used or winters_bargain_used
-	if not is_passive and not once_per_battle_used:
+	var throne_of_frost_used: bool = id == "throne_of_frost" and battle_controller.throne_of_frost_used_this_battle
+	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used or winter_general_used or winters_bargain_used or throne_of_frost_used
+	# Item "trail_rations": "0x" duh-vrstica za consumable-e porabljene do 0 to
+	# bitko (glej _rebuild_item_drawer) - ni vlečljiva dokler je ne povrne
+	# trail_rations ali se bitka konča.
+	var is_used_up: bool = count <= 0 and ItemData.get_kind(id) == "consumable"
+	if not is_passive and not once_per_battle_used and not is_used_up:
 		row.gui_input.connect(_on_item_row_input.bind(id))
 
 	var hbox := HBoxContainer.new()
@@ -1247,7 +1259,7 @@ func _build_item_row(id: String, count: int) -> Control:
 		passive_label.add_theme_font_size_override("font_size", 10)
 		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hbox.add_child(passive_label)
-	elif once_per_battle_used:
+	elif once_per_battle_used or is_used_up:
 		var used_label := Label.new()
 		used_label.text = "USED"
 		used_label.add_theme_font_size_override("font_size", 10)
@@ -1368,6 +1380,19 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		if winters_bargain == null or not (winters_bargain.can_use(battle_controller, grid_pos) and winters_bargain.apply(battle_controller, grid_pos)):
 			return false
 		battle_controller.winters_bargain_used_this_battle = true
+		_rebuild_item_drawer()
+		UiAudio.play_click()
+		return true
+
+	# Artefakt "throne_of_frost": isti "1x na bitko, ne porabi se iz
+	# inventarja" vzorec kot winter_general/winters_bargain zgoraj.
+	if id == "throne_of_frost":
+		if not player_manager.has_passive("throne_of_frost") or battle_controller.throne_of_frost_used_this_battle:
+			return false
+		var throne_of_frost: BaseItem = ItemData.create_item(id)
+		if throne_of_frost == null or not (throne_of_frost.can_use(battle_controller, grid_pos) and throne_of_frost.apply(battle_controller, grid_pos)):
+			return false
+		battle_controller.throne_of_frost_used_this_battle = true
 		_rebuild_item_drawer()
 		UiAudio.play_click()
 		return true

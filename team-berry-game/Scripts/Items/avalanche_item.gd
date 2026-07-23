@@ -30,6 +30,6 @@ func apply(battle_controller, _grid_pos: Vector2i) -> bool:
 		var landed: Vector2i = grid_manager.push_character(enemy, PUSH_DIRECTION, PUSH_DISTANCE)
 		var moved: int = absi(landed.y - origin.y)
 		if moved < PUSH_DISTANCE:
-			enemy.effect_frozen_turns = maxi(enemy.effect_frozen_turns, FREEZE_TURNS)
+			enemy.effect_frozen_turns = maxi(enemy.effect_frozen_turns, FREEZE_TURNS + PlayerManager.cold_resistance_bonus())
 			enemy.was_frozen_by_player = true # item "cold_case" (Phase 5b)
 	return true

@@ -37,6 +37,7 @@ const ITEM_SCRIPTS: Dictionary = {
 	"quick_step": preload("res://Scripts/Items/quick_step_item.gd"),
 	"warm_cloak": preload("res://Scripts/Items/warm_cloak_item.gd"),
 	"salt_the_earth": preload("res://Scripts/Items/salt_the_earth_item.gd"),
+	"trail_rations": preload("res://Scripts/Items/trail_rations_item.gd"),
 	"night_watch": preload("res://Scripts/Items/night_watch_item.gd"),
 	"decoy": preload("res://Scripts/Items/decoy_item.gd"),
 	"camp_kit": preload("res://Scripts/Items/camp_kit_item.gd"),
@@ -66,6 +67,9 @@ const ITEM_SCRIPTS: Dictionary = {
 	# Artefakt, ne pravi consumable - glej winters_bargain_item.gd/battle_ui.use_item()
 	# poseben primer (ne porabi se iz inventarja, isti vzorec kot drillmaster).
 	"winters_bargain": preload("res://Scripts/Items/winters_bargain_item.gd"),
+	# Artefakt, ne pravi consumable - glej throne_of_frost_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja, isti vzorec kot winter_general).
+	"throne_of_frost": preload("res://Scripts/Items/throne_of_frost_item.gd"),
 }
 
 var _items: Dictionary = {}

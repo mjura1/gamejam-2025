@@ -42,6 +42,6 @@ func apply(battle_controller, _grid_pos: Vector2i) -> bool:
 		for pos in GridManager.square_radius_tiles(king.grid_pos, RADIUS):
 			var target = grid_manager.get_character_at(pos)
 			if target is BaseCharacter and target.is_enemy and not target.is_obstacle:
-				target.effect_frozen_turns = maxi(target.effect_frozen_turns, FREEZE_TURNS)
+				target.effect_frozen_turns = maxi(target.effect_frozen_turns, FREEZE_TURNS + PlayerManager.cold_resistance_bonus())
 				target.was_frozen_by_player = true # item "cold_case" (Phase 5b)
 	return true

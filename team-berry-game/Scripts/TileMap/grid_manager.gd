@@ -368,7 +368,12 @@ func trigger_trap(character) -> bool:
 	if trap.owner_is_enemy == character.is_enemy:
 		return false
 	trap_tiles.erase(character.grid_pos)
-	character.effect_frozen_turns = maxi(character.effect_frozen_turns, int(trap.freeze_turns))
+	# Item "cold_resistance": +1 samo, če je past IGRALČEVA in je ujela
+	# sovražnika (owner_is_enemy != character.is_enemy preverjeno zgoraj že
+	# zagotavlja to smer, ko je owner_is_enemy false) - obratna smer (sovražnikova
+	# past ujame zaveznika) NE dobi bonusa.
+	var cold_resistance_bonus: int = player_manager.cold_resistance_bonus() if not trap.owner_is_enemy else 0
+	character.effect_frozen_turns = maxi(character.effect_frozen_turns, int(trap.freeze_turns) + cold_resistance_bonus)
 	# Item "cold_case": a player-owned trap catching an enemy (owner_is_enemy
 	# check above already guarantees this branch is player-vs-enemy) counts
 	# as "frozen by the player," even if freeze_turns is 0 for a reveal-only

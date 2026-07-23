@@ -37,6 +37,13 @@ var revive_items: int = 0
 # med runi (glej reset v setStarting()) - enako pravilo kot upgrade_items.
 var owned_items: Dictionary = {}
 
+# Item "trail_rations": consumable-i, ki so bili porabljeni DO NIČ v TEJ bitki
+# (ne preživijo v owned_items, glej remove_item() spodaj) - prikazani v
+# battle_ui-jevem predalu kot "0x" duh-vrstica, dokler bitka ne konča
+# (počiščeno v resetActives()). trail_rations povrne ZADNJI vnos v tem
+# seznamu nazaj v owned_items (glej trail_rations_item.gd).
+var used_up_this_battle: Array[String] = []
+
 # Artefakt "winters_bargain": +1 premik, obljubljen za PRVO potezo NASLEDNJE
 # bitke (torej mora preživeti battle-scene menjavo, ne samo
 # BattleController.initialize_battle() - zato živi tu, na avtoload nivoju, ne
@@ -312,6 +319,7 @@ func resetActives():
 	active_enemies = enemy_party.duplicate()
 	active_party = friendly_party.duplicate()
 	dead_party.clear()
+	used_up_this_battle.clear()
 	party_changed.emit()
 	
 func setStarting(mode: String = "classic") -> void:
@@ -383,11 +391,26 @@ func remove_item(id: String) -> bool:
 	owned_items[id] -= 1
 	if owned_items[id] <= 0:
 		owned_items.erase(id)
+		# Item "trail_rations": consumable-i, ki so ravno padli na 0 med bitko,
+		# ostanejo vidni kot "0x" dokler bitka ne konča (glej used_up_this_battle
+		# deklaracijo zgoraj) - pasivi/artefakti (frozen_rampart, drillmaster ...)
+		# se ne porabljajo iz owned_items na tak način, zato jih ItemData.get_kind
+		# tu izloči.
+		if ItemData.get_kind(id) == "consumable" and id not in used_up_this_battle:
+			used_up_this_battle.append(id)
 	items_changed.emit()
 	return true
 
 func get_item_count(id: String) -> int:
 	return owned_items.get(id, 0)
+
+# Item "cold_resistance": doda +1 na trajanje ZAMRZOVANJA, ki ga igralec
+# povzroči SOVRAŽNIKU (glej vsak "target.effect_frozen_turns = maxi(...)"
+# klic za sovražnika - frost_nova/avalanche/stormcaller/winter_general/
+# trigger_trap). NE velja za zavezniške samo-zamrznitve (frozen_vanguard/
+# queens_gambit), tiste niso "na sovražniku".
+func cold_resistance_bonus() -> int:
+	return 1 if has_passive("cold_resistance") else 0
 
 # Pasivni itemi: aktivni, dokler je v inventarju vsaj 1 kos.
 func has_passive(id: String) -> bool:
