@@ -15,9 +15,18 @@ func _draw():
 	if not is_instance_valid(highlighter) or highlighter.enemy_move_flashes.is_empty():
 		return
 
-	var alpha_mult = highlighter.current_fade_alpha()
+	var global_alpha = highlighter.current_fade_alpha()
+	var tracker_owned: bool = is_instance_valid(highlighter.player_manager) \
+			and highlighter.player_manager.has_passive("tracker")
 
 	for flash in highlighter.enemy_move_flashes:
+		# Item "tracker": "opažena" figura ne izgubi svojega flasha s časom -
+		# glej MoveHighlighter.clear_enemy_moves za "dokler je ne nadomesti nov
+		# premik" polovico istega mehanizma.
+		var character = flash.get("character")
+		var is_tracked: bool = tracker_owned and is_instance_valid(character) and character.has_spotted_player
+		var alpha_mult: float = 1.0 if is_tracked else global_alpha
+
 		# Pot / L-figura (siva)
 		for path_pos in flash["path"]:
 			var path_color: Color = highlighter.PATH_COLOR

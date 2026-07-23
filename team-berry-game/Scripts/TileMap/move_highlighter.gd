@@ -4,6 +4,8 @@ class_name MoveHighlighter
 
 # Referenci na GridManager in velikost celice
 @onready var grid_manager = get_node("../GridManager")
+# Item "tracker": glej flash_enemy_move/clear_enemy_moves spodaj.
+@onready var player_manager = get_node("/root/PlayerManager")
 var cell_size: Vector2 = Vector2.ZERO
 
 # Array veljavnih mrežnih pozicij (Vector2i), ki jih moramo narisati
@@ -148,13 +150,24 @@ func clear_aim():
 	aim_tiles.clear()
 	queue_redraw()
 
-# Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih).
-func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_capture: bool) -> void:
+# Doda eno sovražnikovo potezo v kopičeni seznam (ne briše prejšnjih - VEČ
+# potez ISTE figure v isti sovražnikovi potezi, npr. prekletstvi "frenzy"/
+# "bloodlust", morata ostati LOČENO vidni, glej smoke_curses.gd).
+# "character": item "tracker" - glej clear_enemy_moves/EnemyMoveFlashLayer._draw
+# spodaj. SAMO če je tracker v lasti, najprej odstranimo morebiten OBSTOJEČ
+# pripet flash te iste figure (iz PREJŠNJE poteze) - "drži se do NASLEDNJEGA
+# premika te figure", ne kopiči se v neskončnost. Brez tracker-ja se to
+# nikoli ne sproži, torej obstoječe obnašanje (vse kopičene poteze ostanejo)
+# ostane nespremenjeno.
+func flash_enemy_move(from: Vector2i, to: Vector2i, path: Array[Vector2i], is_capture: bool, character: BaseCharacter = null) -> void:
+	if character != null and is_instance_valid(player_manager) and player_manager.has_passive("tracker"):
+		enemy_move_flashes = enemy_move_flashes.filter(func(f): return f.get("character") != character)
 	enemy_move_flashes.append({
 		"from": from,
 		"to": to,
 		"path": path,
 		"is_capture": is_capture,
+		"character": character,
 	})
 	_flash_layer.queue_redraw()
 
@@ -167,8 +180,20 @@ func start_fade_out(duration: float = 5.0) -> void:
 	fade_duration = duration
 	fade_elapsed = 0.0
 
+# Item "tracker": pasiva - "opažena" (has_spotted_player) sovražnikova zadnja
+# poteza se NE počisti tu kot vse ostale, ampak ostane vidna (glej
+# EnemyMoveFlashLayer._draw za "brez pojemanja" del), dokler je ne nadomesti
+# nov flash_enemy_move() klic za ISTO figuro (glej zgoraj) - preverjeno LIVE
+# (ne shranjeno kot zastavica ob nastanku), da se ne more razsinhronizirati,
+# če igralec pasivo kupi/izgubi sredi bitke.
 func clear_enemy_moves() -> void:
-	enemy_move_flashes.clear()
+	var keep_pinned: bool = is_instance_valid(player_manager) and player_manager.has_passive("tracker")
+	if keep_pinned:
+		enemy_move_flashes = enemy_move_flashes.filter(func(f):
+			var character = f.get("character")
+			return is_instance_valid(character) and character.has_spotted_player)
+	else:
+		enemy_move_flashes.clear()
 	is_fading = false
 	_flash_layer.queue_redraw()
 

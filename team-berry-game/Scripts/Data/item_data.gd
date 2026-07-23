@@ -36,6 +36,9 @@ const ITEM_SCRIPTS: Dictionary = {
 	"smoke_screen": preload("res://Scripts/Items/smoke_screen_item.gd"),
 	"quick_step": preload("res://Scripts/Items/quick_step_item.gd"),
 	"warm_cloak": preload("res://Scripts/Items/warm_cloak_item.gd"),
+	"salt_the_earth": preload("res://Scripts/Items/salt_the_earth_item.gd"),
+	"night_watch": preload("res://Scripts/Items/night_watch_item.gd"),
+	"decoy": preload("res://Scripts/Items/decoy_item.gd"),
 }
 
 var _items: Dictionary = {}

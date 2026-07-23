@@ -131,6 +131,23 @@ var snowshoes_active_this_turn: bool = false
 # Resetira se v initialize_battle().
 var frozen_rampart_used_this_battle: bool = false
 
+# Item "night_watch": vsak označen sovražnik (lahko več, en na uporabo itema)
+# dodatno razkrije SVOJE trenutno polje vsako potezo (glej
+# update_fog_after_turn_start, watchtower-inline vzorec) - drži razkritje za
+# preostanek bitke, tudi če se figura premakne pod svežo meglo. is_instance_valid
+# skrbi za morebitne zajete/mrtve tarče (ostanejo v seznamu, a se preskočijo).
+var night_watch_targets: Array[BaseCharacter] = []
+
+# Item "loyal_pawns": enkrat na bitko - glej base_character.capture().
+var loyal_pawns_used_this_battle: bool = false
+
+# Item "decoy": vsaka postavljena vaba, ki je PREŽIVELA (ni bila zajeta), se
+# odstrani na začetku NASLEDNJE igralčeve poteze (glej start_player_turn) -
+# torej traja natanko skozi eno sovražnikovo potezo, ne dlje. Zajete vabe
+# (die() jih odstrani iz grid_managerja/queue_free-a same) enostavno ne bodo
+# več is_instance_valid, zato jih spodnja zanka preskoči.
+var decoys_active: Array[BaseCharacter] = []
+
 # ----------------- ABILITY REACTIVE STATE (Queen.Exterminate / Queen.Lure) -----------------
 
 # {} kadar ni naborožena, sicer {"tiles": Array[Vector2i], "owner": BaseCharacter, "owner_is_enemy": bool}.
@@ -202,6 +219,9 @@ func initialize_battle():
 	courier = null
 	old_guard_sentry = null
 	frozen_rampart_used_this_battle = false
+	night_watch_targets.clear()
+	loyal_pawns_used_this_battle = false
+	decoys_active.clear()
 	battle_start_enemy_count = player_manager.active_enemies.size()
 
 	# 1. Pridobimo trenutni napredek igralca
@@ -289,6 +309,17 @@ func start_player_turn():
 	abilities_remaining = player_manager.abilities_per_turn
 	vicious_knight_used = false
 	snowshoes_active_this_turn = false
+
+	# Item "decoy": vsaka vaba, ki je preživela do zdaj (ni bila zajeta med
+	# sovražnikovo potezo, ki je pravkar minila), izgine - glej decoys_active
+	# deklaracijo. Vaba, uporabljena MED to isto igralčevo potezo (po tem
+	# klicu), se doda naprej in preživi do NASLEDNJEGA klica te funkcije.
+	for decoy in decoys_active:
+		if is_instance_valid(decoy):
+			if is_instance_valid(grid_manager):
+				grid_manager.vacate(decoy.grid_pos)
+			decoy.queue_free()
+	decoys_active.clear()
 
 	# Queen.Command: neporabljena brezplačna poteza se ne sme prenesti v
 	# naslednjo potezo.
@@ -645,15 +676,16 @@ func _take_enemy_action(character: BaseCharacter) -> bool:
 	if moved:
 		if character.curse:
 			character.curse.on_action_taken(character, self)
-		await _flash_move_and_pause(from_pos, action["target_pos"], is_capture)
+		await _flash_move_and_pause(from_pos, action["target_pos"], is_capture, character)
 	return moved and is_capture
 
 # Prikaže vizualizacijo ene sovražnikove poteze (izvorno/ciljno polje + pot)
-# in počaka kratek premor, preden se izvede naslednja poteza.
-func _flash_move_and_pause(from_pos: Vector2i, to_pos: Vector2i, is_capture: bool) -> void:
+# in počaka kratek premor, preden se izvede naslednja poteza. "character":
+# item "tracker" - glej MoveHighlighter.flash_enemy_move.
+func _flash_move_and_pause(from_pos: Vector2i, to_pos: Vector2i, is_capture: bool, character: BaseCharacter = null) -> void:
 	if is_instance_valid(move_highlighter):
 		var path_tiles = _compute_path_tiles(from_pos, to_pos)
-		move_highlighter.flash_enemy_move(from_pos, to_pos, path_tiles, is_capture)
+		move_highlighter.flash_enemy_move(from_pos, to_pos, path_tiles, is_capture, character)
 
 	await get_tree().create_timer(ENEMY_MOVE_DELAY).timeout
 
@@ -788,6 +820,11 @@ func update_fog_after_turn_start():
 				continue
 			for enemy in character.find_visible_enemies(character.move_range):
 				reveal_positions.append(enemy.grid_pos)
+
+	# Item "night_watch": glej night_watch_targets deklaracijo zgoraj.
+	for target in night_watch_targets:
+		if is_instance_valid(target):
+			reveal_positions.append(target.grid_pos)
 
 	grid_manager.reveal_area(reveal_positions)
 

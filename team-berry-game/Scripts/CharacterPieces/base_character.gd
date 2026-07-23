@@ -159,6 +159,15 @@ var is_hidden: bool = false
 # nastavitev, snow_trapped_turns pa še vedno šteje).
 var is_freeze_immune: bool = false
 
+# Item "decoy": ta figura je vaba, ne prava zavezniška figura - resnično
+# zajemljiva (za razliko od is_obstacle, ki calculate_valid_targets izključi
+# iz zajetja, glej tam), a die() jo NE prijavi v dead_party/battle-points
+# (glej die() spodaj), map_behaviour.gd je ne pusti izbrati/premakniti kot
+# pravo figuro, calculate_best_move() jo AI-ju vedno ponudi PRVO za zajetje
+# (glej tam), in BattleController jo ob naslednjem start_player_turn()
+# odstrani, če je preživela (glej decoys_active).
+@export var is_decoy: bool = false
+
 # ----------------- audio -----------------------
 @onready var move_sound: AudioStreamPlayer = get_node_or_null("MoveSound")
 @onready var take_sound: AudioStreamPlayer = get_node_or_null("TakeSound")
@@ -406,6 +415,12 @@ func execute_move(target: Vector2i):
 	if not is_enemy and is_instance_valid(grid_manager):
 		grid_manager.reveal_area([grid_pos])
 
+		# Pasiva "footprints": pristajalno polje ostane trajno zaščiteno pred
+		# prekletstveno meglo za preostanek bitke (glej GridManager.footprint_tile -
+		# nižja prioriteta od item "salt_the_earth", glej tam).
+		if is_instance_valid(player_manager) and player_manager.has_passive("footprints"):
+			grid_manager.footprint_tile(grid_pos)
+
 		# Item "snowshoes": za TO potezo se sneg stopi na vsakem polju, ki ga
 		# figura prečka na poti (ne samo na pristajalnem polju) - deli pot
 		# BattleController._compute_path_tiles uporablja tudi za vizualizacijo
@@ -489,6 +504,8 @@ func die():
 		player_manager.remove_converted_ally("friendly_" + strName)
 	elif is_enemy:
 		player_manager.register_dead_character("enemy_" + strName)
+	elif is_decoy:
+		pass # Item "decoy": ni prava figura - NE prijavi v dead_party/scoring.
 	else:
 		player_manager.register_dead_character("friendly_" + strName)
 
@@ -501,7 +518,20 @@ func die():
 # Logika zajetja tarče in premika napadalca na tarčino polje
 func capture(target: BaseCharacter):
 	print("Izvajam zajetje tarče...")
-	
+
+	# Item "loyal_pawns": sovražnikovo zajetje zavezniške figure se, 1x na
+	# bitko, preusmeri na sosednjega zavezniškega pešca - napadalec pristane
+	# NA PEŠCU (ne na prvotni tarči), ki torej preživi (isti vzorec kot
+	# royal_guard/iron_resolve - substitucija PRED "shranimo pozicijo tarče"
+	# spodaj, ostanek funkcije potem deluje na substitutu brez sprememb).
+	if is_enemy and not target.is_enemy and not target.is_obstacle \
+			and is_instance_valid(player_manager) and player_manager.has_passive("loyal_pawns") \
+			and is_instance_valid(battle_controller) and not battle_controller.loyal_pawns_used_this_battle:
+		var substitute := _find_adjacent_pawn(target)
+		if substitute:
+			battle_controller.loyal_pawns_used_this_battle = true
+			target = substitute
+
 	# KRITIČNO: Shranimo pozicijo tarče, preden jo uničimo
 	var target_pos = target.grid_pos
 	
@@ -512,6 +542,18 @@ func capture(target: BaseCharacter):
 	# 2. Premik napadalca na tarčino zdaj prosto polje
 	# Klic execute_move zdaj poskrbi tudi za posodobitev FOG OF WAR
 	execute_move(target_pos)
+
+# Item "loyal_pawns": prvi zavezniški pešec (ne sama "piece", ne ovira) na
+# enem od 4 ortogonalnih sosednjih polj od "piece" - null, če ga ni.
+func _find_adjacent_pawn(piece: BaseCharacter) -> BaseCharacter:
+	if not is_instance_valid(grid_manager):
+		return null
+	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var neighbor = grid_manager.get_character_at(piece.grid_pos + offset)
+		if neighbor and neighbor is BaseCharacter and not neighbor.is_enemy \
+				and not neighbor.is_obstacle and neighbor.strName == "pawn" and neighbor != piece:
+			return neighbor
+	return null
 
 
 # ----------------- AI LOGIKA (POPRAVLJENA) -----------------
@@ -912,6 +954,16 @@ func calculate_best_move() -> Dictionary:
 			continue # skip any obstacle entirely
 		if target_char and target_char.is_enemy != is_enemy and not target_char.is_hidden:
 			capture_candidates.append(pos)
+
+	# Item "decoy": če je vaba med kandidati za zajetje, jo AI izbere PRVO -
+	# to je bistvo itema ("target it over a real piece") - enako za VSAKO
+	# težavnostno stopnjo, saj ta veja povozi strategy.choose_action() spodaj,
+	# ne glede na katero strategijo (heuristika ali minimax) izbere
+	# settings_manager.ai_difficulty.
+	for pos in capture_candidates:
+		var candidate_char = grid_manager.get_character_at(pos)
+		if candidate_char and candidate_char.is_decoy:
+			return {"move_type": "CAPTURE", "target_pos": pos}
 
 	var strategy = ai_strategy_data.get_strategy(settings_manager.ai_difficulty)
 	var action: Dictionary = strategy.choose_action(self, {

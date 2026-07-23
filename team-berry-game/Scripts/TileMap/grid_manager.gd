@@ -279,6 +279,7 @@ func clear_all_fog():
 		_remove_fog_tile(pos)
 	fog_nodes.clear()
 	ravens_eye_cleared.clear()
+	protected_tiles.clear()
 	
 # Ustvari vozlišče megle na določeni mreži
 func _spawn_fog_tile(grid_pos: Vector2i):
@@ -311,6 +312,33 @@ func _remove_fog_tile(grid_pos: Vector2i):
 # BattleController.initialize_battle()). Prazen slovar, če item ni v lasti.
 var ravens_eye_cleared: Dictionary = {}
 
+# Wave 2 items "salt_the_earth"/"footprints": polja, ki jih cover_area_curse
+# spodaj (EDINA dejansko poklicana re-fog pot - prekletstva, "cover_area" brez
+# "_curse" nima trenutno nobenega klicatelja) ne sme nikoli znova pokriti.
+# pos -> priority int: salt_the_earth (enkraten item) doda PROTECT_SALT,
+# footprints (pasiva, vsak zavezniški premik) doda nižji PROTECT_FOOTPRINTS.
+# Trenutno oba nivoja dejansko enako blokirata cover_area_curse (nič v tej
+# igri (še) ne loči "šibkega" od "močnega" prekletstva) - shranjena številka
+# pusti prostor za prihodnjo diferenciacijo namesto golega bool-a. Ločeno od
+# ravens_eye_cleared zgoraj (tisto je vezano na artefakt in umetno omejeno na
+# "kar je bilo kdaj razkrito" - to je namensko, per-tile postavljeno).
+var protected_tiles: Dictionary = {}
+const PROTECT_FOOTPRINTS := 1
+const PROTECT_SALT := 2
+
+# Item "salt_the_earth": trajno (za preostanek bitke) zaščiti eno polje pred
+# cover_area_curse in ga takoj razkrije (če je bilo ravno pod meglo).
+func salt_tile(pos: Vector2i) -> void:
+	protected_tiles[pos] = PROTECT_SALT
+	reveal_area([pos])
+
+# Pasiva "footprints": zaščiti polje z NIŽJO prioriteto od salt_the_earth -
+# ne prepiše obstoječe (višje) salt-zaščite na istem polju. Ne razkriva samo
+# (kliče ga execute_move(), ki polje itak razkrije v istem koraku).
+func footprint_tile(pos: Vector2i) -> void:
+	if protected_tiles.get(pos, 0) < PROTECT_FOOTPRINTS:
+		protected_tiles[pos] = PROTECT_FOOTPRINTS
+
 # Klicano s strani BattleControllerja za razkrivanje območja - odstrani OBA
 # sistema megle (ambientno in prekletstveno), da so vsa "clear snow" mesta
 # (figure, predmeti, pasivke) resnično dosledna z opisi, ki jih obljubljajo.
@@ -330,7 +358,7 @@ func reveal_area(positions_to_reveal):
 # namerno, brez posebne izjeme.
 func cover_area(positions_to_cover) -> void:
 	for pos in positions_to_cover:
-		if ravens_eye_cleared.has(pos):
+		if ravens_eye_cleared.has(pos) or protected_tiles.has(pos):
 			continue
 		_spawn_fog_tile(pos)
 
@@ -408,7 +436,7 @@ func cover_area_curse(positions_to_cover, ticks_per_stage: int = 1, color: Color
 	for pos in positions_to_cover:
 		if curse_fog_nodes.has(pos):
 			continue
-		if ravens_eye_cleared.has(pos):
+		if ravens_eye_cleared.has(pos) or protected_tiles.has(pos):
 			continue
 		var fog_node = FOG_TILE_SCENE.instantiate()
 		fog_node.position = grid_to_world(pos)

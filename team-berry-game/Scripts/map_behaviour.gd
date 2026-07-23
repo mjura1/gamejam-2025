@@ -350,13 +350,20 @@ func _unhandled_input(event):
 
 			# C) KLIK NA ZAVEZNIKA (SWITCH SELECTION)
 			else:
+				# Item "decoy": ni prava izbirna figura (glej is_decoy deklaracijo
+				# na base_character.gd) - klik nanjo ne zamenja izbire.
+				if clicked_character.is_decoy:
+					return
 				# Deselektiraj staro figuro in izberi novo
 				_apply_selection(clicked_character)
 				return
 
 		# D) KLIK NA FIGURO, KO NI BILA IZBRANA NOBENA DRUGA
 		else:
-			# Dovolimo izbiro samo IGRALČEVIH figur
+			# Dovolimo izbiro samo IGRALČEVIH, NE-decoy figur - igralec ne sme
+			# povleči/premakniti vabe kot da bi bila prava figura.
+			if clicked_character.is_decoy:
+				return
 			if not clicked_character.is_enemy:
 				_apply_selection(clicked_character)
 				return
