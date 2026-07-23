@@ -1,3 +1,36 @@
+# Winter March — Treasure chest rework for the item room → features/treasure-chest (awaiting review)
+
+The map's `item` room no longer resolves invisibly (`add_upgrade_items(2)` with
+no scene change). Clicking it now opens a dedicated Treasure scene with a
+clickable chest; opening the chest rolls loot and shows a reveal screen
+listing everything obtained.
+
+- **Artifacts**: a new item `kind` (`artifact`), chest-exclusive (the shop's
+  `roll_shop_stock` now filters artifacts out via a kind-aware
+  `get_ids_by_rarity_and_kinds`). Two new rarity tiers, `epic`/`legendary`,
+  ship alongside it. 4 starter artifacts: `lucky_charm` (luck), `prospectors_pick`
+  (mirrors `bounty`'s mark-an-enemy/first-death-reward mechanism), and two
+  intentionally inert flavor items (`frostbite_ward`, `winter_kings_crown`).
+- **Rarity scales with map progress**: `ItemData.get_treasure_rarity_weights(tier)`
+  reads a new `GameParameters/treasure_config.json`, clamped the same way
+  `MapGenerator._configure_tier()` already clamps tier (so Infinite mode keeps
+  tier-2 odds past tier 2).
+- **Luck**: `PlayerManager.get_luck()`, a run-scoped sum of owned items'
+  `luck_bonus`. Higher luck grants more reroll attempts (best-of-N, advantage-style)
+  on rarity and more bonus items per chest, both capped and tunable via
+  `treasure_config.json`.
+- `PlayerManager.has_passive()` now also recognizes `artifact`-kind items —
+  pure widen, every existing caller keys off a specific hardcoded id so this
+  changes nothing for them.
+- `ItemData.RARITY_COLORS`/`get_rarity_color()` centralized out of
+  `ShopBuyPanel.gd`'s local copy (which didn't know about the two new
+  rarities) — the reveal screen and the shop buy panel now share one table.
+- New tests: `tests/unit/test_treasure_roll.gd` (determinism, luck→count/rarity
+  scaling, tier clamping, empty-rarity safety, shop-exclusion), a handful of
+  `get_luck()`/artifact-`has_passive` cases added to `test_player_manager.gd`,
+  and `tests/smoke/smoke_treasure_flow.gd` (full map → chest → reveal → map
+  loop through the real UI).
+
 # Winter March — GDScript warning cleanup + missing project icon → fix/gdscript-warnings (awaiting review)
 
 New branch `fix/gdscript-warnings` (NOT merged — left for review): every
