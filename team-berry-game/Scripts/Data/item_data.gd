@@ -25,6 +25,14 @@ const ITEM_SCRIPTS: Dictionary = {
 	"extra_move": preload("res://Scripts/Items/extra_move_item.gd"),
 	"barricade": preload("res://Scripts/Items/barricade_item.gd"),
 	"flare": preload("res://Scripts/Items/flare_item.gd"),
+	"snowshoes": preload("res://Scripts/Items/snowshoes_item.gd"),
+	"warhorn": preload("res://Scripts/Items/warhorn_item.gd"),
+	"bastion": preload("res://Scripts/Items/bastion_item.gd"),
+	"wildfire_flare": preload("res://Scripts/Items/wildfire_flare_item.gd"),
+	"aurora_flare": preload("res://Scripts/Items/aurora_flare_item.gd"),
+	# Artefakt, ne consumable - glej frozen_rampart_item.gd/battle_ui.use_item()
+	# poseben primer (ne porabi se iz inventarja).
+	"frozen_rampart": preload("res://Scripts/Items/frozen_rampart_item.gd"),
 }
 
 var _items: Dictionary = {}
