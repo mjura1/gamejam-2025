@@ -13,11 +13,29 @@ extends CanvasLayer
 @onready var piece_list: VBoxContainer = %PieceList
 @onready var back_button: Button = %BackButton
 
+# Prodaja figure sproži OBA signala (party_changed IN items_changed, glej
+# PlayerManager.try_sell_active_piece/try_sell_reserve_piece) - brez debounca
+# bi to podrlo/zgradilo cel item_list+piece_list dvakrat na en klik.
+# call_deferred zbere oba klica v enega ob koncu frame-a.
+var _refresh_pending := false
+
 
 func _ready():
-	player_manager.items_changed.connect(_refresh)
-	player_manager.party_changed.connect(_refresh)
+	player_manager.items_changed.connect(_request_refresh)
+	player_manager.party_changed.connect(_request_refresh)
 	back_button.pressed.connect(close_menu)
+	_refresh()
+
+
+func _request_refresh():
+	if _refresh_pending:
+		return
+	_refresh_pending = true
+	call_deferred("_do_refresh")
+
+
+func _do_refresh():
+	_refresh_pending = false
 	_refresh()
 
 

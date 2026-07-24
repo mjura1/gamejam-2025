@@ -28,9 +28,29 @@ var legacy_points: int = 0
 # PlayerManager - to je TRAJNO stanje, ne resetira se v setStarting().
 var upgrade_levels: Dictionary = {}
 
+# save_progress() used to call ConfigFile.save() synchronously on the calling
+# thread (main thread, e.g. mid legacy-shop button click) - a blocking disk
+# write on every single purchase, a guaranteed frame hitch on a slow/busy
+# disk. Now offloaded to a worker thread; _save_pending covers a purchase
+# landing while a save is still in flight (queues one more flush instead of
+# losing/racing it - see save_progress()/_on_save_finished() below).
+var _save_thread: Thread = null
+var _save_pending: bool = false
+
 
 func _ready():
 	load_progress()
+
+
+# Igralec lahko zapre igro (OS-close ALI "Quit to desktop" ALI headless
+# --quit-after) takoj po nakupu, preden se ozadnja nit zaključi. _exit_tree()
+# pride ob VSAKI poti izklopa (za razliko od NOTIFICATION_WM_CLOSE_REQUEST, ki
+# pride samo ob OS-close - preverjeno: get_tree().quit() ga NE sproži), zato
+# tu počakamo (join) namesto da tvegamo izgubljen zadnji save ali opozorilo o
+# nezaključeni niti.
+func _exit_tree() -> void:
+	if _save_thread != null:
+		_save_thread.wait_to_finish()
 
 
 func mark_tutorial_skipped() -> void:
@@ -124,10 +144,44 @@ func load_progress():
 
 
 func save_progress():
+	_save_pending = true
+	if _save_thread == null or not _save_thread.is_alive():
+		_start_save_thread()
+
+
+# Snapshot je vzet TU (glavna nit) preden karkoli gre v ozadje - upgrade_levels
+# se sicer lahko spremeni pred zaključkom pisanja na disk.
+func _start_save_thread():
+	_save_pending = false
+	var snapshot := {
+		"tutorial_seen": tutorial_seen,
+		"tutorial_reward_granted": tutorial_reward_granted,
+		"final_boss_beaten": final_boss_beaten,
+		"legacy_points": legacy_points,
+		"upgrade_levels": upgrade_levels.duplicate(),
+	}
+	if _save_thread != null:
+		_save_thread.wait_to_finish()
+	_save_thread = Thread.new()
+	_save_thread.start(_write_snapshot.bind(snapshot))
+
+
+# Teče v ozadnji niti - SAMO ConfigFile + disk, brez dostopa do scene/node
+# stanja (ni thread-varno).
+func _write_snapshot(snapshot: Dictionary):
 	var cfg := ConfigFile.new()
-	cfg.set_value(SECTION, "tutorial_seen", tutorial_seen)
-	cfg.set_value(SECTION, "tutorial_reward_granted", tutorial_reward_granted)
-	cfg.set_value(SECTION, "final_boss_beaten", final_boss_beaten)
-	cfg.set_value(SECTION, "legacy_points", legacy_points)
-	cfg.set_value(SECTION, "upgrade_levels", upgrade_levels)
+	cfg.set_value(SECTION, "tutorial_seen", snapshot["tutorial_seen"])
+	cfg.set_value(SECTION, "tutorial_reward_granted", snapshot["tutorial_reward_granted"])
+	cfg.set_value(SECTION, "final_boss_beaten", snapshot["final_boss_beaten"])
+	cfg.set_value(SECTION, "legacy_points", snapshot["legacy_points"])
+	cfg.set_value(SECTION, "upgrade_levels", snapshot["upgrade_levels"])
 	cfg.save(SAVE_PATH)
+	call_deferred("_on_save_finished")
+
+
+# call_deferred iz ozadnje niti nazaj na glavno nit (Godot to dovoli in je
+# edini varen način komunikacije nazaj). Če je medtem prispel še en nakup
+# (_save_pending), sprožimo še en flush - zajame najnovejše stanje.
+func _on_save_finished():
+	if _save_pending:
+		_start_save_thread()

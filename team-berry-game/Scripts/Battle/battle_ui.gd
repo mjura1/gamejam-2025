@@ -1273,6 +1273,13 @@ func _on_item_toggle_pressed():
 
 
 func _rebuild_item_grid():
+	# items_changed fires on every item pickup/use during battle regardless of
+	# whether this grid is even visible - skip the rebuild while closed.
+	# _on_item_toggle_pressed() already rebuilds explicitly on open (it sets
+	# _item_view_open true before calling this), so state is never stale.
+	if not _item_view_open:
+		return
+
 	for child in item_grid.get_children():
 		child.queue_free()
 

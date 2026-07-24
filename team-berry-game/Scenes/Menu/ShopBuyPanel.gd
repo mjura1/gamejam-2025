@@ -14,10 +14,27 @@ extends CanvasLayer
 
 var stock: Array = []
 
+# Nakup + slot["sold"] oboje sprožita _refresh() (items_changed signal PA
+# eksplicitni klic spodaj) - brez debounca bi to podrlo/zgradilo cel seznam
+# dvakrat na en klik. call_deferred zbere oba klica v enega ob koncu frame-a.
+var _refresh_pending := false
+
 
 func _ready():
-	player_manager.items_changed.connect(_refresh)
+	player_manager.items_changed.connect(_request_refresh)
 	back_button.pressed.connect(close_menu)
+	_refresh()
+
+
+func _request_refresh():
+	if _refresh_pending:
+		return
+	_refresh_pending = true
+	call_deferred("_do_refresh")
+
+
+func _do_refresh():
+	_refresh_pending = false
 	_refresh()
 
 
@@ -69,13 +86,14 @@ func _build_item_row(slot: Dictionary) -> Control:
 		button.text = "BUY (%d)" % cost
 		button.disabled = player_manager.upgrade_items < cost
 		button.pressed.connect(func():
-			# try_buy_item() emits items_changed (-> _refresh()) internally,
-			# BEFORE returning here - so slot.sold must be set and the panel
-			# re-refreshed explicitly, or the SOLD state only shows up on the
-			# panel's next unrelated refresh.
+			# try_buy_item() emits items_changed (-> _request_refresh())
+			# internally, BEFORE returning here - so slot.sold must be set
+			# and refresh re-requested explicitly, or the SOLD state only
+			# shows up on the panel's next unrelated refresh. Both requests
+			# coalesce into one rebuild via the debounce above.
 			if player_manager.try_buy_item(id):
 				slot["sold"] = true
-				_refresh()
+				_request_refresh()
 		)
 	row.add_child(button)
 

@@ -12,6 +12,13 @@ extends CanvasLayer
 @onready var type_list: VBoxContainer = %TypeList
 @onready var back_button: Button = %BackButton
 
+# Cache za _refresh(): dokler se _owned_types() ne spremeni (nov tip figure),
+# posodobimo obstoječe gumbe na mestu namesto da vso drevo podremo in znova
+# zgradimo - polni rebuild ob vsakem nakupu (queue_free + realloc ~70 Controlov
+# + re-theme) je opazno zatikal UI.
+var _built_types: Array[String] = []
+var _buttons: Dictionary = {}  # "piece_type:node_id" -> Button
+
 # Vrstni red prikaza; prikažejo se samo tipi, ki jih igralec dejansko ima.
 const TYPE_ORDER := ["pawn", "knight", "rook", "bishop", "queen", "king"]
 
@@ -64,10 +71,18 @@ func _get_ability_defs(piece_type: String) -> Array:
 func _refresh():
 	items_label.text = "UPGRADE ITEMS: x%d" % player_manager.upgrade_items
 
-	for child in type_list.get_children():
-		child.queue_free()
-	for piece_type in _owned_types():
-		type_list.add_child(_build_type_row(piece_type))
+	var current_types := _owned_types()
+	if current_types != _built_types:
+		for child in type_list.get_children():
+			child.queue_free()
+		_buttons.clear()
+		for piece_type in current_types:
+			type_list.add_child(_build_type_row(piece_type))
+		_built_types = current_types
+	else:
+		for key in _buttons:
+			var parts := (key as String).split(":")
+			_apply_button_state(_buttons[key], parts[0], parts[1])
 
 
 func _build_type_row(piece_type: String) -> Control:
@@ -109,11 +124,21 @@ func _build_column(piece_type: String, header: String, node_ids: Array, defs: Ar
 
 func _build_node_button(piece_type: String, node_id: String, defs: Array) -> Button:
 	var node_def: Dictionary = SkillTreeData.get_node_def(piece_type, node_id)
-	var node_name: String = node_def.get("name", "-")
-	var cost: int = int(node_def.get("cost", 0))
-
 	var button := Button.new()
 	button.tooltip_text = _node_tooltip(node_def, defs)
+	button.pressed.connect(func(): player_manager.try_buy_node(piece_type, node_id))
+	_apply_button_state(button, piece_type, node_id)
+	_buttons["%s:%s" % [piece_type, node_id]] = button
+	return button
+
+
+# Nastavi text/disabled glede na trenutno stanje - klicano ob gradnji gumba IN
+# ob vsakem _refresh() ko se _owned_types() ni spremenil (gl. _refresh()).
+# pressed handler ostane isti Callable ves čas, se poveže samo enkrat ob gradnji.
+func _apply_button_state(button: Button, piece_type: String, node_id: String) -> void:
+	var node_def: Dictionary = SkillTreeData.get_node_def(piece_type, node_id)
+	var node_name: String = node_def.get("name", "-")
+	var cost: int = int(node_def.get("cost", 0))
 
 	if player_manager.has_tree_node(piece_type, node_id):
 		button.text = "✔ %s" % node_name
@@ -130,9 +155,6 @@ func _build_node_button(piece_type: String, node_id: String, defs: Array) -> But
 	else:
 		button.text = "%s (%d)" % [node_name, cost]
 		button.disabled = false
-		button.pressed.connect(func(): player_manager.try_buy_node(piece_type, node_id))
-
-	return button
 
 
 func _requirements_met(piece_type: String, node_def: Dictionary) -> bool:
