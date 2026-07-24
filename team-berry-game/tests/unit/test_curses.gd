@@ -223,3 +223,46 @@ func test_bloodlust_has_very_low_weight():
 	# original 3 curses (snowfall=40/frenzy=30/stunning_gaze=30).
 	assert_true(CurseData.get_weight("bloodlust") < CurseData.get_weight("snowfall"),
 		"bloodlust should be rarer than the baseline curses")
+
+func test_bloodlust_max_bonus_actions_scales_with_difficulty():
+	var easy: int = CurseData.get_param_by_difficulty("bloodlust", "max_bonus_actions", -1, "easy")
+	var normal: int = CurseData.get_param_by_difficulty("bloodlust", "max_bonus_actions", -1, "normal")
+	var hard: int = CurseData.get_param_by_difficulty("bloodlust", "max_bonus_actions", -1, "hard")
+	assert_true(easy < normal and normal < hard,
+		"bloodlust's chain-capture limit should grow with difficulty (easy=%d normal=%d hard=%d)" % [easy, normal, hard])
+
+func test_get_param_by_difficulty_falls_back_to_base_field_then_default():
+	# fey_step has no "blink_chance_by_difficulty" override - any difficulty
+	# should fall back to the plain "blink_chance" field.
+	var base: float = CurseData.get_param("fey_step", "blink_chance", -1.0)
+	assert_eq(CurseData.get_param_by_difficulty("fey_step", "blink_chance", -1.0, "hard"), base,
+		"missing per-difficulty override should fall back to the base field")
+	assert_eq(CurseData.get_param_by_difficulty("fey_step", "no_such_key", -7.0, "hard"), -7.0,
+		"missing field entirely should fall back to the provided default")
+
+func test_snow_curse_ids_include_snowfall_and_contagion():
+	var ids: Array = CurseData.get_snow_curse_ids()
+	assert_true("snowfall" in ids and "contagion" in ids,
+		"snow_curse_ids should list the curses the snow-stacking cap applies to")
+
+func test_get_snow_curse_cap_increases_with_difficulty_below_uncap_tier():
+	var easy: int = CurseData.get_snow_curse_cap("easy", 0)
+	var hard: int = CurseData.get_snow_curse_cap("hard", 0)
+	assert_true(easy >= 0 and hard >= 0 and easy <= hard,
+		"snow curse cap should be present and non-decreasing from easy to hard below the uncap tier")
+
+func test_get_snow_curse_cap_uncapped_past_configured_tier():
+	# Use the configured uncap tier directly rather than a hardcoded number, so
+	# this test tracks GameParameters/curses.json instead of duplicating it.
+	var configured_uncap: int = CurseData._config.get("snow_curse_cap_uncap_at_tier", -1)
+	assert_true(configured_uncap >= 0, "snow_curse_cap_uncap_at_tier should be configured")
+	assert_eq(CurseData.get_snow_curse_cap("easy", configured_uncap), -1,
+		"snow curse cap should be removed at/above the configured uncap tier")
+
+func test_roll_curse_for_respects_extra_excluded_ids():
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	for i in range(50):
+		var id := CurseData.roll_curse_for("pawn", rng, "normal", ["snowfall", "contagion"])
+		assert_true(id != "snowfall" and id != "contagion",
+			"roll_curse_for should never return an id passed in extra_excluded_ids")

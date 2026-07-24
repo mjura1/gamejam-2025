@@ -169,17 +169,30 @@ func _apply_curses(enemies: Array) -> void:
 		king_enemy.apply_curse(CurseData.create_curse("blizzard"))
 		min_count = maxi(0, min_count - 1)
 
+	# Snow curse cap (config.snow_curse_cap_by_difficulty / snow_curse_ids /
+	# snow_curse_cap_uncap_at_tier, glej CurseData.get_snow_curse_cap) - koliko
+	# snowfall/contagion-stila prekletstev sme pasti v TEJ bitki, preden se
+	# tovrstni ids izločijo iz nadaljnjih metov (ostala prekletstva se še vedno
+	# lahko dobijo). -1 = brez omejitve.
+	var snow_curse_ids: Array = CurseData.get_snow_curse_ids()
+	var snow_curse_cap: int = CurseData.get_snow_curse_cap(difficulty, current_map_tier)
+	var snow_curse_count := 0
+
 	roll_pool.shuffle()
 	for i in range(roll_pool.size()):
 		var enemy = roll_pool[i]
+		var snow_capped: bool = snow_curse_cap >= 0 and snow_curse_count >= snow_curse_cap
+		var excluded_ids: Array = snow_curse_ids if snow_capped else []
 		if i < min_count:
-			_curse_enemy(enemy, difficulty) # zajamčeno mesto - prekletstvo ne glede na met
+			if _curse_enemy(enemy, difficulty, excluded_ids) in snow_curse_ids:
+				snow_curse_count += 1
 		elif CurseData.should_curse(current_floor, randf(), difficulty, current_map_tier):
-			_curse_enemy(enemy, difficulty) # bonus met nad zajamčenim minimumom
+			if _curse_enemy(enemy, difficulty, excluded_ids) in snow_curse_ids:
+				snow_curse_count += 1
 
-func _curse_enemy(enemy, difficulty: String = "normal") -> bool:
-	var curse_id := CurseData.roll_curse_for(enemy.strName, null, difficulty)
+func _curse_enemy(enemy, difficulty: String = "normal", extra_excluded_ids: Array = []) -> String:
+	var curse_id := CurseData.roll_curse_for(enemy.strName, null, difficulty, extra_excluded_ids)
 	if curse_id == "":
-		return false
+		return ""
 	enemy.apply_curse(CurseData.create_curse(curse_id))
-	return true
+	return curse_id

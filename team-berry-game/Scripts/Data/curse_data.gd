@@ -82,6 +82,37 @@ func get_excluded_pieces(id: String, difficulty: String = "normal") -> Array:
 	var overrides: Dictionary = curse.get("excluded_pieces_by_difficulty", {})
 	return overrides.get(difficulty, curse.get("excluded_pieces", []))
 
+# Generic version of the weight_by_difficulty/excluded_pieces_by_difficulty fallback
+# pattern above, for any other curse param a difficulty needs to override (e.g.
+# bloodlust's "max_bonus_actions_by_difficulty" - see GameParameters/curses.json).
+# Missing "<key>_by_difficulty" dict, or missing entry for this difficulty, falls
+# back to the plain "<key>" field, then to default - same as get_param().
+func get_param_by_difficulty(id: String, key: String, default, difficulty: String = "normal"):
+	var curse: Dictionary = _curses.get(id, {})
+	var overrides: Dictionary = curse.get(key + "_by_difficulty", {})
+	return overrides.get(difficulty, curse.get(key, default))
+
+# Curse ids that cover tiles in snow (GameParameters/curses.json config.snow_curse_ids) -
+# used by get_snow_curse_cap/battle.gd to cap how many of THESE SPECIFIC curses can
+# stack in one battle, separately from each curse's own weight.
+func get_snow_curse_ids() -> Array:
+	return _config.get("snow_curse_ids", [])
+
+# How many snow_curse_ids curses (see above) are allowed in a single battle.
+# -1 = no cap. Miha's playtesting found stacked snow curses (e.g. snowfall +
+# contagion both covering tiles at once) overwhelming even after
+# weight_by_difficulty made each individually rarer on low difficulty (see
+# winter-march-enemy-curses-plan memory, 2026-07-24 rebalance). Capped per
+# config.snow_curse_cap_by_difficulty; the cap is REMOVED (-1) once
+# current_map_tier reaches config.snow_curse_cap_uncap_at_tier, so late/infinite
+# runs - where the player is expected to be stronger - can stack them freely again.
+func get_snow_curse_cap(difficulty: String = "normal", current_map_tier: int = 0) -> int:
+	var uncap_at: int = _config.get("snow_curse_cap_uncap_at_tier", -1)
+	if uncap_at >= 0 and current_map_tier >= uncap_at:
+		return -1
+	var caps: Dictionary = _config.get("snow_curse_cap_by_difficulty", {})
+	return caps.get(difficulty, -1)
+
 # min_floor je zdaj PO MAPNEM NIVOJU (GameParameters/curses.json config.tier_min_floor -
 # array, indeksiran kot tier_curse_chance_mult/MapGenerator.TIER_CONFIGS: 0/1/2 = Tier 0/1/2).
 # Nižja vrednost = prekletstva se pojavijo prej (pri manjši globini sobe). Za tier NAD
@@ -211,7 +242,10 @@ func create_curse(id: String) -> BaseCurse:
 # ItemData.roll_shop_stock. difficulty izbere weight_by_difficulty/
 # excluded_pieces_by_difficulty override (glej get_weight/get_excluded_pieces
 # zgoraj), privzeto "normal" da klici brez njega ostanejo nespremenjeni.
-func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null, difficulty: String = "normal") -> String:
+# extra_excluded_ids: dodatni ids, ki se ne smejo pojaviti za TA met (npr.
+# battle.gd doseže snow_curse_cap - glej get_snow_curse_cap zgoraj), ločeno
+# od per-piece excluded_pieces.
+func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null, difficulty: String = "normal", extra_excluded_ids: Array = []) -> String:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
@@ -219,6 +253,8 @@ func roll_curse_for(piece_name: String, rng: RandomNumberGenerator = null, diffi
 	var eligible: Array = []
 	var total_weight := 0.0
 	for id in get_curse_ids():
+		if id in extra_excluded_ids:
+			continue
 		if piece_name in get_excluded_pieces(id, difficulty):
 			continue
 		var w := get_weight(id, difficulty)

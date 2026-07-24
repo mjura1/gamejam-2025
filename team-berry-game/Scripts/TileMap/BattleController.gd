@@ -997,7 +997,9 @@ func start_enemy_turn():
 		# "actions" je NAMERNO mutable (while namesto for) - prekletstvo
 		# "bloodlust" lahko med zanko doda dodatno akcijo po uspešnem zajetju
 		# (glej grants_bonus_action_on_capture spodaj), do največ
-		# max_bonus_actions (GameParameters/curses.json) na to sovražnikovo potezo.
+		# max_bonus_actions (GameParameters/curses.json, difficulty-aware prek
+		# max_bonus_actions_by_difficulty + SettingsManager.difficulty, glej
+		# CurseData.get_param_by_difficulty) na to sovražnikovo potezo.
 		var actions: int = 1 + (character.curse.extra_actions() if character.curse else 0)
 		var bloodlust_bonus_used := 0
 		var i := 0
@@ -1014,7 +1016,7 @@ func start_enemy_turn():
 
 			if was_capture and is_instance_valid(character) and character.curse \
 					and character.curse.grants_bonus_action_on_capture():
-				var max_bonus: int = curse_data.get_param(character.curse.id, "max_bonus_actions", 2)
+				var max_bonus: int = curse_data.get_param_by_difficulty(character.curse.id, "max_bonus_actions", 2, SettingsManager.difficulty)
 				if bloodlust_bonus_used < max_bonus:
 					bloodlust_bonus_used += 1
 					actions += 1
