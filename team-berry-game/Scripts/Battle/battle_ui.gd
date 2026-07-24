@@ -26,6 +26,7 @@ const MAX_PLACED := 5
 @onready var upgrade_count_label: Label = %UpgradeCount
 @onready var revive_count_label: Label = %ReviveCount
 @onready var portrait: TextureRect = %Portrait
+@onready var status_header: Label = %StatusHeader
 @onready var status_value: Label = %StatusValue
 @onready var curse_block: VBoxContainer = %CurseBlock
 @onready var curse_name_label: Label = %CurseNameLabel
@@ -925,6 +926,9 @@ func _on_selection_changed(character):
 
 
 func _show_character(character: BaseCharacter):
+	portrait.visible = true
+	status_header.visible = true
+	status_value.visible = true
 	portrait.texture = load("res://Assets/Sprites/friendly_%s.png" % character.strName)
 	# Prekletstvo "stunning_gaze"/"entangle" + snow rework "FROZEN": prizadeta
 	# zavezniška figura kaže STUNNED/FROZEN/ROOTED namesto ALIVE (glej
@@ -959,6 +963,9 @@ func _show_enemy(character: BaseCharacter):
 	if not is_instance_valid(character):
 		return
 	_item_view_open = false
+	portrait.visible = true
+	status_header.visible = true
+	status_value.visible = true
 	portrait.texture = load("res://Assets/Sprites/enemy_%s.png" % character.strName)
 	_shown_character = character
 	_clear_ability_rows()
@@ -987,6 +994,9 @@ func _show_enemy(character: BaseCharacter):
 
 func _show_dead_piece(piece_name: String):
 	_item_view_open = false
+	portrait.visible = true
+	status_header.visible = true
+	status_value.visible = true
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "DEAD"
 	status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
@@ -996,6 +1006,9 @@ func _show_dead_piece(piece_name: String):
 
 func _show_benched_piece(piece_name: String):
 	_item_view_open = false
+	portrait.visible = true
+	status_header.visible = true
+	status_value.visible = true
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "NOT PLACED"
 	status_value.add_theme_color_override("font_color", STATUS_BENCHED_COLOR)
@@ -1015,6 +1028,12 @@ func _clear_detail_panel():
 	if is_instance_valid(map_behaviour.selected_character):
 		_show_character(map_behaviour.selected_character)
 		return
+	# Res nič izbrano/inšpicirano - skrijemo tudi portret/STATUS, ne le vrstice
+	# sposobnosti/CurseBlock (glej _clear_ability_rows), da se panel res
+	# povsem izprazni namesto da kaže prazen portret + "STATUS -".
+	portrait.visible = false
+	status_header.visible = false
+	status_value.visible = false
 	portrait.texture = null
 	status_value.text = "-"
 	status_value.remove_theme_color_override("font_color")
