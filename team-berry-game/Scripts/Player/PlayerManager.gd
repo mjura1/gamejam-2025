@@ -53,8 +53,8 @@ var pending_move_bonus_next_battle: bool = false
 
 # Nagrade v upgrade itemih (glej BattleController.check_battle_end in
 # MapController._handle_event za item sobo).
-const UPGRADE_ITEMS_PER_WIN := 1
-const UPGRADE_ITEMS_PER_BOSS_WIN := 3
+const UPGRADE_ITEMS_PER_WIN := 10
+const UPGRADE_ITEMS_PER_BOSS_WIN := 30
 
 # Trajne nadgradnje PO TIPU figure (velja za vse figure istega tipa - roster
 # je seznam imen brez identitete posamezne figure, glej friendly_party).

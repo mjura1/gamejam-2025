@@ -53,39 +53,42 @@ func test_new_ability_ids_exist_in_abilities_json():
 
 func test_cannot_buy_without_enough_items():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 1
-	assert_false(pm.try_buy_node("pawn", "a1_lv2"), "buying a cost-2 node with 1 item should fail")
-	assert_eq(pm.upgrade_items, 1, "a failed buy should not spend items")
+	var cost := int(SkillTreeData.get_node_def("pawn", "a1_lv2").get("cost", 0))
+	pm.upgrade_items = cost - 1
+	assert_false(pm.try_buy_node("pawn", "a1_lv2"), "buying a node with fewer items than its cost should fail")
+	assert_eq(pm.upgrade_items, cost - 1, "a failed buy should not spend items")
 
 func test_cannot_buy_without_requirements():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
+	pm.upgrade_items = 300
 	assert_false(pm.try_buy_node("pawn", "a1_lv3"), "a1_lv3 requires a1_lv2 first")
 	assert_false(pm.try_buy_node("pawn", "a3_unlock"), "a3_unlock requires p1 first")
 
 func test_buy_spends_cost_and_marks_owned():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 3
+	var cost := int(SkillTreeData.get_node_def("pawn", "a1_lv2").get("cost", 0))
+	pm.upgrade_items = cost + 2
 	assert_true(pm.try_buy_node("pawn", "a1_lv2"), "buy should succeed with enough items")
-	assert_eq(pm.upgrade_items, 1, "buy should spend exactly the node cost")
+	assert_eq(pm.upgrade_items, 2, "buy should spend exactly the node cost")
 	assert_true(pm.has_tree_node("pawn", "a1_lv2"), "bought node should be owned")
 
 func test_cannot_buy_same_node_twice():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
+	var cost := int(SkillTreeData.get_node_def("pawn", "p1").get("cost", 0))
+	pm.upgrade_items = cost + 1
 	assert_true(pm.try_buy_node("pawn", "p1"), "first buy should succeed")
 	assert_false(pm.try_buy_node("pawn", "p1"), "second buy of the same node should fail")
-	assert_eq(pm.upgrade_items, 9, "the failed re-buy should not spend items")
+	assert_eq(pm.upgrade_items, 1, "the failed re-buy should not spend items")
 
 func test_unknown_node_id_fails():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
+	pm.upgrade_items = 300
 	assert_false(pm.try_buy_node("pawn", "a1_lv4"), "buying a node id not in the tree should fail")
 	assert_false(pm.try_buy_node("dragon", "a1_lv2"), "buying for an unknown piece type should fail")
 
 func test_specs_are_mutually_exclusive():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 20
+	pm.upgrade_items = 300
 	assert_true(pm.try_buy_node("pawn", "p1"), "p1 buy should succeed")
 	assert_true(pm.try_buy_node("pawn", "a3_unlock"), "a3_unlock buy should succeed")
 	assert_true(pm.try_buy_node("pawn", "spec_a"), "spec_a buy should succeed")
@@ -101,7 +104,7 @@ func test_purchases_are_per_type_not_shared():
 
 func test_ability_level_derived_from_owned_nodes():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
+	pm.upgrade_items = 300
 	assert_eq(pm.get_ability_level("pawn", 1), 1, "fresh type should be level 1")
 	pm.try_buy_node("pawn", "a1_lv2")
 	assert_eq(pm.get_ability_level("pawn", 1), 2, "owning a1_lv2 should derive level 2")
@@ -111,7 +114,7 @@ func test_ability_level_derived_from_owned_nodes():
 
 func test_slot_unlocks_derived_from_owned_nodes():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
+	pm.upgrade_items = 300
 	assert_true(pm.is_slot_unlocked("pawn", 1), "slot 1 is always unlocked")
 	assert_false(pm.is_slot_unlocked("pawn", 2), "slot 2 starts locked")
 	assert_false(pm.is_slot_unlocked("pawn", 3), "slot 3 starts locked")
@@ -123,7 +126,7 @@ func test_slot_unlocks_derived_from_owned_nodes():
 
 func test_passive_effects_exclude_level_and_unlock_nodes():
 	var pm = PlayerManagerScript.new()
-	pm.upgrade_items = 10
+	pm.upgrade_items = 300
 	pm.try_buy_node("pawn", "a1_lv2")
 	pm.try_buy_node("pawn", "a2_unlock")
 	assert_eq(pm.get_passive_effects("pawn").size(), 0, "level/unlock nodes are not passives")

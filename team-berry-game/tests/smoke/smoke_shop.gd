@@ -26,6 +26,10 @@ var sold_item := false
 var sold_reserve := false
 var checked_last_active := false
 
+var item_cost := 0
+var item_sell_value := 0
+var reserve_piece_sell_value := 0
+
 func _initialize():
 	print(">>> SMOKE TEST: shop buy/sell flow <<<")
 
@@ -35,7 +39,16 @@ func _initialize():
 	player_manager.reserve_party = reserve
 
 	_check("buying with 0 upgrade items is refused", not player_manager.try_buy_item("extra_move"))
-	player_manager.add_upgrade_items(2)
+	# root.get_node("ItemData") exists but its _ready() (which loads items.json)
+	# hasn't run yet this early in _initialize() - build a throwaway instance
+	# and load it directly instead of racing the autoload's own _ready().
+	var item_data_script = load("res://Scripts/Data/item_data.gd")
+	var item_data = item_data_script.new()
+	item_data._ready()
+	item_cost = item_data.get_buy_cost("extra_move")
+	item_sell_value = item_data.get_sell_value("extra_move")
+	reserve_piece_sell_value = item_data.get_piece_sell_value("friendly_rook")
+	player_manager.add_upgrade_items(item_cost)
 
 	var buy_scene: PackedScene = load("res://Scenes/Menu/ShopBuyPanel.tscn")
 	buy_panel = buy_scene.instantiate()
@@ -65,11 +78,11 @@ func _process(_delta: float) -> bool:
 		var b := _buy_row_button()
 		if b == null:
 			return false # still waiting for the buy panel's first _refresh()
-		if b.text != "BUY (1)":
+		if b.text != "BUY (%d)" % item_cost:
 			return false # rebuild in flight, check again next frame
-		_check("BUY row offers extra_move at cost 1", not b.disabled)
+		_check("BUY row offers extra_move at its cost", not b.disabled)
 		b.pressed.emit()
-		_check("buying spent upgrade items", player_manager.upgrade_items == 1)
+		_check("buying spent upgrade items", player_manager.upgrade_items == 0)
 		_check("buying granted 1x extra_move", player_manager.get_item_count("extra_move") == 1)
 		bought = true
 		return false
@@ -91,10 +104,10 @@ func _process(_delta: float) -> bool:
 		var b := _sell_item_row_button()
 		if b == null:
 			return false # still waiting for the sell panel to enter the tree / refresh
-		_check("SELL item row shows the bought extra_move", b.text == "SELL (1)")
+		_check("SELL item row shows the bought extra_move", b.text == "SELL (%d)" % item_sell_value)
 		_check("PIECE list shows 3 active + 1 reserve rows", sell_panel.piece_list.get_child_count() == 4)
 		b.pressed.emit()
-		_check("selling the item refunded upgrade items", player_manager.upgrade_items == 2)
+		_check("selling the item refunded upgrade items", player_manager.upgrade_items == item_sell_value)
 		_check("selling the item removed it from inventory", player_manager.get_item_count("extra_move") == 0)
 		sold_item = true
 		return false
@@ -107,7 +120,7 @@ func _process(_delta: float) -> bool:
 		var reserve_button: Button = reserve_row.get_child(2)
 		_check("reserve piece SELL button is enabled", not reserve_button.disabled)
 		reserve_button.pressed.emit()
-		_check("selling the reserve piece refunded upgrade items", player_manager.upgrade_items == 3)
+		_check("selling the reserve piece refunded upgrade items", player_manager.upgrade_items == item_sell_value + reserve_piece_sell_value)
 		_check("reserve_party is now empty", player_manager.reserve_party.is_empty())
 		sold_reserve = true
 		# Prisilimo scenarij "zadnja aktivna figura" in preverimo zaščito.

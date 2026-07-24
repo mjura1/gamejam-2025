@@ -109,10 +109,10 @@ func test_add_upgrade_items_accumulates():
 
 func test_try_buy_node_spends_exact_cost():
 	var pm = PlayerManagerScript.new()
-	pm.add_upgrade_items(5)
 	var cost: int = SkillTreeData.get_node_def("pawn", "a1_lv2").get("cost", 0)
+	pm.add_upgrade_items(cost + 5)
 	assert_true(pm.try_buy_node("pawn", "a1_lv2"), "buy should succeed with enough items")
-	assert_eq(pm.upgrade_items, 5 - cost, "buy should spend exactly the node's cost")
+	assert_eq(pm.upgrade_items, 5, "buy should spend exactly the node's cost")
 	assert_eq(pm.get_ability_level("pawn", 1), 2, "buying a1_lv2 should raise slot 1's derived level")
 
 func test_try_buy_node_fails_without_enough_items():
@@ -124,7 +124,8 @@ func test_try_buy_node_fails_without_enough_items():
 
 func test_upgrades_are_per_type_not_shared():
 	var pm = PlayerManagerScript.new()
-	pm.add_upgrade_items(2)
+	var cost: int = SkillTreeData.get_node_def("pawn", "a1_lv2").get("cost", 0)
+	pm.add_upgrade_items(cost)
 	assert_true(pm.try_buy_node("pawn", "a1_lv2"), "buy should succeed with enough items")
 	assert_eq(pm.get_ability_level("rook", 1), 1, "upgrading one type should not touch another type")
 	assert_false(pm.has_tree_node("rook", "a1_lv2"), "upgrading one type should not mark another type as owning the node")

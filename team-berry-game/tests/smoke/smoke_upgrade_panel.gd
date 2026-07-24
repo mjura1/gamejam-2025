@@ -21,8 +21,12 @@ func _initialize():
 	player_manager = root.get_node("PlayerManager")
 	skill_tree_data = root.get_node("SkillTreeData")
 	player_manager.setStarting() # roster: 3x friendly_pawn -> ena vrstica (pawn)
-	player_manager.add_upgrade_items(5)
-	expected_items = 5
+	# Exactly enough to buy a1_lv2 + a2_unlock + a2_lv2 below and nothing more,
+	# so the final "all items spent" check lands on 0 - keep in sync with
+	# GameParameters/skill_trees.json pawn costs if those change.
+	var starting_items := 39
+	player_manager.add_upgrade_items(starting_items)
+	expected_items = starting_items
 
 	var panel_scene: PackedScene = load("res://Scenes/Menu/CampfireUpgradePanel.tscn")
 	panel = panel_scene.instantiate()
@@ -61,7 +65,7 @@ func _process(_delta: float) -> bool:
 	match step:
 		0:
 			_check("panel shows one row for the all-pawn roster", panel.type_list.get_child_count() == 1)
-			_check("items label shows granted item count", panel.items_label.text.contains("x5"))
+			_check("items label shows granted item count", panel.items_label.text.contains("x%d" % expected_items))
 
 			# column 1 = ABILITY 1 (a1_lv2, a1_lv3), index 0 = a1_lv2
 			var b1 := _node_button(1, 0)

@@ -1,8 +1,8 @@
 {
-	"friendly_pawn": {"sell_value": 1},
-	"friendly_knight": {"sell_value": 1},
-	"friendly_rook": {"sell_value": 1},
-	"friendly_bishop": {"sell_value": 1},
-	"friendly_queen": {"sell_value": 1},
-	"friendly_king": {"sell_value": 1}
+	"friendly_pawn": {"sell_value": 8},
+	"friendly_knight": {"sell_value": 15},
+	"friendly_rook": {"sell_value": 20},
+	"friendly_bishop": {"sell_value": 15},
+	"friendly_queen": {"sell_value": 35},
+	"friendly_king": {"sell_value": 40}
 }
