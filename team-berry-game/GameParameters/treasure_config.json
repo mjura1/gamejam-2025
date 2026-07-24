@@ -4,8 +4,11 @@
 	"items_per_tier": [5, 10, 15],
 	"_comment_items_per_tier": "Guaranteed regular-kind (consumable/passive) items in every chest, indexed by CURRENT MAP TIER (index 0/1/2 = Tier 0/1/2). Rolled from the consumable+passive pool only - never artifacts. Tiers past index 2 use index 2 as their base, then infinite_mode.items_per_tier_increment below adds further growth.",
 
-	"artifacts_per_tier": [0, 1, 2],
-	"_comment_artifacts_per_tier": "Guaranteed artifact-kind items in every chest, same tier indexing as items_per_tier above. Rolled from the artifact pool only, so the player is never left with an all-regular-items chest once past Tier 0. Tiers past index 2 use index 2 as their base, then infinite_mode.artifacts_per_tier_increment below adds further growth.",
+	"artifacts_per_tier": [0, 1, 1],
+	"_comment_artifacts_per_tier": "Guaranteed artifact-kind items in every chest, same tier indexing as items_per_tier above. Rolled from the artifact pool only, so the player is never left with an all-regular-items chest once past Tier 0. Tiers past index 2 use index 2 as their base, then infinite_mode.artifacts_per_tier_increment below adds further growth. (Tier 2 trimmed from 2->1 base artifacts - felt like too many per chest.)",
+
+	"upgrade_items_per_tier": [2, 3, 5],
+	"_comment_upgrade_items_per_tier": "Guaranteed upgrade_items currency (PlayerManager.upgrade_items - see UPGRADE_ITEMS_PER_WIN/UPGRADE_ITEMS_PER_BOSS_WIN for scale reference) granted alongside the item/artifact rolls above, same tier indexing. Tiers past index 2 use index 2 as their base, then infinite_mode.upgrade_items_per_tier_increment below adds further growth.",
 
 	"luck_per_bonus_item": 3,
 	"max_bonus_items": 2,
@@ -28,8 +31,12 @@
 		"_comment_items_per_tier_increment_and_max": "Extra guaranteed regular items added per map tier ABOVE base_tier, clamped at max_items total (set max_items to -1 to remove the clamp) - this is the 'up to a point' cap so infinite runs don't hand out unlimited chest items.",
 
 		"artifacts_per_tier_increment": 1,
-		"max_artifacts": 10,
-		"_comment_artifacts_per_tier_increment_and_max": "Same idea as items_per_tier_increment/max_items above, but for artifact count."
+		"max_artifacts": 5,
+		"_comment_artifacts_per_tier_increment_and_max": "Same idea as items_per_tier_increment/max_items above, but for artifact count.",
+
+		"upgrade_items_per_tier_increment": 1,
+		"max_upgrade_items": 15,
+		"_comment_upgrade_items_per_tier_increment_and_max": "Same idea as items_per_tier_increment/max_items above, but for guaranteed upgrade_items currency."
 	},
 
 	"_example_infinite_mode_tier_4": "Worked example at map tier 4 (2 tiers past base_tier=2): items = items_per_tier[index 2, since tier 4 is past the array's last index 2] = 15, plus (4-2)*items_per_tier_increment = extra guaranteed items, clamped at max_items. artifacts = artifacts_per_tier[index 2] = 2, plus (4-2)*artifacts_per_tier_increment = extra guaranteed artifacts, clamped at max_artifacts. Luck-based bonus regular items (luck_per_bonus_item/max_bonus_items) and bonus artifacts (luck_per_bonus_artifact/max_bonus_artifacts) both still apply ON TOP of these guaranteed counts.",

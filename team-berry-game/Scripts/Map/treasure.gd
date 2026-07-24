@@ -33,7 +33,11 @@ func _on_chest_pressed():
 	for id in loot:
 		PlayerManager.add_item(id, 1)
 
+	var upgrade_items_reward := ItemData.get_treasure_upgrade_items(PlayerManager.current_map_tier)
+	PlayerManager.add_upgrade_items(upgrade_items_reward)
+
 	var panel := CHEST_REWARD_PANEL_SCENE.instantiate()
 	panel.name = "ChestRewardPanelNode"
 	panel.loot = loot
+	panel.upgrade_items_reward = upgrade_items_reward
 	get_tree().root.add_child(panel)

@@ -9,12 +9,30 @@ extends CanvasLayer
 @onready var continue_button: Button = %ContinueButton
 
 var loot: Array = []
+var upgrade_items_reward: int = 0
 
 
 func _ready():
 	continue_button.pressed.connect(_on_continue_pressed)
+	if upgrade_items_reward > 0:
+		item_list.add_child(_build_upgrade_items_row())
 	for id in loot:
 		item_list.add_child(_build_item_row(id))
+
+
+func _build_upgrade_items_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	var name_label := Label.new()
+	name_label.text = "Upgrade Items"
+	row.add_child(name_label)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+	var amount_label := Label.new()
+	amount_label.text = "x%d" % upgrade_items_reward
+	row.add_child(amount_label)
+	return row
 
 
 func _build_item_row(id: String) -> Control:

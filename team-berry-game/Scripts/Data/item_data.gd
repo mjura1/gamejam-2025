@@ -196,6 +196,11 @@ func get_treasure_item_count(tier: int) -> int:
 func get_treasure_artifact_count(tier: int) -> int:
 	return _tier_scaled_count(tier, "artifacts_per_tier", 0, "artifacts_per_tier_increment", "max_artifacts")
 
+# Guaranteed upgrade_items currency per chest (see PlayerManager.add_upgrade_items),
+# on top of the regular items/artifacts above.
+func get_treasure_upgrade_items(tier: int) -> int:
+	return _tier_scaled_count(tier, "upgrade_items_per_tier", 0, "upgrade_items_per_tier_increment", "max_upgrade_items")
+
 # Utežen izbor raritete iz weights, nato uniformen item te raritete v klicalcu.
 func _weighted_rarity_pick(weights: Dictionary, rng: RandomNumberGenerator) -> String:
 	var total_weight := 0.0
