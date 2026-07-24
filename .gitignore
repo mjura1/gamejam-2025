@@ -20,6 +20,11 @@ mono_crash.*.json
 # winter_march_macos.zip), so the raw .app here is just a local artifact.
 *.app/
 
+# Claude Code local config/state — machine-specific settings and ephemeral
+# agent worktrees, not meant to be shared via git
+.claude/
+CLAUDE.md
+
 # graphify (knowledge graph) — derived outputs, regenerate with /graphify
 # .gd_mirror kept OUT of gitignore's reach for graphify itself via .graphifyignore — see that file
 .gd_mirror/
