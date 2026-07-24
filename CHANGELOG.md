@@ -1,4 +1,39 @@
-# Winter March — Treasure chest rework for the item room → features/treasure-chest (merged to develop)
+# Winter March — Battle UI contextual panel (empty state, curse text, item grid) → features/battle-ui-contextual-panel (unmerged, left for review)
+
+Implements `plans/BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md` M0-M4 in full. Reworks
+the battle UI's right-hand side panel's shared detail area to fix three
+issues: the ability area no longer holds reserved-but-blank space when
+nothing is selected, enemy curse text is always visible instead of hidden
+behind a hover tooltip, and the item drawer (which slid out over the board)
+is replaced by an icon grid living inside the panel itself.
+
+- **Empty state**: `_clear_ability_rows()` now hides all 3 ability rows +
+  separators (not just blanking their text), so the panel visually shrinks
+  when nothing is selected/inspected. Ally-selected behavior is unchanged
+  pixel-for-pixel (explicit constraint - a future "piece buff screen" is a
+  separate planned feature).
+- **Curse block**: a new always-visible `CurseBlock` (`%CurseNameLabel` +
+  `%CurseExplanationLabel`) replaces the old mechanism that hijacked
+  ability-slot-1's name field and required a hover to reveal the description.
+- **Item grid**: the old `ItemDrawer`/`ItemPanel`/`ItemRows` (a narrow
+  vertical list sliding out over the board's left edge) is deleted entirely.
+  Items now live in a `PieceIcon`-based scrollable icon grid (same pattern as
+  `CampfirePartyPanel`'s roster grid) inside a new `SharedAreaRow` /
+  `SharedPanel`, toggled by a compact inline `ItemsToggleButton` next to the
+  detail area - the board is never covered. Hover/click reuses the existing
+  ability-description bubble mechanism verbatim.
+- **Selection always wins**: opening the item grid while a piece is selected
+  or an enemy is inspected is fine, but selecting/inspecting anything new
+  always closes the item grid first (`_item_view_open` reset in
+  `_on_selection_changed()`/`_show_enemy()`/`_clear_detail_panel()`/
+  `_show_dead_piece()`/`_show_benched_piece()`).
+- `use_item()`/`_update_item_aim()`/`_resolve_item_drop()` (the actual
+  drag-to-board-tile apply logic) are completely untouched - only the drag
+  trigger moved from a row's `gui_input` to `PieceIcon.icon_clicked`.
+- New test: `tests/smoke/smoke_item_grid_view.gd` - grid child count matches
+  owned item types, and selecting an ally closes an open item grid.
+
+
 
 The map's `item` room no longer resolves invisibly (`add_upgrade_items(2)` with
 no scene change). Clicking it now opens a dedicated Treasure scene with a

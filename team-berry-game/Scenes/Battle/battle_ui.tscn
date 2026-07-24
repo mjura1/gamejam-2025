@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Battle/battle_ui.gd" id="1_bui"]
 
@@ -54,6 +54,19 @@ content_margin_top = 6.0
 content_margin_right = 6.0
 content_margin_bottom = 6.0
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_shared"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_roster"]
+bg_color = Color(0.15, 0.16, 0.19, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
 [node name="BattleUI" type="CanvasLayer"]
 script = ExtResource("1_bui")
 
@@ -70,45 +83,6 @@ layout_mode = 1
 anchor_right = 0.58
 anchor_bottom = 1.0
 mouse_filter = 2
-
-[node name="ItemDrawer" type="HBoxContainer" parent="Root"]
-unique_name_in_owner = true
-layout_mode = 1
-anchor_top = 0.0
-anchor_left = 0.58
-anchor_right = 0.58
-anchor_bottom = 1.0
-offset_left = -184.0
-offset_right = 0.0
-grow_vertical = 2
-mouse_filter = 2
-alignment = 2
-theme_override_constants/separation = 0
-
-[node name="ItemPanel" type="PanelContainer" parent="Root/ItemDrawer"]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(160, 0)
-layout_mode = 2
-size_flags_vertical = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
-
-[node name="ItemRows" type="VBoxContainer" parent="Root/ItemDrawer/ItemPanel"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="ToggleButton" type="Button" parent="Root/ItemDrawer"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(18, 120)
-layout_mode = 2
-size_flags_vertical = 4
-focus_mode = 0
-theme_override_font_sizes/font_size = 12
-theme_override_styles/normal = SubResource("StyleBoxFlat_toggle")
-theme_override_styles/hover = SubResource("StyleBoxFlat_toggle_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_toggle_hover")
-text = "<"
 
 [node name="SidePanel" type="PanelContainer" parent="Root"]
 layout_mode = 1
@@ -127,7 +101,7 @@ theme_override_constants/margin_bottom = 12
 
 [node name="VBox" type="VBoxContainer" parent="Root/SidePanel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 6
 
 [node name="RosterLabel" type="Label" parent="Root/SidePanel/Margin/VBox"]
 layout_mode = 2
@@ -135,9 +109,9 @@ theme_override_font_sizes/font_size = 10
 text = "YOUR PIECES"
 
 [node name="RosterPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox"]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+theme_override_styles/panel = SubResource("StyleBoxFlat_roster")
 
 [node name="RosterRow" type="HFlowContainer" parent="Root/SidePanel/Margin/VBox/RosterPanel"]
 unique_name_in_owner = true
@@ -149,9 +123,9 @@ theme_override_font_sizes/font_size = 10
 text = "ACTIVE"
 
 [node name="ActivePanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox"]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+theme_override_styles/panel = SubResource("StyleBoxFlat_roster")
 
 [node name="ActiveRow" type="HFlowContainer" parent="Root/SidePanel/Margin/VBox/ActivePanel"]
 unique_name_in_owner = true
@@ -197,23 +171,69 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "x0"
 
-[node name="DetailPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox"]
+[node name="SharedAreaRow" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="ItemsToggleButton" type="Button" parent="Root/SidePanel/Margin/VBox/SharedAreaRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(18, 120)
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("StyleBoxFlat_toggle")
+theme_override_styles/hover = SubResource("StyleBoxFlat_toggle_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_toggle_hover")
+text = "ITEMS"
+
+[node name="SharedPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxEmpty_shared")
+
+[node name="DetailPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel"]
+unique_name_in_owner = true
+layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
-[node name="DetailMargin" type="MarginContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel"]
+[node name="ItemGridPanel" type="PanelContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="ItemGridScroll" type="ScrollContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/ItemGridPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="ItemGridAlign" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/ItemGridPanel/ItemGridScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="ItemGrid" type="GridContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/ItemGridPanel/ItemGridScroll/ItemGridAlign"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 5
+
+[node name="DetailMargin" type="MarginContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 10
 
-[node name="DetailHBox" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin"]
+[node name="DetailHBox" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Portrait" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox"]
+[node name="Portrait" type="TextureRect" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
@@ -221,31 +241,48 @@ size_flags_vertical = 0
 expand_mode = 1
 stretch_mode = 5
 
-[node name="DetailVBox" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox"]
+[node name="DetailVBox" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="StatusHeader" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="StatusHeader" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
 text = "STATUS"
 
-[node name="StatusValue" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="StatusValue" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "-"
 
-[node name="HSep1" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="HSep1" type="HSeparator" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Ability1Row" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="CurseBlock" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CurseNameLabel" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/CurseBlock"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-"
+
+[node name="CurseExplanationLabel" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/CurseBlock"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Ability1Row" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
 theme_override_constants/separation = 8
 
-[node name="Ability1Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
+[node name="Ability1Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
@@ -253,53 +290,54 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Ability1Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
+[node name="Ability1Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 4
 
-[node name="Ability1Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info"]
+[node name="Ability1Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info"]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Ability1Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
+[node name="Ability1Name" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 size_flags_horizontal = 3
 text = "-"
 
-[node name="Ability1Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
+[node name="Ability1Level" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 11
 text = ""
 
-[node name="Ability1Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
+[node name="Ability1Uses" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info/Ability1Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = ""
 
-[node name="Ability1Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info"]
+[node name="Ability1Button" type="Button" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability1Row/Ability1Info"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 disabled = true
 text = "Use Ability"
 
-[node name="HSep2" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="HSep2" type="HSeparator" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Ability2Row" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="Ability2Row" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
 theme_override_constants/separation = 8
 
-[node name="Ability2Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
+[node name="Ability2Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
@@ -307,53 +345,54 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Ability2Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
+[node name="Ability2Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 4
 
-[node name="Ability2Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info"]
+[node name="Ability2Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info"]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Ability2Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
+[node name="Ability2Name" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 size_flags_horizontal = 3
 text = "-"
 
-[node name="Ability2Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
+[node name="Ability2Level" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 11
 text = ""
 
-[node name="Ability2Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
+[node name="Ability2Uses" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info/Ability2Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = ""
 
-[node name="Ability2Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info"]
+[node name="Ability2Button" type="Button" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability2Row/Ability2Info"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 disabled = true
 text = "Use Ability"
 
-[node name="HSep3" type="HSeparator" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="HSep3" type="HSeparator" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Ability3Row" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
+[node name="Ability3Row" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 0
 theme_override_constants/separation = 8
 
-[node name="Ability3Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
+[node name="Ability3Icon" type="TextureRect" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 64)
 layout_mode = 2
@@ -361,37 +400,37 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Ability3Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
+[node name="Ability3Info" type="VBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 4
 
-[node name="Ability3Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info"]
+[node name="Ability3Header" type="HBoxContainer" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info"]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Ability3Name" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
+[node name="Ability3Name" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 size_flags_horizontal = 3
 text = "-"
 
-[node name="Ability3Level" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
+[node name="Ability3Level" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 11
 text = ""
 
-[node name="Ability3Uses" type="Label" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
+[node name="Ability3Uses" type="Label" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info/Ability3Header"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 text = ""
 
-[node name="Ability3Button" type="Button" parent="Root/SidePanel/Margin/VBox/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info"]
+[node name="Ability3Button" type="Button" parent="Root/SidePanel/Margin/VBox/SharedAreaRow/SharedPanel/DetailPanel/DetailMargin/DetailHBox/DetailVBox/Ability3Row/Ability3Info"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3

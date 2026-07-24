@@ -230,13 +230,20 @@ func _process(delta: float) -> void:
 # (kot bi igralec kliknil nanj), za zaveznika pa samo prikaže valid_moves brez
 # nastavitve selected_character (display-only, da se ne prekriva s pravo izbiro).
 func _update_hover(delta: float) -> void:
-	var blocked: bool = (is_instance_valid(battle_controller) and battle_controller.current_state == battle_controller.BattleState.PLACEMENT) \
-		or selected_character != null or not pending_ability.is_empty()
+	# Placement/sposobnost-v-teku upravljata prikaz sama, zato tu popolnoma
+	# opustimo sledenje. PRAVA IZBIRA (selected_character) NE blokira več v
+	# celoti - glej spodaj: sovražnikov hover-predogled uporablja SVOJ ločen
+	# highlight sloj (move_highlighter.show_enemy_preview, ločen array od
+	# show_moves - glej move_highlighter.gd), zato lahko varno teče hkrati z
+	# izbrano zavezniško figuro (desni panel začasno pokaže prekletstvo,
+	# battle_ui._clear_detail_panel obnovi izbrano figuro, ko hover mine -
+	# glej BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md follow-up opombo). Hover NAD
+	# ZAVEZNIKOM ostane blokiran, ko je nekaj izbrano - show_moves je EN sam
+	# deljen sloj in bi prepisal izbrane figure lastni predogled premikov.
+	var hard_blocked: bool = (is_instance_valid(battle_controller) and battle_controller.current_state == battle_controller.BattleState.PLACEMENT) \
+		or not pending_ability.is_empty()
 
-	if blocked:
-		# Prava izbira/sposobnost/placement upravlja prikaz sama (in ga je
-		# morda pravkar nastavila na isto figuro, ki jo je prej kazal hover) -
-		# zato tu SAMO opustimo sledenje, ne kličemo clear_*.
+	if hard_blocked:
 		_hover_character = null
 		_hover_elapsed = 0.0
 		_hover_shown_for = null
@@ -257,13 +264,28 @@ func _update_hover(delta: float) -> void:
 				# (ne klik) - glej _inspect_via_hover zgoraj.
 				if _inspect_via_hover:
 					enemy_inspection_cleared.emit()
-			else:
+			elif selected_character == null:
+				# _hover_shown_for je lahko zavezniška figura, ki jo je
+				# igralec PRAVKAR izbral med hoverom nad njo (hover po
+				# HOVER_DELAY pokaže show_moves, igralec nato klikne isto
+				# figuro - _hover_shown_for ostane nastavljen nanjo).
+				# show_moves je EN sam deljen sloj (glej opombo zgoraj) - če
+				# je nekaj TRENUTNO izbrano, ta highlight pripada IZBIRI, ne
+				# hoveru, zato ga tu NE smemo pobrisati (sicer bi izginil
+				# predogled premikov izbrane figure takoj, ko igralec umakne
+				# miško z nje).
 				move_highlighter.clear_moves()
 		_hover_character = hovered_character
 		_hover_elapsed = 0.0
 		_hover_shown_for = null
 
 	if not is_instance_valid(hovered_character) or hovered_character.is_obstacle:
+		return
+
+	# Hover nad ZAVEZNIKOM, ko je nekaj že izbrano, bi prepisal izbrane figure
+	# show_moves predogled (glej opombo zgoraj) - samo sovražnikov hover
+	# ostane dovoljen v tem primeru.
+	if not hovered_character.is_enemy and selected_character != null:
 		return
 
 	_hover_elapsed += delta

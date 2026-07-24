@@ -27,6 +27,12 @@ const MAX_PLACED := 5
 @onready var revive_count_label: Label = %ReviveCount
 @onready var portrait: TextureRect = %Portrait
 @onready var status_value: Label = %StatusValue
+@onready var curse_block: VBoxContainer = %CurseBlock
+@onready var curse_name_label: Label = %CurseNameLabel
+@onready var curse_explanation_label: Label = %CurseExplanationLabel
+@onready var hsep1: HSeparator = %HSep1
+@onready var hsep2: HSeparator = %HSep2
+@onready var hsep3: HSeparator = %HSep3
 @onready var ability1_row: HBoxContainer = %Ability1Row
 @onready var ability1_icon: TextureRect = %Ability1Icon
 @onready var ability1_name: Label = %Ability1Name
@@ -57,10 +63,10 @@ const MAX_PLACED := 5
 @onready var auto_fill_button: Button = %AutoFillButton
 @onready var remove_all_button: Button = %RemoveAllButton
 @onready var tile_map = get_node("../Map/TileMapLayer")
-@onready var item_drawer: HBoxContainer = %ItemDrawer
-@onready var item_panel: PanelContainer = %ItemPanel
-@onready var item_rows: VBoxContainer = %ItemRows
-@onready var item_toggle_button: Button = %ToggleButton
+@onready var items_toggle_button: Button = %ItemsToggleButton
+@onready var detail_panel: PanelContainer = %DetailPanel
+@onready var item_grid_panel: PanelContainer = %ItemGridPanel
+@onready var item_grid: GridContainer = %ItemGrid
 
 const STATUS_ALIVE_COLOR := Color(0.5, 1.0, 0.5)
 const STATUS_DEAD_COLOR := Color(1.0, 0.4, 0.4)
@@ -83,10 +89,10 @@ const ABILITY_BUTTON_TEXT_LOCKED := "?"
 var placement_active: bool = false
 
 # Slot (1-3) -> hover bubble text ("" = no bubble on hover), napolnjen iz
-# _show_abilities()/_clear_ability_rows()/_show_enemy(), bran samo iz
-# _on_ability_row_mouse_entered spodaj. To omogoča, da tudi prekletstvo
-# sovražnika (repurposed slot 1 v _show_enemy) deluje skozi isti generični
-# mehanizem brez posebnih primerov v handlerju.
+# _show_abilities()/_clear_ability_rows(), bran samo iz
+# _on_ability_row_mouse_entered spodaj. Prekletstvo sovražnika ima od
+# BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md dalje svoj lasten, vedno viden blok
+# (glej CurseBlock/_show_enemy) in ne uporablja več tega mehanizma.
 var _slot_bubble_state: Dictionary = {1: "", 2: "", 3: ""}
 
 # Stanje drag & dropa med placement fazo. drag_source_character je nastavljen,
@@ -95,9 +101,11 @@ var dragging: bool = false
 var drag_piece_name: String = ""
 var drag_source_character: BaseCharacter = null
 
-# Stanje drag & dropa za itemsko predalo (ločeno od figur, da se drag-a ne
-# moreta prepletati - glej _input()). item_drawer_open sledi </> gumbu.
-var item_drawer_open: bool = false
+# Stanje drag & dropa za itemsko mrežo (ločeno od figur, da se drag-a ne
+# moreta prepletati - glej _input()). _item_view_open sledi ItemsToggleButtonu -
+# selekcija figure/inšpekcija sovražnika jo VEDNO zapre (glej
+# BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md §3.3).
+var _item_view_open: bool = false
 var dragging_item: bool = false
 var drag_item_id: String = ""
 
@@ -128,8 +136,8 @@ func _ready():
 	action_button.pressed.connect(_on_action_button_pressed)
 	auto_fill_button.pressed.connect(_on_auto_fill_pressed)
 	remove_all_button.pressed.connect(_on_remove_all_pressed)
-	item_toggle_button.pressed.connect(_on_item_toggle_pressed)
-	player_manager.items_changed.connect(_rebuild_item_drawer)
+	items_toggle_button.pressed.connect(_on_item_toggle_pressed)
+	player_manager.items_changed.connect(_rebuild_item_grid)
 	ability1_button.pressed.connect(_on_ability_pressed.bind(1))
 	ability2_button.pressed.connect(_on_ability_pressed.bind(2))
 	ability3_button.pressed.connect(_on_ability_pressed.bind(3))
@@ -148,7 +156,7 @@ func _ready():
 
 	_update_item_counts()
 	_clear_detail_panel()
-	_rebuild_item_drawer()
+	_rebuild_item_grid()
 
 	# Figure (sovražniki/ovire) se spawnajo šele v battle.gd._ready() (starš
 	# se inicializira ZA otroki), zato prvo gradnjo vrstic odložimo za en frame.
@@ -181,7 +189,7 @@ func _unhandled_input(event):
 		_on_ability_pressed(3)
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("toggle_items") and item_drawer.visible:
+	if event.is_action_pressed("toggle_items") and not items_toggle_button.disabled:
 		_on_item_toggle_pressed()
 		get_viewport().set_input_as_handled()
 		return
@@ -212,9 +220,15 @@ func _select_roster_slot(index: int):
 # ===============================================
 
 func _on_battle_state_changed(new_state):
-	# Predala za iteme med placementom nima smisla (itemi se uporabljajo na
-	# figurah/plošči med bitko) - skrijemo jo, dokler igralec ne potrdi postavitve.
-	item_drawer.visible = new_state != battle_controller.BattleState.PLACEMENT
+	# Itemska mreža med placementom nima smisla (itemi se uporabljajo na
+	# figurah/plošči med bitko) - onemogočimo gumb, dokler igralec ne potrdi
+	# postavitve. Če je bila mreža odprta, ko smo VSTOPILI v placement (rob
+	# primer - ne bi se smelo zgoditi sredi bitke, a stanje naj ostane
+	# konsistentno), jo prisilno zapremo.
+	items_toggle_button.disabled = new_state == battle_controller.BattleState.PLACEMENT
+	if items_toggle_button.disabled and _item_view_open:
+		_item_view_open = false
+		_refresh_shared_area()
 
 	match new_state:
 		battle_controller.BattleState.PLACEMENT:
@@ -899,6 +913,10 @@ func _show_piece_for_icon(icon: PieceIcon):
 # ===============================================
 
 func _on_selection_changed(character):
+	# Selekcija VEDNO zapre itemsko mrežo (glej
+	# BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md §3.3) - igralec jo mora po tem
+	# eksplicitno spet odpreti.
+	_item_view_open = false
 	if is_instance_valid(character) and character is BaseCharacter:
 		_show_character(character)
 	else:
@@ -933,12 +951,14 @@ func _show_character(character: BaseCharacter):
 
 # Inšpekcija sovražnika (map_behaviour.enemy_inspected - klik na sovražnika,
 # ko ni izbrana nobena zavezniška figura). Display-only: portret + status
-# ("CURSED: <ime>" v barvi prekletstva, ali navaden "ENEMY") - PRVA vrstica
-# sposobnosti se namesto ability podatkov uporabi za ime/opis prekletstva
-# (enemy figure nimajo pravih sposobnosti, get_ability_defs() je prazen).
+# ("CURSED: <ime>" v barvi prekletstva, ali navaden "ENEMY") - prekletstvo se
+# prikaže v ločenem, vedno vidnem CurseBlock (glej
+# BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md), ne v vrsticah sposobnosti (enemy figure
+# nimajo pravih sposobnosti, get_ability_defs() je prazen).
 func _show_enemy(character: BaseCharacter):
 	if not is_instance_valid(character):
 		return
+	_item_view_open = false
 	portrait.texture = load("res://Assets/Sprites/enemy_%s.png" % character.strName)
 	_shown_character = character
 	_clear_ability_rows()
@@ -951,14 +971,22 @@ func _show_enemy(character: BaseCharacter):
 	elif character.curse:
 		status_value.text = character.curse.status_text()
 		status_value.add_theme_color_override("font_color", character.curse.color())
-		ability1_name.text = character.curse.display_name()
-		_slot_bubble_state[1] = character.curse.description()
+		curse_name_label.text = character.curse.display_name()
+		curse_explanation_label.text = character.curse.description()
+		curse_block.visible = true
 	else:
 		status_value.text = "ENEMY"
 		status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
+	# Item "marked_man"/night_watch/seers_horn: orthogonal to frozen/curse/plain
+	# above (an enemy can be marked AND cursed at once, see the board's own
+	# MarkedBadge which stacks independently) - append rather than branch.
+	if character.marked_by_vision_item:
+		status_value.text += " • MARKED"
+	_refresh_shared_area()
 
 
 func _show_dead_piece(piece_name: String):
+	_item_view_open = false
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "DEAD"
 	status_value.add_theme_color_override("font_color", STATUS_DEAD_COLOR)
@@ -967,6 +995,7 @@ func _show_dead_piece(piece_name: String):
 
 
 func _show_benched_piece(piece_name: String):
+	_item_view_open = false
 	portrait.texture = load("res://Assets/Sprites/%s.png" % piece_name)
 	status_value.text = "NOT PLACED"
 	status_value.add_theme_color_override("font_color", STATUS_BENCHED_COLOR)
@@ -975,6 +1004,17 @@ func _show_benched_piece(piece_name: String):
 
 
 func _clear_detail_panel():
+	_item_view_open = false
+	# Hover-inšpekcija sovražnika (map_behaviour.enemy_inspection_cleared) lahko
+	# pokliče to funkcijo tudi, ko je zavezniška figura ŠE VEDNO izbrana (glej
+	# map_behaviour._update_hover - hover sovražnika zdaj dovoljen tudi med
+	# izbiro) - v tem primeru obnovimo njen panel namesto da ga počistimo na
+	# "nič". Prava deselekcija (_on_selection_changed(null)) ima do te točke
+	# selected_character že nastavljen na null (glej
+	# map_behaviour._clear_selection), zato spodnji pogoj tam pravilno ne drži.
+	if is_instance_valid(map_behaviour.selected_character):
+		_show_character(map_behaviour.selected_character)
+		return
 	portrait.texture = null
 	status_value.text = "-"
 	status_value.remove_theme_color_override("font_color")
@@ -991,9 +1031,15 @@ func _clear_ability_rows():
 		w.button.disabled = true
 		w.button.text = ABILITY_BUTTON_TEXT_UNLOCKED
 		w.button.mouse_filter = Control.MOUSE_FILTER_STOP
+		w.row.visible = false
+	hsep1.visible = false
+	hsep2.visible = false
+	hsep3.visible = false
+	curse_block.visible = false
 	for slot in [1, 2, 3]:
 		_slot_bubble_state[slot] = ""
 	_hide_ability_bubble()
+	_refresh_shared_area()
 
 
 # "LV n" ali "LV MAX", ko je figura na najvišji stopnji (glej
@@ -1029,6 +1075,13 @@ const _SLOT_ORDINAL := {2: "second", 3: "third"}
 # base_character.gd), zato zanka spodaj brez posebnega primera pokrije vse 3
 # slote - locked veja preprosto nikoli ne sproži za slot 1.
 func _show_abilities(character: BaseCharacter):
+	for w in _ability_slot_widgets().values():
+		w.row.visible = true
+	hsep1.visible = true
+	hsep2.visible = true
+	hsep3.visible = true
+	curse_block.visible = false
+
 	var can_use_now: bool = (
 		not character.is_enemy
 		and not character.is_obstacle
@@ -1071,6 +1124,7 @@ func _show_abilities(character: BaseCharacter):
 			if not passive_names.is_empty():
 				locked_text += " Also requires the %s passive." % ", ".join(passive_names)
 			_slot_bubble_state[slot] = locked_text
+	_refresh_shared_area()
 
 
 func _on_ability_pressed(slot: int):
@@ -1179,17 +1233,28 @@ func _update_item_counts():
 
 
 # ===============================================
-# ITEM PREDALA (</> in drag-to-use na plošči)
+# SKUPNO PODROČJE (DetailPanel <-> ItemGridPanel, glej
+# BATTLE_UI_CONTEXTUAL_PANEL_PLAN.md §3.2)
 # ===============================================
 
+# EDINO mesto, ki odloča o vidnosti DetailPanel/ItemGridPanel - vrstice
+# sposobnosti/CurseBlock znotraj DetailPanela so že odločene v
+# _clear_ability_rows()/_show_abilities()/_show_enemy() PREDEN te pokličejo to
+# funkcijo, zato tu ni treba podvajati tiste logike.
+func _refresh_shared_area():
+	item_grid_panel.visible = _item_view_open
+	detail_panel.visible = not _item_view_open
+
+
 func _on_item_toggle_pressed():
-	item_drawer_open = not item_drawer_open
-	item_panel.visible = item_drawer_open
-	item_toggle_button.text = ">" if item_drawer_open else "<"
+	_item_view_open = not _item_view_open
+	_refresh_shared_area()
+	if _item_view_open:
+		_rebuild_item_grid()
 
 
-func _rebuild_item_drawer():
-	for child in item_rows.get_children():
+func _rebuild_item_grid():
+	for child in item_grid.get_children():
 		child.queue_free()
 
 	var ids: Array = player_manager.owned_items.keys()
@@ -1198,90 +1263,81 @@ func _rebuild_item_drawer():
 		var count: int = player_manager.owned_items[id]
 		if count <= 0:
 			continue
-		item_rows.add_child(_build_item_row(id, count))
+		item_grid.add_child(_build_item_icon(id, count))
 		any_shown = true
 
 	# Item "trail_rations": consumable-i porabljeni do 0 TO bitko ostanejo
-	# vidni kot "0x" duh-vrstica (ne vlečljivi) dokler bitka ne konča (glej
+	# vidni kot "0x" duh-ikona (ne vlečljiva) dokler bitka ne konča (glej
 	# PlayerManager.used_up_this_battle).
 	for id in player_manager.used_up_this_battle:
-		item_rows.add_child(_build_item_row(id, 0))
+		item_grid.add_child(_build_item_icon(id, 0))
 		any_shown = true
 
 	if not any_shown:
 		var empty := Label.new()
 		empty.text = "NO ITEMS"
-		item_rows.add_child(empty)
+		item_grid.add_child(empty)
 
 
-func _build_item_row(id: String, count: int) -> Control:
-	var row := PanelContainer.new()
-	row.custom_minimum_size = Vector2(0, 40)
-	row.mouse_filter = Control.MOUSE_FILTER_STOP
-
+func _build_item_icon(id: String, count: int) -> PieceIcon:
 	var is_passive: bool = ItemData.get_kind(id) == "passive"
 	# Artefakt "frozen_rampart"/"drillmaster": enkratna uporaba na bitko, ki se
 	# ne porabi iz inventarja (glej use_item() poseben primer spodaj) - ko je
-	# že porabljena, vrstica ni več vlečljiva do naslednje bitke.
+	# že porabljena, ikona ni več vlečljiva do naslednje bitke.
 	var frozen_rampart_used: bool = id == "frozen_rampart" and battle_controller.frozen_rampart_used_this_battle
 	var drillmaster_used: bool = id == "drillmaster" and battle_controller.drillmaster_used_this_battle
 	var winter_general_used: bool = id == "winter_general" and battle_controller.winter_general_used_this_battle
 	var winters_bargain_used: bool = id == "winters_bargain" and battle_controller.winters_bargain_used_this_battle
 	var throne_of_frost_used: bool = id == "throne_of_frost" and battle_controller.throne_of_frost_used_this_battle
 	var once_per_battle_used: bool = frozen_rampart_used or drillmaster_used or winter_general_used or winters_bargain_used or throne_of_frost_used
-	# Item "trail_rations": "0x" duh-vrstica za consumable-e porabljene do 0 to
-	# bitko (glej _rebuild_item_drawer) - ni vlečljiva dokler je ne povrne
+	# Item "trail_rations": "0x" duh-ikona za consumable-e porabljene do 0 to
+	# bitko (glej _rebuild_item_grid) - ni vlečljiva dokler je ne povrne
 	# trail_rations ali se bitka konča.
 	var is_used_up: bool = count <= 0 and ItemData.get_kind(id) == "consumable"
-	if not is_passive and not once_per_battle_used and not is_used_up:
-		row.gui_input.connect(_on_item_row_input.bind(id))
+	var draggable: bool = not is_passive and not once_per_battle_used and not is_used_up
 
-	var hbox := HBoxContainer.new()
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(hbox)
+	var icon := PieceIcon.new()
+	icon.setup("item_%s" % id, null)
+	# Larger than the roster/active rows' 40x40 default - items need to read
+	# clearly at a glance in the grid, matches the panel's existing 64x64
+	# ability icons.
+	icon.custom_minimum_size = Vector2(64, 64)
+	icon.set_slot_label(str(count))
+	icon.set_benched(not draggable)
 
-	var icon := TextureRect.new()
-	icon.texture = load("res://Assets/Sprites/item_%s.png" % id)
-	icon.custom_minimum_size = Vector2(32, 32)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(icon)
-
-	var label := Label.new()
-	label.text = "x%d" % count
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(label)
-
+	var status_suffix: String
 	if is_passive:
-		var passive_label := Label.new()
-		passive_label.text = "PASSIVE"
-		passive_label.add_theme_font_size_override("font_size", 10)
-		passive_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.add_child(passive_label)
+		status_suffix = "Passive"
 	elif once_per_battle_used or is_used_up:
-		var used_label := Label.new()
-		used_label.text = "USED"
-		used_label.add_theme_font_size_override("font_size", 10)
-		used_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.add_child(used_label)
+		status_suffix = "Already used this battle"
+	else:
+		status_suffix = "x%d owned" % count
+	var bubble_text := "%s\n%s\n%s" % [
+		ItemData.get_item_name(id), ItemData.get_item_description(id), status_suffix
+	]
+	icon.mouse_entered.connect(_show_ability_bubble.bind(icon, bubble_text))
+	icon.mouse_exited.connect(_hide_ability_bubble)
 
-	return row
+	if draggable:
+		icon.icon_clicked.connect(_on_item_icon_clicked.bind(id))
+
+	return icon
 
 
-# Klik/pritisk na vrstico itema med igralčevo potezo začne drag (placement
-# faza je izključena - drawer je takrat itak skrit, glej _on_battle_state_changed).
-func _on_item_row_input(event: InputEvent, id: String):
+# Klik na ikono itema med igralčevo potezo začne drag (placement faza je
+# izključena - gumb za itemsko mrežo je takrat itak onemogočen, glej
+# _on_battle_state_changed). Samo draggable ikone (glej _build_item_icon) sploh
+# povežejo icon_clicked na to funkcijo.
+func _on_item_icon_clicked(_icon: PieceIcon, id: String):
 	if dragging or dragging_item:
 		return
 	if battle_controller.current_state != battle_controller.BattleState.PLAYER_TURN:
 		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		dragging_item = true
-		drag_item_id = id
-		drag_ghost.texture = load("res://Assets/Sprites/item_%s.png" % id)
-		drag_ghost.position = get_viewport().get_mouse_position() - drag_ghost.size / 2
-		drag_ghost.visible = true
+	dragging_item = true
+	drag_item_id = id
+	drag_ghost.texture = load("res://Assets/Sprites/item_%s.png" % id)
+	drag_ghost.position = get_viewport().get_mouse_position() - drag_ghost.size / 2
+	drag_ghost.visible = true
 
 
 # Wave 2 items: dokler vlečemo item nad ploščo, predogledamo njegova ciljna
@@ -1329,7 +1385,7 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		if rampart == null or not (rampart.can_use(battle_controller, grid_pos) and rampart.apply(battle_controller, grid_pos)):
 			return false
 		battle_controller.frozen_rampart_used_this_battle = true
-		_rebuild_item_drawer() # ne sproži items_changed (ni bilo porabljeno iz inventarja)
+		_rebuild_item_grid() # ne sproži items_changed (ni bilo porabljeno iz inventarja)
 		UiAudio.play_click()
 		return true
 
@@ -1351,7 +1407,7 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 			return false
 		grid_manager.swap_characters(ally_a, ally_b)
 		battle_controller.drillmaster_used_this_battle = true
-		_rebuild_item_drawer()
+		_rebuild_item_grid()
 		UiAudio.play_click()
 		return true
 
@@ -1367,7 +1423,7 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		if winter_general == null or not (winter_general.can_use(battle_controller, grid_pos) and winter_general.apply(battle_controller, grid_pos)):
 			return false
 		battle_controller.winter_general_used_this_battle = true
-		_rebuild_item_drawer()
+		_rebuild_item_grid()
 		UiAudio.play_click()
 		return true
 
@@ -1380,7 +1436,7 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		if winters_bargain == null or not (winters_bargain.can_use(battle_controller, grid_pos) and winters_bargain.apply(battle_controller, grid_pos)):
 			return false
 		battle_controller.winters_bargain_used_this_battle = true
-		_rebuild_item_drawer()
+		_rebuild_item_grid()
 		UiAudio.play_click()
 		return true
 
@@ -1393,7 +1449,7 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 		if throne_of_frost == null or not (throne_of_frost.can_use(battle_controller, grid_pos) and throne_of_frost.apply(battle_controller, grid_pos)):
 			return false
 		battle_controller.throne_of_frost_used_this_battle = true
-		_rebuild_item_drawer()
+		_rebuild_item_grid()
 		UiAudio.play_click()
 		return true
 
@@ -1425,7 +1481,7 @@ func use_item(id: String, grid_pos: Vector2i) -> bool:
 	if not (item.can_use(battle_controller, grid_pos) and item.apply(battle_controller, grid_pos)):
 		return false
 
-	player_manager.remove_item(id) # emits items_changed -> _rebuild_item_drawer
+	player_manager.remove_item(id) # emits items_changed -> _rebuild_item_grid
 	UiAudio.play_click()
 	# Items "night_watch"/"seers_horn": mark an enemy immediately on use (not
 	# on a turn boundary like the other _refresh_* badges) - harmless no-op

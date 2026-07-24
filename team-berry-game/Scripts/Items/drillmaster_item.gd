@@ -2,7 +2,7 @@
 # "Passive" per brainstorm, a implementirano kot artefakt (glej items.json
 # "kind": "artifact" + NEW_ITEMS_WAVE2_PLAN.md deviation opombo) - mora biti
 # vlečljiv, da ga igralec sploh lahko SPROŽI (pravi pasivi v tem UI-ju nikoli
-# niso vlečljivi, glej battle_ui._build_item_row is_passive preverjanje).
+# niso vlečljivi, glej battle_ui._build_item_icon is_passive preverjanje).
 # apply()/can_use() tu NISTA klicana - swap potrebuje trenutno IZBRANO
 # zavezniško figuro (map_behaviour.selected_character), do katere
 # BaseItem.apply(battle_controller, grid_pos) signature nima dostopa (samo
