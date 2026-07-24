@@ -639,11 +639,45 @@ func _set_status_icon(character: BaseCharacter, node_name: String, active: bool,
 	badge.set_active(active, color)
 
 
-# Prekletstvo "stunning_gaze": ločena značka ("StunBadge", zamaknjena desno
-# navzdol), da se ne prepisuje s slot številko/bounty/courier značko na isti
-# figuri.
+# Per-figure status badge positions, 2026-07-24 rework (previous two attempts
+# - literal 9/17/25/33/41, then a "shrunk" 8/14/20/26/32 - both STILL wrong,
+# see history below). Positioned relative to grid_manager.cell_size (the
+# GRID's actual tile size, Miha's suggestion) instead of guessed pixel
+# numbers, since that's the one measurement that's actually meaningful here -
+# a piece sprite fills nearly the whole 16x16-world-unit tile, so any offset
+# needs to be sized as a FRACTION of the tile, not an arbitrary constant.
+#
+# Only 3 distinct slots are needed, not 5, because Stun/Root are ally-only and
+# Marked/OrderBadge(war_council) are enemy-only - a piece can never carry one
+# from each pair at once, so reusing the same slot for both is safe:
+#   SLOT_A: StunBadge / MarkedBadge
+#   SLOT_B: RootBadge / OrderBadge (war_council)
+#   SLOT_C: FrozenBadge (own slot - the only status that can land on EITHER
+#           side, so it can coexist with either A or B on the same piece)
+#
+# History: the ORIGINAL offsets (9/17/25/33/41 world units) assumed a much
+# bigger tile. battle.tscn's Camera2D zoom is (3.4, 3.4), so N world units
+# actually renders N*3.4 screen px away from the piece - a fact only visible
+# by booting a real battle and reading back viewport-transformed coordinates
+# (tests/dev/preview_badge_alignment.gd does this; eyeballing screenshots
+# alone undershot the fix twice, first because the zoom wasn't obvious from a
+# still image, second because cell_size was wrongly assumed to be 48 instead
+# of the real 16). Miha's reports ("the blue dot isn't located on the piece",
+# war_council numbers "way below" the enemies) were both this: a step
+# calibrated for a much larger tile landing outside the real, much smaller one.
+func _badge_slot_a() -> Vector2:
+	return grid_manager.cell_size * Vector2(0.15, 0.2)
+
+func _badge_slot_b() -> Vector2:
+	return grid_manager.cell_size * Vector2(0.15, 0.5)
+
+func _badge_slot_c() -> Vector2:
+	return grid_manager.cell_size * Vector2(0.4, 0.35)
+
+# Prekletstvo "stunning_gaze": ločena značka ("StunBadge") - deli SLOT_A z
+# MarkedBadge (glej opombo zgoraj), ker je StunBadge samo za zaveznike.
 func _set_stun_badge(character: BaseCharacter, stunned: bool):
-	_set_status_icon(character, "StunBadge", stunned, STATUS_STUNNED_COLOR, Vector2(2, 9))
+	_set_status_icon(character, "StunBadge", stunned, STATUS_STUNNED_COLOR, _badge_slot_a())
 
 
 # Prekletstvo "stunning_gaze": character je bil PRAVKAR omamljen (sproženo iz
@@ -670,11 +704,10 @@ func _refresh_stun_badges():
 		_set_stun_badge(character, character.stunned_turns > 0)
 
 
-# Prekletstvo "entangle": ločena značka ("RootBadge", zamaknjena POD
-# StunBadge - Vector2(2, 9) - da se figura, ki bi bila hkrati omamljena IN
-# ukoreninjena, ne bi izgubila ene od dveh značk).
+# Prekletstvo "entangle": ločena značka ("RootBadge") - deli SLOT_B z
+# OrderBadge (war_council), ker je RootBadge samo za zaveznike.
 func _set_root_badge(character: BaseCharacter, rooted: bool):
-	_set_status_icon(character, "RootBadge", rooted, STATUS_ROOTED_COLOR, Vector2(2, 17))
+	_set_status_icon(character, "RootBadge", rooted, STATUS_ROOTED_COLOR, _badge_slot_b())
 
 
 # Prekletstvo "entangle": character je bil pravkar ukoreninjen (sproženo iz
@@ -699,11 +732,12 @@ func _refresh_root_badges():
 		_set_root_badge(character, character.rooted_turns > 0)
 
 
-# Snow rework: ločena značka ("FrozenBadge", zamaknjena POD RootBadge -
-# Vector2(2, 17) - da se figura, ki je hkrati ROOTED IN FROZEN, ne izgubi
-# nobene od značk (glej RootBadge komentar zgoraj za isti vzorec).
+# Snow rework: ločena značka ("FrozenBadge") - SVOJ SLOT_C (glej opombo pri
+# _badge_slot_a/_badge_slot_b/_badge_slot_c zgoraj), ker je Frozen edini status,
+# ki lahko pade na OBE strani in bi zato lahko sobival z Root ALI OrderBadge
+# na isti figuri hkrati.
 func _set_frozen_badge(character: BaseCharacter, frozen: bool):
-	_set_status_icon(character, "FrozenBadge", frozen, STATUS_FROZEN_COLOR, Vector2(2, 25))
+	_set_status_icon(character, "FrozenBadge", frozen, STATUS_FROZEN_COLOR, _badge_slot_c())
 
 
 # Snow rework: character je bil pravkar zamrznjen (sproženo iz
@@ -737,12 +771,10 @@ func _refresh_frozen_badges():
 
 
 # Item "marked_man" (Phase 5b, Phase 0 §0.3's deferred marked-vision slot):
-# separate icon offset (Vector2(2, 33), below FrozenBadge) so a marked enemy
-# that's ALSO frozen/rooted/stunned doesn't lose any badge - same stacking
-# pattern as Stun/Root/Frozen above. ENEMY-only (marked_by_vision_item is
-# never set on an ally).
+# deli SLOT_A s StunBadge (glej opombo zgoraj), ker je MarkedBadge samo za
+# sovražnike (marked_by_vision_item se nikoli ne nastavi na zaveznika).
 func _set_marked_badge(character: BaseCharacter, marked: bool):
-	_set_status_icon(character, "MarkedBadge", marked, STATUS_MARKED_COLOR, Vector2(2, 33))
+	_set_status_icon(character, "MarkedBadge", marked, STATUS_MARKED_COLOR, _badge_slot_a())
 
 
 # Called on entering PLAYER_TURN (like the other _refresh_* badges) AND right
@@ -784,8 +816,13 @@ func _refresh_war_council_badges():
 		if not (character is BaseCharacter) or not character.is_enemy or character.is_obstacle:
 			continue
 		var n: int = order_index.get(character, 0)
+		# Deli SLOT_B z RootBadge (glej _badge_slot_a/_badge_slot_b/_badge_slot_c
+		# opombo pri _set_stun_badge) - varno, ker je OrderBadge samo za
+		# sovražnike, RootBadge pa samo za zaveznike. Prej je bil na ISTEM
+		# offsetu kot MarkedBadge (oba SAMO za sovražnike, torej realna
+		# kolizija) - to je bil ločen bug od zgornjega zoom-kalibracijskega.
 		_set_named_badge(character, "OrderBadge", str(n) if n > 0 else "",
-			STATUS_WAR_COUNCIL_COLOR, Vector2(2, 33))
+			STATUS_WAR_COUNCIL_COLOR, _badge_slot_b())
 
 
 # ===============================================

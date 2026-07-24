@@ -5,8 +5,9 @@
 [ext_resource type="Texture2D" uid="uid://bf4ys2lpepvp1" path="res://Assets/Sprites/friendly_rook.png" id="3_j1kqh"]
 
 [node name="ROOOOOOOOK" instance=ExtResource("1_nlvit")]
+scale = Vector2(0.08, 0.08)
 script = ExtResource("2_j1kqh")
 
 [node name="Sprite2D" parent="." index="0"]
-scale = Vector2(0.05, 0.05)
+scale = Vector2(0.6, 0.6)
 texture = ExtResource("3_j1kqh")
